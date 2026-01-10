@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'           # Unified tags like v0.1.0, v1.0.0
+      - 'meross-iot@*' # Package-specific tags like meross-iot@0.1.0
+      - 'meross-cli@*' # Package-specific tags like meross-cli@0.1.0
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog extraction
+      
+      - name: Parse tag and extract package/version
+        id: tag_info
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          
+          # Check if it's a package-specific tag (e.g., meross-iot@0.1.0)
+          if [[ "$TAG" =~ ^(meross-iot|meross-cli)@(.+)$ ]]; then
+            PACKAGE="${BASH_REMATCH[1]}"
+            VERSION="${BASH_REMATCH[2]}"
+            echo "package=$PACKAGE" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_package_specific=true" >> $GITHUB_OUTPUT
+            echo "changelog_path=packages/$PACKAGE/CHANGELOG.md" >> $GITHUB_OUTPUT
+            echo "release_name=$PACKAGE v$VERSION" >> $GITHUB_OUTPUT
+          # Check if it's a unified tag (e.g., v0.1.0)
+          elif [[ "$TAG" =~ ^v(.+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "package=" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_package_specific=false" >> $GITHUB_OUTPUT
+            echo "changelog_path=CHANGELOG.md" >> $GITHUB_OUTPUT
+            echo "release_name=Release $TAG" >> $GITHUB_OUTPUT
+          else
+            echo "Error: Unknown tag format: $TAG" >&2
+            exit 1
+          fi
+          
+          echo "Tag: $TAG"
+          echo "Package: ${PACKAGE:-monorepo}"
+          echo "Version: $VERSION"
+      
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          VERSION="${{ steps.tag_info.outputs.version }}"
+          TAG="${{ steps.tag_info.outputs.tag }}"
+          CHANGELOG_PATH="${{ steps.tag_info.outputs.changelog_path }}"
+          IS_PACKAGE_SPECIFIC="${{ steps.tag_info.outputs.is_package_specific }}"
+          
+          # Extract the changelog section for this version
+          # This script extracts everything between ## [version] and the next ## section
+          if [ -f "$CHANGELOG_PATH" ]; then
+            awk -v version="$VERSION" '
+              BEGIN { found=0; in_section=0 }
+              /^## \[/ {
+                if (in_section) exit
+                if ($0 ~ "\\[" version "\\]") {
+                  found=1
+                  in_section=1
+                  next
+                }
+              }
+              in_section {
+                if (/^## \[/ && !found) {
+                  exit
+                }
+                print
+              }
+            ' "$CHANGELOG_PATH" > release_notes.txt
+          fi
+          
+          # Fallback if changelog extraction failed or file doesn't exist
+          if [ ! -s release_notes.txt ]; then
+            PACKAGE_NAME="${{ steps.tag_info.outputs.package }}"
+            if [ -n "$PACKAGE_NAME" ]; then
+              echo "## [$VERSION] - $(date +%Y-%m-%d)" > release_notes.txt
+              echo "" >> release_notes.txt
+              echo "Release of $PACKAGE_NAME package." >> release_notes.txt
+            else
+              echo "## [$VERSION] - $(date +%Y-%m-%d)" > release_notes.txt
+              echo "" >> release_notes.txt
+              echo "See individual package changelogs for details:" >> release_notes.txt
+              echo "- [meross-iot CHANGELOG](./packages/meross-iot/CHANGELOG.md)" >> release_notes.txt
+              echo "- [meross-cli CHANGELOG](./packages/meross-cli/CHANGELOG.md)" >> release_notes.txt
+            fi
+          fi
+          
+          # Read the release notes
+          RELEASE_NOTES=$(cat release_notes.txt)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Also create a summary
+          echo "## Release $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$RELEASE_NOTES" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Determine if prerelease
+        id: prerelease
+        run: |
+          VERSION="${{ steps.tag_info.outputs.version }}"
+          if [[ "$VERSION" == *"-"* ]] || [[ "$VERSION" =~ ^0\. ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: ${{ steps.tag_info.outputs.release_name }}
+          body: ${{ steps.changelog.outputs.notes }}
+          prerelease: ${{ steps.prerelease.outputs.prerelease == 'true' }}
+          draft: false

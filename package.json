@@ -1,0 +1,22 @@
+{
+  "name": "merossiot-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for Meross IoT library and CLI",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "cli": "node packages/meross-cli/cli/meross-cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Doekse/merossiot"
+  },
+  "license": "MIT"
+}
