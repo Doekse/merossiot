@@ -27,10 +27,6 @@ jobs:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
       
-      - name: Configure npm for provenance
-        if: steps.tag_info.outputs.is_package_specific == 'true'
-        run: npm config set provenance true
-      
       - name: Parse tag and extract package/version
         id: tag_info
         run: |
@@ -62,6 +58,10 @@ jobs:
           echo "Tag: $TAG"
           echo "Package: ${PACKAGE:-monorepo}"
           echo "Version: $VERSION"
+      
+      - name: Configure npm for provenance
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: npm config set provenance true
       
       - name: Extract changelog for version
         id: changelog
