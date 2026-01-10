@@ -1,4 +1,4 @@
-# Meross Iot for Node.js
+# Meross IoT for Node.js
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)
