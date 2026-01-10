@@ -9,16 +9,27 @@ on:
 
 jobs:
   release:
-    name: Create GitHub Release
+    name: Create GitHub Release and Publish to NPM
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write  # Required for npm provenance
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for changelog extraction
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Configure npm for provenance
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: npm config set provenance true
       
       - name: Parse tag and extract package/version
         id: tag_info
@@ -119,6 +130,35 @@ jobs:
           else
             echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
+      
+      - name: Install dependencies
+        run: npm ci
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+      
+      - name: Update package version
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: |
+          PACKAGE="${{ steps.tag_info.outputs.package }}"
+          VERSION="${{ steps.tag_info.outputs.version }}"
+          cd "packages/$PACKAGE"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+      
+      - name: Fix meross-cli dependency for publishing
+        if: steps.tag_info.outputs.package == 'meross-cli'
+        run: |
+          cd packages/meross-cli
+          # Replace file: dependency with version range
+          # Get the meross-iot version from its package.json
+          MEROSS_IOT_VERSION=$(node -p "require('../meross-iot/package.json').version")
+          # Use caret range to allow patch updates
+          npm pkg set "dependencies.meross-iot=^$MEROSS_IOT_VERSION"
+      
+      - name: Publish to NPM
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: |
+          PACKAGE="${{ steps.tag_info.outputs.package }}"
+          cd "packages/$PACKAGE"
+          npm publish --access public --provenance
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
