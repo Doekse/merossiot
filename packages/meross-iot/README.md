@@ -19,7 +19,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 
 ## Installation
 
-**⚠️ Alpha Release**: This is currently an alpha/unstable release. Use with caution.
+**⚠️ Pre-release**: This is currently an unstable pre-release. Use with caution.
 
 ```bash
 # Install alpha version
