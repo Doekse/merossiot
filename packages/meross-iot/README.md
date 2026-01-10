@@ -88,20 +88,21 @@ The `example/` directory contains focused examples for different use cases:
 
 This library should support al wifi based devices Meross currently has on the market. I've tested the code with the following devices: 
 
-MSP844 Smart Fast Charging Power Strip
-MS130H Smart Temperature and Humidity Sensor Kit
-MS600 Smart Presence Sensor
-MOP320MA Smart Outdoor Plug with Energy Monitor
-MSS815MA Smart in-Wall Switch
-MSS715MA Smart DIY Switch with Energy Monitor
-MTS215MA Smart Thermostat
-MA151H Smart Smoke Alarm  
-MSH450 Smart Hub
-MSH400HK Smart Hub
-MSH300HK Smart Hub
-MSL120HK Smart LED Light Bulb Pro
-MSL100HK Smart LED Light Bulb
-MS400H Smart Water Leak Sensor
+- MSS315 Smart Wi-Fi Plug Mini
+- MSP844 Smart Fast Charging Power Strip
+- MS130H Smart Temperature and Humidity Sensor Kit
+- MS600 Smart Presence Sensor
+- MOP320MA Smart Outdoor Plug with Energy Monitor
+- MSS815MA Smart in-Wall Switch
+- MSS715MA Smart DIY Switch with Energy Monitor
+- MTS215MA Smart Thermostat
+- MA151H Smart Smoke Alarm  
+- MSH450 Smart Hub
+- MSH400HK Smart Hub
+- MSH300HK Smart Hub
+- MSL120HK Smart LED Light Bulb Pro
+- MSL100HK Smart LED Light Bulb
+- MS400H Smart Water Leak Sensor
 
 
 ## Unsupported Device?
