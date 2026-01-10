@@ -9,7 +9,7 @@
 
 Command-line interface for controlling and managing Meross smart home devices.
 
-**⚠️ Alpha Release**: This is currently an alpha/unstable release. Use with caution.
+**⚠️ Pre-release**: This is currently an unstable pre-release. Use with caution.
 
 ## Requirements
 
