@@ -10,9 +10,46 @@ This monorepo contains the Meross IoT library and CLI tool for Node.js.
 
 - Node.js >= 18
 
-## Installation
+## Installation and Getting Started
 
-This is a monorepo using npm workspaces. To get started:
+### Installing the npm packages
+
+**⚠️ Pre-release**: These packages are currently in early development. Use with caution.
+
+#### meross-iot (Library)
+
+The main library for controlling Meross cloud devices:
+
+```bash
+# Install latest version
+npm install meross-iot
+
+# Or install specific version
+npm install meross-iot@0.1.0
+```
+
+See [packages/meross-iot/README.md](./packages/meross-iot/README.md) for detailed usage and examples.
+
+#### meross-cli (Command-line tool)
+
+Command-line interface for testing and managing Meross devices:
+
+```bash
+# Install latest version globally
+npm install -g meross-cli
+
+# Or install specific version
+npm install -g meross-cli@0.1.0
+
+# Or use via npx (no installation needed)
+npx meross-cli
+```
+
+See [packages/meross-cli/README.md](./packages/meross-cli/README.md) for detailed usage and examples.
+
+### Development Setup
+
+This is a monorepo using npm workspaces. To set up for development:
 
 ```bash
 # Install all dependencies
