@@ -120,6 +120,11 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.2.1] - 2026-01-14
+
+#### Fixed
+- Fixed syntax error in `device-control.js` example - missing closing brace for `deviceInitialized` event handler
+
 ### [0.2.0] - 2026-01-14
 
 #### Changed

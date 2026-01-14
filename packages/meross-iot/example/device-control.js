@@ -95,6 +95,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
             console.error(`  Error: ${error.message}`);
         }
         });
+    });
 
         console.log('Connecting to Meross Cloud...');
         await meross.connect();

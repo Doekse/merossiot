@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-01-14
+
+### Fixed
+- Fixed syntax error in `example/device-control.js` - missing closing brace for `deviceInitialized` event handler
+
 ## [0.2.0] - 2026-01-14
 
 ### Changed
