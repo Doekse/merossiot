@@ -25,7 +25,7 @@ The main library for controlling Meross cloud devices:
 npm install meross-iot
 
 # Or install specific version
-npm install meross-iot@0.1.0
+npm install meross-iot@0.2.0
 ```
 
 See [packages/meross-iot/README.md](./packages/meross-iot/README.md) for detailed usage and examples.
@@ -39,7 +39,7 @@ Command-line interface for testing and managing Meross devices:
 npm install -g meross-cli
 
 # Or install specific version
-npm install -g meross-cli@0.1.0
+npm install -g meross-cli@0.2.0
 
 # Or use via npx (no installation needed)
 npx meross-cli

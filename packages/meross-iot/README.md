@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.1.0
+npm install meross-iot@0.2.0
 ```
 
 ## Usage & Documentation
@@ -119,6 +119,22 @@ Please create an issue on GitHub and include:
 [Create an issue →](https://github.com/Doekse/merossiot/issues)
 
 ## Changelog
+
+### [0.2.0] - 2026-01-14
+
+#### Changed
+- **BREAKING**: `SubscriptionManager` now uses EventEmitter pattern instead of callbacks
+  - `subscribe(device, config, onUpdate)` → `subscribe(device, config)` (no callback, no return value)
+  - `unsubscribe(deviceUuid, subscriptionId)` → `unsubscribe(deviceUuid)` (no subscription ID needed)
+  - `subscribeToDeviceList(onUpdate)` → `subscribeToDeviceList()` (no callback, no return value)
+  - `unsubscribeFromDeviceList(subscriptionId)` → `unsubscribeFromDeviceList()` (no subscription ID needed)
+  - Listen for updates using: `on('deviceUpdate:${deviceUuid}', handler)` and `on('deviceListUpdate', handler)`
+  - Use standard EventEmitter methods: `on()`, `once()`, `off()`, `removeAllListeners()`
+  - Configuration is now per-device subscription (merged aggressively) rather than per-listener
+
+#### Added
+- `subscription-manager.js` example demonstrating EventEmitter-based SubscriptionManager usage
+- Enhanced documentation for SubscriptionManager with JSDoc comments explaining implementation rationale
 
 ### [0.1.0] - 2026-01-10
 

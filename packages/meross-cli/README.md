@@ -23,7 +23,7 @@ Command-line interface for controlling and managing Meross smart home devices.
 npm install -g meross-cli@alpha
 
 # Or install specific version
-npm install -g meross-cli@0.1.0
+npm install -g meross-cli@0.2.0
 ```
 
 Or use via npx:
