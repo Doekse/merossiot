@@ -75,6 +75,7 @@ The `example/` directory contains focused examples for different use cases:
 - **`basic-usage.js`** - Simple connection and device discovery
 - **`device-control.js`** - Controlling switches, lights, and monitoring devices
 - **`event-handling.js`** - Handling events from devices and the manager
+- **`subscription-manager.js`** - Automatic polling and unified update streams with SubscriptionManager
 - **`token-reuse.js`** - Saving and reusing authentication tokens
 - **`statistics.js`** - Enabling and viewing API call statistics
 - **`error-handling.js`** - Comprehensive error handling and MFA

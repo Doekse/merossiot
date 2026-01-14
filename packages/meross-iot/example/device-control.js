@@ -99,8 +99,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         console.log('Connecting to Meross Cloud...');
         await meross.connect();
         console.log('✓ Connected. Waiting for devices...');
-        
-        // Keep running
+
         process.on('SIGINT', async () => {
             await meross.logout();
             meross.disconnectAll(true);

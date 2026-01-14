@@ -1349,22 +1349,41 @@ declare module 'meross-iot' {
     }
 
     /**
-     * Device update callback data
+     * Device update event data
      */
     export interface DeviceUpdate {
-        deviceUuid: string
+        source: string
         timestamp: number
-        data?: Record<string, any>
+        event?: any
+        device: MerossDevice
+        state: any
+        changes: Record<string, any>
         [key: string]: any
     }
 
-    export class SubscriptionManager {
+    /**
+     * Device list update event data
+     */
+    export interface DeviceListUpdate {
+        devices: DeviceDefinition[]
+        added: DeviceDefinition[]
+        removed: DeviceDefinition[]
+        changed: DeviceDefinition[]
+        timestamp: number
+    }
+
+    export class SubscriptionManager extends EventEmitter {
         constructor(manager: MerossManager, options?: SubscriptionManagerOptions);
-        subscribe(device: MerossDevice, config?: SubscriptionManagerOptions, onUpdate?: (update: DeviceUpdate) => void): string;
-        unsubscribe(deviceUuid: string, subscriptionId: string): void;
-        subscribeToDeviceList(onUpdate?: (devices: DeviceDefinition[]) => void): string;
-        unsubscribeFromDeviceList(subscriptionId: string): void;
+        subscribe(device: MerossDevice, config?: SubscriptionManagerOptions): void;
+        unsubscribe(deviceUuid: string): void;
+        subscribeToDeviceList(): void;
+        unsubscribeFromDeviceList(): void;
         destroy(): void;
+        
+        // EventEmitter events
+        on(event: `deviceUpdate:${string}`, listener: (update: DeviceUpdate) => void): this;
+        on(event: 'deviceListUpdate', listener: (update: DeviceListUpdate) => void): this;
+        on(event: 'error', listener: (error: Error, context?: string) => void): this;
     }
 
     /**
