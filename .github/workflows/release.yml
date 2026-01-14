@@ -45,11 +45,12 @@ jobs:
           # Check if it's a unified tag (e.g., v0.1.0)
           elif [[ "$TAG" =~ ^v(.+)$ ]]; then
             VERSION="${BASH_REMATCH[1]}"
-            echo "package=" >> $GITHUB_OUTPUT
+            PACKAGE="meross-iot"
+            echo "package=$PACKAGE" >> $GITHUB_OUTPUT
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "is_package_specific=false" >> $GITHUB_OUTPUT
-            echo "changelog_path=CHANGELOG.md" >> $GITHUB_OUTPUT
-            echo "release_name=Release $TAG" >> $GITHUB_OUTPUT
+            echo "is_package_specific=true" >> $GITHUB_OUTPUT
+            echo "changelog_path=packages/$PACKAGE/CHANGELOG.md" >> $GITHUB_OUTPUT
+            echo "release_name=$PACKAGE v$VERSION" >> $GITHUB_OUTPUT
           else
             echo "Error: Unknown tag format: $TAG" >&2
             exit 1
