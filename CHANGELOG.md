@@ -11,6 +11,11 @@ This is a monorepo containing multiple packages. For detailed changelogs, see:
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-XX
+
+### Changed
+- **BREAKING**: `SubscriptionManager` API refactored to use EventEmitter pattern (see `packages/meross-iot/CHANGELOG.md` for details)
+
 ## [0.1.0] - 2026-01-10
 
 ### Added

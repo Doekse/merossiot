@@ -133,6 +133,21 @@ Shows how to create and manage device timers:
 node example/timer-usage.js
 ```
 
+### `subscription-manager.js`
+Demonstrates how to use SubscriptionManager for automatic polling and unified update streams:
+- Subscribing to device updates with automatic polling
+- Listening to device state changes via EventEmitter
+- Monitoring device list changes (additions, removals)
+- Multiple listeners per device
+- One-time event listeners
+- Smart caching to reduce network traffic
+- Unsubscribing and cleanup
+
+**Run:**
+```bash
+node example/subscription-manager.js
+```
+
 ## Configuration
 
 Before running any example, update the credentials using the factory pattern:
@@ -183,6 +198,26 @@ When creating `MerossManager`:
 - `requestBatchSize`: Number of concurrent requests per device (default: 1)
 - `requestBatchDelay`: Delay in milliseconds between batches (default: 200)
 - `enableRequestThrottling`: Enable/disable request throttling (default: true)
+
+### SubscriptionManager Options
+
+When calling `meross.getSubscriptionManager()`:
+- `logger`: Logger function for debug output
+- `deviceStateInterval`: Device state polling interval in milliseconds (default: 30000)
+- `electricityInterval`: Electricity metrics polling interval in milliseconds (default: 30000)
+- `consumptionInterval`: Power consumption polling interval in milliseconds (default: 60000)
+- `httpDeviceListInterval`: HTTP device list polling interval in milliseconds (default: 120000)
+- `smartCaching`: Skip polling when cached data is fresh (default: true)
+- `cacheMaxAge`: Maximum cache age in milliseconds before considering data stale (default: 10000)
+
+When calling `subscriptionManager.subscribe(device, config)`:
+- `deviceStateInterval`: Override device state polling interval for this device
+- `electricityInterval`: Override electricity polling interval for this device
+- `consumptionInterval`: Override consumption polling interval for this device
+- `smartCaching`: Override smart caching setting for this device
+- `cacheMaxAge`: Override cache max age for this device
+
+Configuration is merged aggressively (shortest intervals win) to ensure all listeners receive updates at least as frequently as required.
 
 
 ## Environment Variables

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-XX
+
+### Changed
+- **BREAKING**: `SubscriptionManager` now uses EventEmitter pattern instead of callbacks
+  - `subscribe(device, config, onUpdate)` → `subscribe(device, config)` (no callback, no return value)
+  - `unsubscribe(deviceUuid, subscriptionId)` → `unsubscribe(deviceUuid)` (no subscription ID needed)
+  - `subscribeToDeviceList(onUpdate)` → `subscribeToDeviceList()` (no callback, no return value)
+  - `unsubscribeFromDeviceList(subscriptionId)` → `unsubscribeFromDeviceList()` (no subscription ID needed)
+  - Listen for updates using: `on('deviceUpdate:${deviceUuid}', handler)` and `on('deviceListUpdate', handler)`
+  - Use standard EventEmitter methods: `on()`, `once()`, `off()`, `removeAllListeners()`
+  - Configuration is now per-device subscription (merged aggressively) rather than per-listener
+
+### Added
+- `subscription-manager.js` example demonstrating EventEmitter-based SubscriptionManager usage
+- Enhanced documentation for SubscriptionManager with JSDoc comments explaining implementation rationale
+
 ## [0.1.0] - 2026-01-10
 
 ### Added
