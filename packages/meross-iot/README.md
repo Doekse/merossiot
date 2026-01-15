@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.3.0
+npm install meross-iot@0.3.1
 ```
 
 ## Usage & Documentation
@@ -120,6 +120,14 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.3.1] - 2026-01-15
+
+#### Fixed
+- Fixed `ManagerSubscription` constructor bug: now properly calls `super()` before accessing `this` to correctly initialize EventEmitter parent class
+
+<details>
+<summary>Older</summary>
+
 ### [0.3.0] - 2026-01-15
 
 #### Changed
@@ -146,9 +154,6 @@ Please create an issue on GitHub and include:
 - Property access to device registry: `meross.devices` returns `DeviceRegistry` instance with full API access
 - Unified `get()` method in DeviceRegistry supporting both base devices and subdevices
 - Constructor option `subscription` for configuring subscription manager during initialization
-
-<details>
-<summary>Older</summary>
 
 ### [0.2.1] - 2026-01-14
 

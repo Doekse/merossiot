@@ -27,6 +27,8 @@ class ManagerSubscription extends EventEmitter {
      * @param {number} [options.cacheMaxAge=10000] - Maximum cache age in milliseconds before considering data stale
      */
     constructor(manager, options = {}) {
+        super();
+
         if (!manager) {
             throw new Error('Manager instance is required');
         }
