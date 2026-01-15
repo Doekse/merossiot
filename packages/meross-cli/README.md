@@ -87,6 +87,9 @@ The CLI supports all devices that are supported by the underlying `meross-iot` l
   - Uses `meross.subscription` instead of `getSubscriptionManager()`
   - Uses `meross.devices.get()`, `meross.devices.find()`, and `meross.devices.list()` instead of wrapper methods
 
+<details>
+<summary>Older</summary>
+
 ### [0.1.0] - 2026-01-10
 
 #### Added
@@ -106,11 +109,6 @@ The CLI supports all devices that are supported by the underlying `meross-iot` l
 #### Known Issues
 - This is an initial, pre-stable release. Please expect bugs.
 - Some edge cases may not be fully handled yet.
-
-<details>
-<summary>Older</summary>
-
-<!-- Older changelog entries will appear here -->
 
 </details>
 

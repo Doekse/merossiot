@@ -147,6 +147,9 @@ Please create an issue on GitHub and include:
 - Unified `get()` method in DeviceRegistry supporting both base devices and subdevices
 - Constructor option `subscription` for configuring subscription manager during initialization
 
+<details>
+<summary>Older</summary>
+
 ### [0.2.1] - 2026-01-14
 
 #### Fixed
@@ -188,11 +191,6 @@ Please create an issue on GitHub and include:
 #### Known Issues
 - This is an initial, pre-stable release. Please expect bugs. 
 - Some edge cases may not be fully handled yet.
-
-<details>
-<summary>Older</summary>
-
-<!-- Older changelog entries will appear here -->
 
 </details>
 
