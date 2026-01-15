@@ -11,7 +11,7 @@
  * This approach provides better flexibility and testability.
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 // Example 1: Using factory method
 (async () => {
@@ -28,7 +28,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         console.log('✓ HTTP client created and authenticated\n');
 
         // Create manager with HTTP client (dependency injection)
-        const manager = new MerossManager({
+        const manager = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -38,8 +38,8 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         const deviceCount = await manager.getDevices();
         console.log(`✓ Found ${deviceCount} device(s)\n`);
 
-        // Use devices
-        const devices = manager.getAllDevices();
+        // Use devices with property access pattern
+        const devices = manager.devices.list();
         devices.forEach(device => {
             console.log(`  - ${device.name} (${device.uuid.substring(0, 8)}...)`);
         });
@@ -70,7 +70,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
 
         // Create manager
-        const manager = new MerossManager({
+        const manager = new ManagerMeross({
             httpClient: httpClient
         });
 

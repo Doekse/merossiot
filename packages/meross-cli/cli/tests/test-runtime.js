@@ -23,7 +23,7 @@ async function runTests(context) {
     let testDevices = devices || [];
     if (testDevices.length === 0) {
         // Runtime is typically available on most devices, so we'll test with any online device
-        const allDevices = manager.getAllDevices();
+        const allDevices = manager.devices.list();
         testDevices = allDevices.filter(device => {
             const status = device.onlineStatus !== undefined ? device.onlineStatus : (device.dev?.onlineStatus);
             if (status !== OnlineStatus.ONLINE) return false;

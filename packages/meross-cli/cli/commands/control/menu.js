@@ -23,12 +23,12 @@ async function question(rl, query) {
 
 /**
  * Interactive device control menu.
- * @param {Object} manager - MerossManager instance
+ * @param {Object} manager - ManagerMeross instance
  * @param {Object} rl - Readline interface
  * @param {string|null} currentUser - Current logged in user name
  */
 async function controlDeviceMenu(manager, rl, currentUser = null) {
-    const devices = manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+    const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         console.log('\nNo devices found.');
         return;
@@ -50,7 +50,7 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
         choices: deviceChoices
     }]);
 
-    const device = manager.getDevice(uuid);
+    const device = manager.devices.get(uuid);
 
     // Wait for device to connect if needed
     if (!device.deviceConnected) {
@@ -92,11 +92,11 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
     // Control loop
     while (true) {
         clearScreen();
-        const deviceCount = manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length;
+        const deviceCount = manager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length;
         renderSimpleHeader(currentUser, deviceCount);
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
-        const info = formatDevice(manager.getDevice(uuid));
+        const info = formatDevice(manager.devices.get(uuid));
         console.log(chalk.bold(`=== Control Device: ${info.name} ===\n`));
 
         // Build choices grouped by category

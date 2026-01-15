@@ -26,7 +26,7 @@ async function runTests(context) {
         const multipleDevices = await findDevicesByAbility(manager, 'Appliance.Control.Multiple', OnlineStatus.ONLINE);
         
         // Also get any online device for testing control features
-        const allDevices = manager.getAllDevices();
+        const allDevices = manager.devices.list();
         const onlineDevices = allDevices.filter(device => {
             const status = device.onlineStatus !== undefined ? device.onlineStatus : (device.dev?.onlineStatus);
             return status === OnlineStatus.ONLINE;

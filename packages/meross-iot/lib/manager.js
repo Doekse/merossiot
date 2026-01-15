@@ -34,9 +34,9 @@ const { HttpApiError } = require('./model/http/exception');
  * @class
  * @extends EventEmitter
  */
-class MerossManager extends EventEmitter {
+class ManagerMeross extends EventEmitter {
     /**
-     * Creates a new MerossManager instance
+     * Creates a new ManagerMeross instance
      *
      * @param {Object} options - Configuration options
      * @param {MerossHttpClient} options.httpClient - HTTP client instance (required)
@@ -94,7 +94,7 @@ class MerossManager extends EventEmitter {
 
         this.mqttConnections = {};
         this._mqttConnectionPromises = new Map();
-        this._deviceRegistry = new MerossManager.DeviceRegistry();
+        this._deviceRegistry = new ManagerMeross.DeviceRegistry();
         this._appId = null;
         this.clientResponseTopic = null;
         this._pendingMessagesFutures = new Map();
@@ -103,6 +103,9 @@ class MerossManager extends EventEmitter {
         this._mqttStatsCounter = enableStats ? new MqttStatsCounter(options.maxStatsSamples || 1000) : null;
 
         this.httpClient = options.httpClient;
+
+        // Store subscription options from constructor for lazy initialization
+        this._subscriptionOptions = options.subscription || {};
 
         // Reuse authentication from HTTP client if already authenticated to avoid
         // redundant authentication and share credentials between HTTP and MQTT connections
@@ -490,51 +493,6 @@ class MerossManager extends EventEmitter {
         return response;
     }
 
-    /**
-     * Gets a device by UUID
-     *
-     * @param {string} uuid - Device UUID
-     * @returns {MerossDevice|MerossHubDevice|undefined} Device instance or undefined if not found
-     */
-    getDevice(uuid) {
-        return this._deviceRegistry.lookupByUuid(uuid);
-    }
-
-    /**
-     * Finds devices matching the specified filters
-     *
-     * @param {Object} [filters={}] - Filter criteria
-     * @param {string[]} [filters.device_uuids] - Array of device UUIDs to match (snake_case to match API)
-     * @param {string[]} [filters.internal_ids] - Array of internal IDs to match
-     * @param {string} [filters.device_type] - Device type to match (e.g., 'mss310')
-     * @param {string} [filters.device_name] - Device name to match
-     * @param {number} [filters.online_status] - Online status to match (from OnlineStatus enum)
-     * @param {string|Function|Array} [filters.device_class] - Device class filter (string, function, or array)
-     * @returns {Array<MerossDevice|MerossHubDevice>} Array of matching devices
-     */
-    findDevices(filters = {}) {
-        return this._deviceRegistry.findDevices(filters);
-    }
-
-    /**
-     * Gets all registered devices
-     *
-     * @returns {Array<MerossDevice|MerossHubDevice>} Array of all devices
-     */
-    getAllDevices() {
-        return this._deviceRegistry.getAllDevices();
-    }
-
-    /**
-     * Gets a device by UUID (internal helper method)
-     *
-     * @param {string} uuid - Device UUID
-     * @returns {MerossDevice|MerossHubDevice|undefined} Device instance or undefined if not found
-     * @private
-     */
-    _getDeviceByUuid(uuid) {
-        return this._deviceRegistry.lookupByUuid(uuid);
-    }
 
     /**
      * Disconnects all devices and closes all MQTT connections
@@ -547,7 +505,7 @@ class MerossManager extends EventEmitter {
      */
     disconnectAll(force) {
         // Retrieve devices before clearing registry to allow queue cleanup
-        const devices = this._deviceRegistry.getAllDevices();
+        const devices = this._deviceRegistry.list();
         this._deviceRegistry.clear();
 
         if (this._requestQueue) {
@@ -650,7 +608,7 @@ class MerossManager extends EventEmitter {
             }
 
             this.mqttConnections[domain].deviceList.forEach(devId => {
-                const device = this._getDeviceByUuid(devId);
+                const device = this._deviceRegistry._devicesByUuid.get(devId) || null;
                 if (device) {
                     device.emit('connected');
                 }
@@ -660,7 +618,7 @@ class MerossManager extends EventEmitter {
         client.on('error', (error) => {
             // MQTT client handles reconnection automatically via reconnectPeriod option
             this.mqttConnections[domain].deviceList.forEach(devId => {
-                const device = this._getDeviceByUuid(devId);
+                const device = this._deviceRegistry._devicesByUuid.get(devId) || null;
                 if (device) {
                     device.emit('error', error ? error.toString() : null);
                 }
@@ -669,7 +627,7 @@ class MerossManager extends EventEmitter {
 
         client.on('close', (error) => {
             this.mqttConnections[domain].deviceList.forEach(devId => {
-                const device = this._getDeviceByUuid(devId);
+                const device = this._deviceRegistry._devicesByUuid.get(devId) || null;
                 if (device) {
                     device.emit('close', error ? error.toString() : null);
                 }
@@ -678,7 +636,7 @@ class MerossManager extends EventEmitter {
 
         client.on('reconnect', () => {
             this.mqttConnections[domain].deviceList.forEach(devId => {
-                const device = this._getDeviceByUuid(devId);
+                const device = this._deviceRegistry._devicesByUuid.get(devId) || null;
                 if (device) {
                     device.emit('reconnect');
                 }
@@ -734,7 +692,7 @@ class MerossManager extends EventEmitter {
 
             if (!message.header.from) {return;}
             const deviceUuid = deviceUuidFromPushNotification(message.header.from);
-            const device = this._getDeviceByUuid(deviceUuid);
+            const device = this._deviceRegistry._devicesByUuid.get(deviceUuid) || null;
             if (device) {
                 device.handleMessage(message);
             }
@@ -831,7 +789,7 @@ class MerossManager extends EventEmitter {
         const topic = buildDeviceRequestTopic(device.uuid);
         this.mqttConnections[domain].client.publish(topic, JSON.stringify(data), undefined, err => {
             if (err) {
-                const deviceObj = this._getDeviceByUuid(device.uuid);
+                const deviceObj = this._deviceRegistry._devicesByUuid.get(device.uuid) || null;
                 if (deviceObj) {
                     deviceObj.emit('error', err);
                 }
@@ -1230,23 +1188,38 @@ class MerossManager extends EventEmitter {
     }
 
     /**
-     * Gets or creates the SubscriptionManager instance
+     * Gets or creates the ManagerSubscription instance
      *
      * Provides automatic polling and data provisioning for devices.
      * Uses lazy initialization to create the manager only when needed.
+     * Merges constructor subscription options with any additional options.
      *
-     * @param {Object} [options={}] - Configuration options for SubscriptionManager
-     * @returns {SubscriptionManager} SubscriptionManager instance
+     * @returns {ManagerSubscription} ManagerSubscription instance
      */
-    getSubscriptionManager(options = {}) {
+    get subscription() {
         if (!this._subscriptionManager) {
-            const SubscriptionManager = require('./subscription');
-            this._subscriptionManager = new SubscriptionManager(this, {
+            const ManagerSubscription = require('./subscription');
+            this._subscriptionManager = new ManagerSubscription(this, {
                 logger: this.options?.logger,
-                ...options
+                ...this._subscriptionOptions
             });
         }
         return this._subscriptionManager;
+    }
+
+    /**
+     * Gets the DeviceRegistry instance for device management
+     *
+     * Provides direct access to DeviceRegistry methods for device lookups and queries.
+     * Use this property to access device registry functionality:
+     * - `meross.devices.get(identifier)` - Get a device by UUID or subdevice identifier
+     * - `meross.devices.find(filters)` - Find devices matching filters
+     * - `meross.devices.list()` - Get all registered devices
+     *
+     * @returns {DeviceRegistry} DeviceRegistry instance
+     */
+    get devices() {
+        return this._deviceRegistry;
     }
 
 }
@@ -1342,29 +1315,38 @@ class DeviceRegistry {
     }
 
     /**
-     * Looks up a device by its internal ID.
+     * Unified method to get a device by identifier.
      *
-     * Uses the unified internal ID format to support lookups for both base devices and subdevices
-     * through a single method, eliminating the need for type-specific lookup logic.
+     * Supports both base devices (by UUID string) and subdevices (by object with hubUuid and id).
+     * Internally converts the identifier to an internal ID format and performs the lookup.
      *
-     * @param {string} internalId - Internal ID (e.g., "#BASE:{uuid}" or "#SUB:{hubUuid}:{subdeviceId}")
+     * @param {string|Object} identifier - Device identifier
+     * @param {string} identifier - For base devices: device UUID string (e.g., 'device-uuid')
+     * @param {Object} identifier - For subdevices: object with hubUuid and id properties
+     * @param {string} identifier.hubUuid - Hub UUID that the subdevice belongs to
+     * @param {string} identifier.id - Subdevice ID
      * @returns {MerossDevice|MerossHubDevice|MerossSubDevice|null} Device instance, or null if not found
-     */
-    lookupByInternalId(internalId) {
-        return this._devicesByInternalId.get(internalId) || null;
-    }
-
-    /**
-     * Looks up a base device by its UUID.
+     * @example
+     * // Get base device by UUID
+     * const device = registry.get('device-uuid');
      *
-     * Provides O(1) lookup for base devices using the UUID index. Subdevices do not have
-     * unique UUIDs and must be looked up by internal ID instead.
-     *
-     * @param {string} uuid - Device UUID
-     * @returns {MerossDevice|MerossHubDevice|null} Device instance, or null if not found
+     * @example
+     * // Get subdevice by hub UUID and subdevice ID
+     * const subdevice = registry.get({ hubUuid: 'hub-uuid', id: 'subdevice-id' });
      */
-    lookupByUuid(uuid) {
-        return this._devicesByUuid.get(uuid) || null;
+    get(identifier) {
+        if (typeof identifier === 'string') {
+            // Base device lookup by UUID
+            return this._devicesByUuid.get(identifier) || null;
+        } else if (identifier && typeof identifier === 'object') {
+            // Subdevice lookup by hubUuid and id
+            const { hubUuid, id } = identifier;
+            if (hubUuid && id) {
+                const internalId = ManagerMeross.DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, id);
+                return this._devicesByInternalId.get(internalId) || null;
+            }
+        }
+        return null;
     }
 
     /**
@@ -1375,7 +1357,7 @@ class DeviceRegistry {
      *
      * @returns {Array<MerossDevice|MerossHubDevice|MerossSubDevice>} Array of all registered devices
      */
-    getAllDevices() {
+    list() {
         return Array.from(this._devicesByInternalId.values());
     }
 
@@ -1398,8 +1380,8 @@ class DeviceRegistry {
      *                                                                  - Function: custom filter function that receives device and returns boolean
      * @returns {Array<MerossDevice|MerossHubDevice|MerossSubDevice>} Array of matching devices
      */
-    findDevices(filters = {}) {
-        let devices = this.getAllDevices();
+    find(filters = {}) {
+        let devices = this.list();
 
         if (filters.device_uuids && Array.isArray(filters.device_uuids) && filters.device_uuids.length > 0) {
             const uuidSet = new Set(filters.device_uuids);
@@ -1513,7 +1495,7 @@ class DeviceRegistry {
                 throw new UnknownDeviceTypeError('Cannot generate internal ID for subdevice: missing hub UUID or subdevice ID');
             }
 
-            const internalId = MerossManager.DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, subdeviceId);
+            const internalId = ManagerMeross.DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, subdeviceId);
             device._internalId = internalId;
             return internalId;
         }
@@ -1523,7 +1505,7 @@ class DeviceRegistry {
             throw new UnknownDeviceTypeError('Cannot generate internal ID: device missing UUID');
         }
 
-        const internalId = MerossManager.DeviceRegistry.generateInternalId(uuid);
+        const internalId = ManagerMeross.DeviceRegistry.generateInternalId(uuid);
         device._internalId = internalId;
         return internalId;
     }
@@ -1551,7 +1533,7 @@ class DeviceRegistry {
      * @returns {void}
      */
     clear() {
-        const devices = this.getAllDevices();
+        const devices = this.list();
         devices.forEach(device => {
             if (device.disconnect) {
                 device.disconnect();
@@ -1571,11 +1553,11 @@ class DeviceRegistry {
     }
 }
 
-// Attach DeviceRegistry as nested class to MerossManager
-MerossManager.DeviceRegistry = DeviceRegistry;
+// Attach DeviceRegistry as nested class to ManagerMeross
+ManagerMeross.DeviceRegistry = DeviceRegistry;
 
 /**
- * Events emitted by MerossManager instance
+ * Events emitted by ManagerMeross instance
  *
  * @typedef {Object} MerossCloudEvents
  * @property {Function} deviceInitialized - Emitted when a device is initialized
@@ -1604,6 +1586,6 @@ MerossManager.DeviceRegistry = DeviceRegistry;
  *   @param {Object} message - Raw message object
  */
 
-module.exports = MerossManager;
+module.exports = ManagerMeross;
 module.exports.DeviceRegistry = DeviceRegistry;
 

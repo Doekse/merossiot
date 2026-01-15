@@ -47,7 +47,7 @@ jobs:
             VERSION="${BASH_REMATCH[1]}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "is_package_specific=false" >> $GITHUB_OUTPUT
-            echo "changelog_path=CHANGELOG.md" >> $GITHUB_OUTPUT
+            echo "changelog_path=" >> $GITHUB_OUTPUT
             echo "release_name=v$VERSION" >> $GITHUB_OUTPUT
           else
             echo "Error: Unknown tag format: $TAG" >&2
@@ -55,6 +55,10 @@ jobs:
           fi
           
           echo "Tag: $TAG"
+          if [ -n "$PACKAGE" ]; then
+            echo "Package: $PACKAGE"
+            echo "Changelog path: packages/$PACKAGE/CHANGELOG.md"
+          fi
           echo "Version: $VERSION"
       
       - name: Configure npm for provenance
@@ -69,9 +73,13 @@ jobs:
           CHANGELOG_PATH="${{ steps.tag_info.outputs.changelog_path }}"
           IS_PACKAGE_SPECIFIC="${{ steps.tag_info.outputs.is_package_specific }}"
           
+          echo "Extracting changelog from: $CHANGELOG_PATH"
+          echo "Looking for version: $VERSION"
+          
           # Extract the changelog section for this version
           # This script extracts everything between ## [version] and the next ## section
-          if [ -f "$CHANGELOG_PATH" ]; then
+          if [ -n "$CHANGELOG_PATH" ] && [ -f "$CHANGELOG_PATH" ]; then
+            echo "Found changelog file, extracting version section..."
             awk -v version="$VERSION" '
               BEGIN { found=0; in_section=0 }
               /^## \[/ {

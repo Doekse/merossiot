@@ -410,7 +410,7 @@ function _mapRollerShutterFeatureNamespace(namespace, device) {
 
 /**
  * Feature namespace mapping registry organized by feature type.
- * Matches the MerossManager class structure where features are organized by type.
+ * Matches the ManagerMeross class structure where features are organized by type.
  */
 const FEATURE_NAMESPACE_MAPPERS = [
     { prefix: 'Appliance.Control.Toggle', mapper: _mapToggleFeatureNamespace },
@@ -433,7 +433,7 @@ const FEATURE_NAMESPACE_MAPPERS = [
 /**
  * Maps a namespace to its feature method and arguments.
  * Returns { featureMethod, featureArgs } or { featureMethod: null, featureArgs: [] } if no feature method exists.
- * Organized by feature type to match MerossManager class structure.
+ * Organized by feature type to match ManagerMeross class structure.
  */
 function _mapNamespaceToFeatureMethod(namespace, device) {
     for (const { prefix, mapper } of FEATURE_NAMESPACE_MAPPERS) {

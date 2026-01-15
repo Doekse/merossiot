@@ -233,13 +233,13 @@ async function runTests(context) {
     }
     
     // Test 3: RGB Push Notification
-    // Note: This test requires a second MerossManager instance which is complex to set up
+    // Note: This test requires a second ManagerMeross instance which is complex to set up
     // For now, we'll skip this test or simplify it
     results.push({
         name: 'should receive push notification when RGB color changes',
         passed: true,
         skipped: true,
-        error: 'Push notification test requires second MerossManager instance - skipped for simplicity',
+        error: 'Push notification test requires second ManagerMeross instance - skipped for simplicity',
         device: deviceName,
         details: { note: 'Test can be implemented later if needed' }
     });

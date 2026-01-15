@@ -436,7 +436,7 @@ declare module 'meross-iot' {
     }
 
     /**
-     * Configuration options for MerossManager cloud manager.
+     * Configuration options for ManagerMeross cloud manager.
      * 
      * @example
      * ```typescript
@@ -445,7 +445,7 @@ declare module 'meross-iot' {
      *   password: 'password'
      * });
      * 
-     * const manager = new MerossManager({
+     * const manager = new ManagerMeross({
      *   httpClient,
      *   transportMode: TransportMode.LAN_HTTP_FIRST,
      *   logger: console.log
@@ -476,7 +476,9 @@ declare module 'meross-iot' {
         /** Delay in milliseconds between batches (default: 200) */
         requestBatchDelay?: number,
         /** Enable/disable request throttling (default: true) */
-        enableRequestThrottling?: boolean
+        enableRequestThrottling?: boolean,
+        /** Subscription manager options for automatic polling and data provisioning */
+        subscription?: ManagerSubscriptionOptions
     }
 
     export interface LightData {
@@ -1115,18 +1117,18 @@ declare module 'meross-iot' {
     /**
      * Filter options for finding devices.
      * 
-     * Used with MerossManager.findDevices() to filter the device list.
+     * Used with DeviceRegistry.find() to filter the device list.
      * 
      * @example
      * ```typescript
      * // Find online devices
-     * const onlineDevices = manager.findDevices({ online_status: 1 });
+     * const onlineDevices = manager.devices.find({ online_status: 1 });
      * 
      * // Find specific device types
-     * const plugs = manager.findDevices({ device_type: 'mss310' });
+     * const plugs = manager.devices.find({ device_type: 'mss310' });
      * 
      * // Find by custom filter function
-     * const customDevices = manager.findDevices({
+     * const customDevices = manager.devices.find({
      *   device_class: (device) => device.deviceType.startsWith('mss')
      * });
      * ```
@@ -1144,6 +1146,102 @@ declare module 'meross-iot' {
         online_status?: number;
         /** Device class filter - can be a string, function, or array of filters */
         device_class?: string | ((device: MerossDevice) => boolean) | Array<string | ((device: MerossDevice) => boolean)>;
+    }
+
+    /**
+     * Registry for managing Meross devices and subdevices.
+     * 
+     * Maintains indexes for efficient device lookups across base devices and subdevices.
+     * Base devices can be looked up by UUID, while internal IDs enable unified lookup
+     * for both base devices and subdevices.
+     * 
+     * Internal IDs unify device identification:
+     * - Base devices: `#BASE:{uuid}`
+     * - Subdevices: `#SUB:{hubUuid}:{subdeviceId}`
+     * 
+     * @example
+     * ```typescript
+     * // Look up device by UUID
+     * const device = manager.devices.get('device-uuid');
+     * 
+     * // Look up subdevice by hub UUID and subdevice ID
+     * const subdevice = manager.devices.get({ hubUuid: 'hub-uuid', id: 'subdevice-id' });
+     * 
+     * // Find devices matching filters
+     * const lights = manager.devices.find({ device_class: 'light' });
+     * 
+     * // Get all devices
+     * const allDevices = manager.devices.list();
+     * ```
+     */
+    export class DeviceRegistry {
+        /**
+         * Generates an internal ID for a device or subdevice.
+         * 
+         * @param uuid - Device UUID (for base devices) or hub UUID (for subdevices)
+         * @param isSubdevice - Whether this is a subdevice
+         * @param hubUuid - Hub UUID (required if isSubdevice is true)
+         * @param subdeviceId - Subdevice ID (required if isSubdevice is true)
+         * @returns Internal ID string
+         */
+        static generateInternalId(uuid: string, isSubdevice?: boolean, hubUuid?: string | null, subdeviceId?: string | null): string
+        
+        /**
+         * Registers a device in the registry.
+         * 
+         * @param device - Device instance to register
+         */
+        registerDevice(device: MerossDevice | MerossHubDevice | MerossSubDevice): void
+        
+        /**
+         * Removes a device from the registry.
+         * 
+         * @param device - Device instance to remove
+         */
+        removeDevice(device: MerossDevice | MerossHubDevice | MerossSubDevice): void
+        
+        /**
+         * Unified method to get a device by identifier.
+         * 
+         * Supports both base devices (by UUID string) and subdevices (by object with hubUuid and id).
+         * Internally converts the identifier to an internal ID format and performs the lookup.
+         * 
+         * @param identifier - Device identifier
+         * @returns Device instance, or null if not found
+         * @example
+         * // Get base device by UUID
+         * const device = registry.get('device-uuid');
+         * 
+         * @example
+         * // Get subdevice by hub UUID and subdevice ID
+         * const subdevice = registry.get({ hubUuid: 'hub-uuid', id: 'subdevice-id' });
+         */
+        get(identifier: string | { hubUuid: string; id: string }): MerossDevice | MerossHubDevice | MerossSubDevice | null
+        
+        /**
+         * Gets all registered devices.
+         * 
+         * @returns Array of all registered devices
+         */
+        list(): Array<MerossDevice | MerossHubDevice | MerossSubDevice>
+        
+        /**
+         * Finds devices matching the specified filters.
+         * 
+         * @param filters - Optional filter criteria
+         * @returns Array of matching devices
+         */
+        find(filters?: FindDevicesFilters): Array<MerossDevice | MerossHubDevice | MerossSubDevice>
+        
+        /**
+         * Clears all devices from the registry.
+         */
+        clear(): void
+        
+        /**
+         * Gets the total number of devices registered (including subdevices).
+         */
+        readonly size: number
     }
 
     // Statistics types
@@ -1335,9 +1433,9 @@ declare module 'meross-iot' {
         isStatsEnabled(): boolean;
     }
 
-    export function createDebugUtils(manager: MerossManager): DebugUtils;
+    export function createDebugUtils(manager: ManagerMeross): DebugUtils;
 
-    export interface SubscriptionManagerOptions {
+    export interface ManagerSubscriptionOptions {
         /** Logger function for debug output */
         logger?: Logger;
         deviceStateInterval?: number;
@@ -1372,9 +1470,9 @@ declare module 'meross-iot' {
         timestamp: number
     }
 
-    export class SubscriptionManager extends EventEmitter {
-        constructor(manager: MerossManager, options?: SubscriptionManagerOptions);
-        subscribe(device: MerossDevice, config?: SubscriptionManagerOptions): void;
+    export class ManagerSubscription extends EventEmitter {
+        constructor(manager: ManagerMeross, options?: ManagerSubscriptionOptions);
+        subscribe(device: MerossDevice, config?: ManagerSubscriptionOptions): void;
         unsubscribe(deviceUuid: string): void;
         subscribeToDeviceList(): void;
         unsubscribeFromDeviceList(): void;
@@ -1399,19 +1497,19 @@ declare module 'meross-iot' {
      *   password: 'password'
      * });
      * 
-     * const manager = new MerossManager({ httpClient });
+     * const manager = new ManagerMeross({ httpClient });
      * await manager.connect();
      * 
      * manager.on('deviceInitialized', (deviceId, deviceDef, device) => {
      *   console.log(`Device ${deviceId} initialized`);
      * });
      * 
-     * const devices = manager.getAllDevices();
+     * const devices = manager.devices.list();
      * ```
      */
-    export class MerossManager extends EventEmitter {
+    export class ManagerMeross extends EventEmitter {
         /**
-         * Creates a new MerossManager instance.
+         * Creates a new ManagerMeross instance.
          * 
          * @param options - Configuration options
          */
@@ -1467,35 +1565,6 @@ declare module 'meross-iot' {
         disconnectAll(force: boolean): void
         
         /**
-         * Gets a device by UUID.
-         * 
-         * @param uuid - Device UUID
-         * @returns Device instance or null if not found
-         */
-        getDevice(uuid: string): MerossDevice | null
-        
-        /**
-         * Finds devices matching the specified filters.
-         * 
-         * @param filters - Optional filter criteria
-         * @returns Array of matching device instances
-         * 
-         * @example
-         * ```typescript
-         * const onlineDevices = manager.findDevices({ online_status: 1 });
-         * const plugs = manager.findDevices({ device_type: 'mss310' });
-         * ```
-         */
-        findDevices(filters?: FindDevicesFilters): MerossDevice[]
-        
-        /**
-         * Gets all initialized devices.
-         * 
-         * @returns Array of all device instances
-         */
-        getAllDevices(): MerossDevice[]
-        
-        /**
          * Gets the current token data.
          * 
          * @returns Token data or null if not authenticated
@@ -1504,6 +1573,12 @@ declare module 'meross-iot' {
         
         /** HTTP client instance */
         readonly httpClient: MerossHttpClient
+        
+        /** Subscription manager instance for automatic polling and data provisioning */
+        readonly subscription: ManagerSubscription
+        
+        /** Device registry instance for device lookups and queries */
+        readonly devices: DeviceRegistry
     }
 
 
@@ -1684,7 +1759,7 @@ declare module 'meross-iot' {
      * 
      * @example
      * ```typescript
-     * const device = manager.getDevice('device-uuid');
+     * const device = manager.devices.get('device-uuid');
      * 
      * device.on('connected', () => {
      *   console.log('Device connected');
@@ -2359,5 +2434,5 @@ declare module 'meross-iot' {
         mqttDomain?: string
     }): MerossError
 
-    export default MerossManager
+    export default ManagerMeross
 }

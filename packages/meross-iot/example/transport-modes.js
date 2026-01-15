@@ -14,7 +14,7 @@
  * - LAN_HTTP_FIRST_ONLY_GET: Try local HTTP for GET requests only, use MQTT for SET
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
@@ -27,25 +27,25 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
 
 // Example 1: MQTT Only (default)
 // All communication goes through the cloud MQTT broker
-        const mqttOnly = new MerossManager({
+        const mqttOnly = new ManagerMeross({
             httpClient: httpClient,
-            transportMode: MerossManager.TransportMode.MQTT_ONLY,
+            transportMode: ManagerMeross.TransportMode.MQTT_ONLY,
     logger: (msg) => console.log(`[MQTT Only] ${msg}`)
 });
 
 // Example 2: LAN HTTP First
 // Tries to communicate via local HTTP first, falls back to MQTT if it fails
-        const lanHttpFirst = new MerossManager({
+        const lanHttpFirst = new ManagerMeross({
             httpClient: httpClient,
-            transportMode: MerossManager.TransportMode.LAN_HTTP_FIRST,
+            transportMode: ManagerMeross.TransportMode.LAN_HTTP_FIRST,
     logger: (msg) => console.log(`[LAN HTTP First] ${msg}`)
 });
 
 // Example 3: LAN HTTP First (GET only)
         // Uses local HTTP for GET requests, MQTT for SET requests
-        const lanHttpGetOnly = new MerossManager({
+        const lanHttpGetOnly = new ManagerMeross({
             httpClient: httpClient,
-            transportMode: MerossManager.TransportMode.LAN_HTTP_FIRST_ONLY_GET,
+            transportMode: ManagerMeross.TransportMode.LAN_HTTP_FIRST_ONLY_GET,
     logger: (msg) => console.log(`[LAN HTTP GET Only] ${msg}`)
 });
 
@@ -56,8 +56,8 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         const deviceCount = await meross.connect();
         console.log(`\n✓ Successfully connected to ${deviceCount} device(s)`);
     
-        // Example: Toggle a device
-    const devices = meross.getAllDevices();
+        // Example: Toggle a device using property access pattern
+    const devices = meross.devices.list();
     if (devices.length > 0) {
         const device = devices[0];
             if (device.toggle) {

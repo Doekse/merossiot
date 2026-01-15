@@ -14,7 +14,7 @@ const { showSettingsMenu } = require('./settings');
 // Helper functions
 function _getDeviceCount(manager) {
     if (!manager) {return 0;}
-    return manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length;
+    return manager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length;
 }
 
 function _renderMainMenuHeader(currentUser, manager) {
@@ -170,7 +170,7 @@ async function _saveCredentialsPrompt(rl, currentCredentials) {
 }
 
 async function _selectDevice(manager, message = 'Select device:') {
-    const devices = manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+    const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         return null;
     }
@@ -194,7 +194,7 @@ async function _selectDevice(manager, message = 'Select device:') {
 }
 
 async function _selectDeviceOrAll(manager) {
-    const devices = manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+    const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         return null;
     }
@@ -225,7 +225,7 @@ async function _selectSubdevice(manager, uuid) {
         return null;
     }
 
-    const device = manager.getDevice(uuid);
+    const device = manager.devices.get(uuid);
     if (!(device instanceof MerossHubDevice)) {
         return null;
     }
@@ -262,7 +262,7 @@ async function _handleListCommand(manager, rl) {
 }
 
 async function _handleInfoCommand(manager, rl) {
-    const devices = manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+    const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         console.log('\nNo devices found.');
         await question(rl, '\nPress Enter to return to menu...');
@@ -277,7 +277,7 @@ async function _handleInfoCommand(manager, rl) {
 }
 
 async function _handleStatusCommand(manager, rl) {
-    const devices = manager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+    const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         console.log('\nNo devices found.');
         await question(rl, '\nPress Enter to return to menu...');

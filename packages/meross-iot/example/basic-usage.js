@@ -11,7 +11,7 @@
  * and discover devices using the factory pattern.
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
@@ -23,7 +23,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
 
         // Create manager with HTTP client (dependency injection)
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -39,8 +39,8 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         const deviceCount = await meross.connect();
         console.log(`\n✓ Successfully connected to ${deviceCount} device(s)`);
         
-        // List all devices
-        const devices = meross.getAllDevices();
+        // List all devices using property access pattern
+        const devices = meross.devices.list();
         console.log('\nAll devices:');
         devices.forEach(device => {
             console.log(`  - ${device.dev?.devName || 'Unknown'}`);

@@ -11,7 +11,7 @@
  * the convenient helper methods and utilities.
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
@@ -23,7 +23,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
 
         // Create manager
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -31,8 +31,8 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         console.log('Connecting to Meross Cloud...');
         await meross.connect();
 
-        // Get a device (assumes you have at least one device)
-        const devices = meross.getAllDevices();
+        // Get a device (assumes you have at least one device) using property access pattern
+        const devices = meross.devices.list();
         if (devices.length === 0) {
             console.log('No devices found.');
             return;

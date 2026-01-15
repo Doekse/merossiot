@@ -197,7 +197,7 @@ function _displayCapabilities(device) {
 }
 
 async function showDeviceInfo(manager, uuid) {
-    const device = manager.getDevice(uuid);
+    const device = manager.devices.get(uuid);
 
     if (!device) {
         console.error(`Device with UUID ${chalk.cyan(uuid)} not found.`);

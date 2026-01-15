@@ -4,12 +4,12 @@
 /* jslint esversion: 6 */
 'use strict';
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 /**
  * Example demonstrating how to use multiple Meross accounts simultaneously
  * 
- * Each MerossManager instance manages one account and its own MQTT connections.
+ * Each ManagerMeross instance manages one account and its own MQTT connections.
  * To use multiple accounts, create separate HTTP clients and managers for each account.
  */
 
@@ -32,16 +32,16 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
         
         // Create managers for both accounts
-        const account1 = new MerossManager({
+        const account1 = new ManagerMeross({
             httpClient: httpClient1,
             logger: (msg) => console.log(`[Account 1] ${msg}`),
-            transportMode: MerossManager.TransportMode.MQTT_ONLY
+            transportMode: ManagerMeross.TransportMode.MQTT_ONLY
         });
         
-        const account2 = new MerossManager({
+        const account2 = new ManagerMeross({
             httpClient: httpClient2,
             logger: (msg) => console.log(`[Account 2] ${msg}`),
-            transportMode: MerossManager.TransportMode.MQTT_ONLY
+            transportMode: ManagerMeross.TransportMode.MQTT_ONLY
         });
 
         // Handle devices from Account 1
@@ -73,9 +73,9 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         console.log(`\n✓ Account 1: Connected to ${deviceCount1} device(s)`);
         console.log(`✓ Account 2: Connected to ${deviceCount2} device(s)`);
         
-        // Get devices from each account
-        const account1Devices = account1.getAllDevices();
-        const account2Devices = account2.getAllDevices();
+        // Get devices from each account using property access pattern
+        const account1Devices = account1.devices.list();
+        const account2Devices = account2.devices.list();
         
         console.log(`\nAccount 1 devices:`);
         account1Devices.forEach(device => {

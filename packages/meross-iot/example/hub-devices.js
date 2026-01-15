@@ -11,7 +11,7 @@
  * and their subdevices (sensors, switches, etc.).
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
@@ -23,7 +23,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
 
         // Create manager with HTTP client
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -111,8 +111,8 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         await meross.connect();
         console.log('✓ Connected. Discovering devices...');
         
-        // Find hub devices specifically
-        const hubDevices = meross.findDevices({
+        // Find hub devices specifically using property access pattern
+        const hubDevices = meross.devices.find({
             device_class: 'hub'
         });
         

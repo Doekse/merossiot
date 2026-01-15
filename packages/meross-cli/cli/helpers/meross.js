@@ -1,6 +1,6 @@
 'use strict';
 
-const MerossManager = require('meross-iot');
+const ManagerMeross = require('meross-iot');
 const { MerossHttpClient, TransportMode } = require('meross-iot');
 const ora = require('ora');
 
@@ -41,7 +41,7 @@ async function createMerossInstance(optionsOrEmail, password, mfaCode, transport
         });
     }
 
-    const instance = new MerossManager({
+    const instance = new ManagerMeross({
         httpClient,
         transportMode: finalTransportMode,
         timeout: finalTimeout,

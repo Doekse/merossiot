@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const MerossManager = require('meross-iot');
+const ManagerMeross = require('meross-iot');
 const { MerossHubDevice } = require('meross-iot');
 const path = require('path');
 const testRunner = require('./tests/test-runner');
@@ -85,7 +85,7 @@ Examples:
 
         const { options, config } = processed;
 
-        const manager = new MerossManager(options);
+        const manager = new ManagerMeross(options);
 
         // Handle device events
         manager.on('deviceInitialized', (deviceId) => {
@@ -280,7 +280,7 @@ Examples:
     }
 
     function _resolveDevice(manager, uuid, subdeviceId) {
-        let device = manager.getDevice(uuid.trim());
+        let device = manager.devices.get(uuid.trim());
         if (!device) {
             console.error(chalk.red(`Error: Device not found: ${uuid}`));
             process.exit(1);

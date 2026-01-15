@@ -15,7 +15,7 @@
  * - Device command errors
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 async function connectWithMFA(email, password, mfaCode) {
     try {
@@ -28,7 +28,7 @@ async function connectWithMFA(email, password, mfaCode) {
         });
 
         // Create manager with HTTP client
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -51,7 +51,7 @@ async function connectWithMFA(email, password, mfaCode) {
         });
 
         // Create manager with HTTP client
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -64,7 +64,7 @@ async function connectWithMFA(email, password, mfaCode) {
         console.error(`\n✗ Connection error: ${error.message}`);
         
         // Handle specific error types
-        if (error instanceof MerossManager.MFARequiredError) {
+        if (error instanceof ManagerMeross.MFARequiredError) {
             console.error('\n  MFA (Multi-Factor Authentication) is required.');
             console.error('  Please provide mfaCode in the options or use connectWithMFA().');
             
@@ -72,42 +72,42 @@ async function connectWithMFA(email, password, mfaCode) {
             // const mfaCode = await promptForMFACode();
             // const meross = await connectWithMFA('your@email.com', 'yourpassword', mfaCode);
             
-        } else if (error instanceof MerossManager.WrongMFAError) {
+        } else if (error instanceof ManagerMeross.WrongMFAError) {
             console.error('\n  MFA code is incorrect.');
             console.error('  Please check your MFA code and try again.');
             
-        } else if (error instanceof MerossManager.AuthenticationError) {
+        } else if (error instanceof ManagerMeross.AuthenticationError) {
             console.error('\n  Authentication failed.');
             console.error('  Please check your email and password.');
             
-        } else if (error instanceof MerossManager.TokenExpiredError) {
+        } else if (error instanceof ManagerMeross.TokenExpiredError) {
             console.error('\n  Authentication token has expired.');
             console.error('  The library will automatically attempt to login again.');
             
-        } else if (error instanceof MerossManager.BadDomainError) {
+        } else if (error instanceof ManagerMeross.BadDomainError) {
             console.error('\n  Bad domain error.');
             console.error('  The API domain may be incorrect.');
             console.error('  Consider enabling autoRetryOnBadDomain option.');
             
-        } else if (error instanceof MerossManager.CommandError) {
+        } else if (error instanceof ManagerMeross.CommandError) {
             console.error('\n  Device command error.');
             console.error(`  Device: ${error.deviceUuid || 'Unknown'}`);
             console.error(`  Error: ${JSON.stringify(error.payload || error.message)}`);
             
-        } else if (error instanceof MerossManager.CommandTimeoutError) {
+        } else if (error instanceof ManagerMeross.CommandTimeoutError) {
             console.error('\n  Command timeout.');
             console.error(`  Device: ${error.deviceUuid || 'Unknown'}`);
             console.error(`  Timeout: ${error.timeout}ms`);
             console.error(`  Command: ${JSON.stringify(error.command || {})}`);
             
-        } else if (error instanceof MerossManager.MqttError) {
+        } else if (error instanceof ManagerMeross.MqttError) {
             console.error('\n  MQTT error.');
             console.error(`  Topic: ${error.topic || 'Unknown'}`);
             if (error.mqttMessage) {
                 console.error(`  Message: ${JSON.stringify(error.mqttMessage)}`);
             }
             
-        } else if (error instanceof MerossManager.HttpApiError) {
+        } else if (error instanceof ManagerMeross.HttpApiError) {
             console.error('\n  HTTP API error.');
             console.error(`  Status: ${error.httpStatusCode || 'Unknown'}`);
             console.error(`  API Status: ${error.apiStatus || 'Unknown'}`);
@@ -133,10 +133,10 @@ async function handleDeviceCommands(meross) {
                 await device.setToggleX({ channel: 1, onoff: true });
                 console.log('✓ Command succeeded');
             } catch (error) {
-                if (error instanceof MerossManager.CommandError) {
+                if (error instanceof ManagerMeross.CommandError) {
                     console.error(`Command failed: ${error.message}`);
                     console.error(`Device returned: ${JSON.stringify(error.payload)}`);
-                } else if (error instanceof MerossManager.CommandTimeoutError) {
+                } else if (error instanceof ManagerMeross.CommandTimeoutError) {
                     console.error(`Command timed out after ${error.timeout}ms`);
                     // You might want to retry or use a different transport mode
                 } else {

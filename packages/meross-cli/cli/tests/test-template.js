@@ -32,7 +32,7 @@ const metadata = {
 /**
  * Runs all tests for this test type
  * @param {Object} context - Test context object
- * @param {Object} context.manager - MerossManager instance (already connected)
+ * @param {Object} context.manager - ManagerMeross instance (already connected)
  * @param {Array<Object>} context.devices - Pre-filtered devices (from CLI selection or auto-discovery)
  * @param {Object} context.options - Test options (timeout, verbose, etc.)
  * @returns {Promise<Array>} Array of test result objects

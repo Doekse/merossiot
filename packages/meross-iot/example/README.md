@@ -100,7 +100,7 @@ node example/transport-modes.js
 
 ### `multiple-accounts.js`
 Demonstrates how to use multiple Meross accounts simultaneously:
-- Creating multiple MerossManager instances
+- Creating multiple ManagerMeross instances
 - Managing devices from different accounts
 - Independent MQTT connections per account
 
@@ -112,7 +112,7 @@ node example/multiple-accounts.js
 ### `factory-pattern-usage.js`
 Demonstrates the factory pattern for creating HTTP clients and managers:
 - Using `MerossHttpClient.fromUserPassword()` for authentication
-- Dependency injection pattern with `MerossManager`
+- Dependency injection pattern with `ManagerMeross`
 - Reusing saved credentials with `MerossHttpClient.fromCredentials()`
 
 **Run:**
@@ -134,7 +134,7 @@ node example/timer-usage.js
 ```
 
 ### `subscription-manager.js`
-Demonstrates how to use SubscriptionManager for automatic polling and unified update streams:
+Demonstrates how to use ManagerSubscription for automatic polling and unified update streams:
 - Subscribing to device updates with automatic polling
 - Listening to device state changes via EventEmitter
 - Monitoring device list changes (additions, removals)
@@ -142,6 +142,7 @@ Demonstrates how to use SubscriptionManager for automatic polling and unified up
 - One-time event listeners
 - Smart caching to reduce network traffic
 - Unsubscribing and cleanup
+- Property access pattern: `meross.subscription.subscribe(device)`
 
 **Run:**
 ```bash
@@ -153,7 +154,7 @@ node example/subscription-manager.js
 Before running any example, update the credentials using the factory pattern:
 
 ```javascript
-const { MerossManager, MerossHttpClient } = require('meross-iot');
+const { ManagerMeross, MerossHttpClient } = require('meross-iot');
 
 // Create HTTP client using factory method
 const httpClient = await MerossHttpClient.fromUserPassword({
@@ -163,7 +164,7 @@ const httpClient = await MerossHttpClient.fromUserPassword({
 });
 
 // Create manager with HTTP client (dependency injection)
-const meross = new MerossManager({
+const meross = new ManagerMeross({
     httpClient: httpClient,
     logger: console.log
 });
@@ -183,9 +184,9 @@ When using `MerossHttpClient.fromUserPassword()`:
 - `enableStats`: Enable statistics tracking (default: false)
 - `maxStatsSamples`: Maximum samples to keep in statistics (default: 1000)
 
-### MerossManager Options
+### ManagerMeross Options
 
-When creating `MerossManager`:
+When creating `ManagerMeross`:
 - `httpClient`: MerossHttpClient instance (required)
 - `logger`: Logger function for debug output
 - `transportMode`: Transport mode (MQTT_ONLY, LAN_HTTP_FIRST, etc.)
@@ -198,10 +199,12 @@ When creating `MerossManager`:
 - `requestBatchSize`: Number of concurrent requests per device (default: 1)
 - `requestBatchDelay`: Delay in milliseconds between batches (default: 200)
 - `enableRequestThrottling`: Enable/disable request throttling (default: true)
+- `subscription`: Optional subscription manager options (see below)
 
-### SubscriptionManager Options
+### ManagerSubscription Options
 
-When calling `meross.getSubscriptionManager()`:
+Subscription manager options can be passed via `subscription` property in ManagerMeross constructor, or accessed via `meross.subscription` property:
+
 - `logger`: Logger function for debug output
 - `deviceStateInterval`: Device state polling interval in milliseconds (default: 30000)
 - `electricityInterval`: Electricity metrics polling interval in milliseconds (default: 30000)
@@ -210,7 +213,7 @@ When calling `meross.getSubscriptionManager()`:
 - `smartCaching`: Skip polling when cached data is fresh (default: true)
 - `cacheMaxAge`: Maximum cache age in milliseconds before considering data stale (default: 10000)
 
-When calling `subscriptionManager.subscribe(device, config)`:
+When calling `meross.subscription.subscribe(device, config)`:
 - `deviceStateInterval`: Override device state polling interval for this device
 - `electricityInterval`: Override electricity polling interval for this device
 - `consumptionInterval`: Override consumption polling interval for this device
@@ -218,6 +221,50 @@ When calling `subscriptionManager.subscribe(device, config)`:
 - `cacheMaxAge`: Override cache max age for this device
 
 Configuration is merged aggressively (shortest intervals win) to ensure all listeners receive updates at least as frequently as required.
+
+## Property Access Patterns
+
+The library uses property-based access for cleaner API design, similar to Homey's API structure:
+
+### Subscription Manager Access
+
+Access the subscription manager via the `subscription` property:
+
+```javascript
+// Subscribe to device updates
+meross.subscription.subscribe(device, {
+  deviceStateInterval: 5000
+});
+
+// Listen for updates
+meross.subscription.on(`deviceUpdate:${device.uuid}`, (data) => {
+  console.log('Device update:', data);
+});
+
+// Unsubscribe
+meross.subscription.unsubscribe(device.uuid);
+```
+
+### Device Registry Access
+
+Access devices via the `devices` property:
+
+```javascript
+// Get a device by UUID
+const device = meross.devices.get('device-uuid');
+
+// Get a subdevice by hub UUID and subdevice ID
+const subdevice = meross.devices.get({
+  hubUuid: 'hub-uuid',
+  id: 'subdevice-id'
+});
+
+// Find devices by filters
+const lights = meross.devices.find({ device_class: 'light' });
+
+// List all devices
+const allDevices = meross.devices.list();
+```
 
 
 ## Environment Variables

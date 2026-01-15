@@ -210,7 +210,7 @@ module.exports = {
    - `minDevices`: Minimum number of devices required (default: 1)
 
 2. **runTests Function**: Must accept a `context` object with:
-   - `manager`: MerossManager instance
+   - `manager`: ManagerMeross instance
    - `devices`: Array of pre-selected devices (optional, will auto-discover if not provided)
    - `options`: Test options (timeout, verbose, etc.)
 

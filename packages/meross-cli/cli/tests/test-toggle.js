@@ -19,7 +19,7 @@ const metadata = {
 
 /**
  * Helper function to find all toggle-capable devices
- * @param {Object} manager - MerossManager instance
+ * @param {Object} manager - ManagerMeross instance
  * @returns {Promise<Array>} Array of toggle devices
  */
 async function findAllToggleDevices(manager) {
@@ -40,7 +40,7 @@ async function findAllToggleDevices(manager) {
 /**
  * Runs all tests for toggle/switch devices
  * @param {Object} context - Test context object
- * @param {Object} context.manager - MerossManager instance (already connected)
+ * @param {Object} context.manager - ManagerMeross instance (already connected)
  * @param {Array<Object>} context.devices - Pre-filtered devices (from CLI selection or auto-discovery)
  * @param {Object} context.options - Test options (timeout, verbose, etc.)
  * @returns {Promise<Array>} Array of test result objects

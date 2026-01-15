@@ -24,7 +24,7 @@ async function runTests(context) {
     let testDevices = devices || [];
     if (testDevices.length === 0) {
         // Find devices that support DND mode (most devices support this)
-        const allDevices = manager.getAllDevices();
+        const allDevices = manager.devices.list();
         testDevices = allDevices.filter(d => {
             const status = d.onlineStatus !== undefined ? d.onlineStatus : (d.dev?.onlineStatus);
             return status === OnlineStatus.ONLINE &&

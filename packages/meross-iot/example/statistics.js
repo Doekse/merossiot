@@ -11,7 +11,7 @@
  * for monitoring HTTP and MQTT API calls.
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 const { createDebugUtils } = require('../lib/utilities/debug');
 
 (async () => {
@@ -26,7 +26,7 @@ const { createDebugUtils } = require('../lib/utilities/debug');
         });
 
         // Create manager with HTTP client and stats enabled
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log,
             enableStats: true,

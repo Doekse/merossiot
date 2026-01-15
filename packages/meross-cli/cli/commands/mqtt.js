@@ -42,7 +42,7 @@ async function listMqttConnections(manager, options = {}) {
 
         const namespaces = new Set();
         deviceUuids.forEach(uuid => {
-            const device = manager.getDevice(uuid);
+            const device = manager.devices.get(uuid);
             if (device && device.abilities) {
                 Object.keys(device.abilities).forEach(namespace => {
                     namespaces.add(namespace);
@@ -170,7 +170,7 @@ async function listMqttConnections(manager, options = {}) {
             if (conn.deviceUuids.length > 0) {
                 console.log(`\n  ${chalk.white.bold(`Device UUIDs (${chalk.cyan(conn.deviceUuids.length)}):`)}`);
                 conn.deviceUuids.forEach((uuid) => {
-                    const device = manager.getDevice(uuid);
+                    const device = manager.devices.get(uuid);
                     const deviceName = device ? (device.name || 'Unknown') : 'Unknown';
                     console.log(`    ${chalk.cyan(uuid)} ${chalk.gray(`(${deviceName})`)}`);
                 });

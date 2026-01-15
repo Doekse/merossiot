@@ -447,7 +447,7 @@ async function _createZipArchive(options) {
 
 /**
  * Main sniffer menu function
- * @param {Object} manager - MerossManager instance
+ * @param {Object} manager - ManagerMeross instance
  * @param {Object} rl - Readline interface
  * @param {string|null} currentUser - Current logged in user name
  */
@@ -464,7 +464,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
         logStream.write(`[${timestamp}] ${msg}\n`);
     };
 
-    const deviceCount = manager.getAllDevices().filter(d => {
+    const deviceCount = manager.devices.list().filter(d => {
         const { MerossSubDevice } = require('meross-iot');
         return !(d instanceof MerossSubDevice);
     }).length;
@@ -473,7 +473,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
         _printWelcomeMessage(currentUser, deviceCount);
 
         // Select device
-        const devices = manager.getAllDevices().filter(d => {
+        const devices = manager.devices.list().filter(d => {
             // Filter out subdevices
             const { MerossSubDevice } = require('meross-iot');
             return !(d instanceof MerossSubDevice);

@@ -307,7 +307,7 @@ module.exports = {
         }
 
         lightPayload.channel = channel;
-        
+
         // Handle gradual transition parameter
         if (gradual !== undefined) {
             // Allow both boolean and number (0/1) for convenience

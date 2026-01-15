@@ -1,7 +1,7 @@
 'use strict';
 
 async function executeControlCommand(manager, uuid, methodName, params) {
-    const device = manager.getDevice(uuid);
+    const device = manager.devices.get(uuid);
 
     if (!device) {
         throw new Error(`Device not found: ${uuid}`);

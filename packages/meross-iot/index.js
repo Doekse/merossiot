@@ -1,14 +1,14 @@
 'use strict';
 
 // Main entry point - re-export everything from new modular structure
-const MerossManager = require('./lib/manager');
+const ManagerMeross = require('./lib/manager');
 const enums = require('./lib/model/enums');
 const errors = require('./lib/model/exception');
 const states = require('./lib/model/states');
 const push = require('./lib/model/push');
 
 // Export main class
-module.exports = MerossManager;
+module.exports = ManagerMeross;
 
 // Export error classes
 const httpExceptions = require('./lib/model/http/exception');
@@ -126,6 +126,6 @@ module.exports.HubSmokeDetector = subdevice.HubSmokeDetector;
 const MerossHttpClient = require('./lib/http-api');
 module.exports.MerossHttpClient = MerossHttpClient;
 
-// Export SubscriptionManager class
-const SubscriptionManager = require('./lib/subscription');
-module.exports.SubscriptionManager = SubscriptionManager;
+// Export ManagerSubscription class
+const ManagerSubscription = require('./lib/subscription');
+module.exports.ManagerSubscription = ManagerSubscription;

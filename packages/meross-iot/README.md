@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.2.0
+npm install meross-iot@0.3.0
 ```
 
 ## Usage & Documentation
@@ -36,7 +36,7 @@ Refer to the [example/README.md](example/README.md) for detailed usage instructi
 If you are really impatient to use this library, refer to the following snippet of code that looks for a device and turns it on/off.
 
 ```javascript
-const { MerossManager, MerossHttpClient } = require('meross-iot');
+const { ManagerMeross, MerossHttpClient } = require('meross-iot');
 
 (async () => {
   // Create HTTP client using factory method
@@ -46,7 +46,7 @@ const { MerossManager, MerossHttpClient } = require('meross-iot');
   });
 
   // Create manager with HTTP client
-  const meross = new MerossManager({
+  const meross = new ManagerMeross({
     httpClient: httpClient
   });
 
@@ -59,7 +59,7 @@ const { MerossManager, MerossHttpClient } = require('meross-iot');
   await meross.connect();
   
   // Find a device and control it
-  const devices = meross.getAllDevices();
+  const devices = meross.devices.list();
   if (devices.length > 0) {
     const device = devices[0];
     
@@ -75,7 +75,7 @@ The `example/` directory contains focused examples for different use cases:
 - **`basic-usage.js`** - Simple connection and device discovery
 - **`device-control.js`** - Controlling switches, lights, and monitoring devices
 - **`event-handling.js`** - Handling events from devices and the manager
-- **`subscription-manager.js`** - Automatic polling and unified update streams with SubscriptionManager
+- **`subscription-manager.js`** - Automatic polling and unified update streams with ManagerSubscription
 - **`token-reuse.js`** - Saving and reusing authentication tokens
 - **`statistics.js`** - Enabling and viewing API call statistics
 - **`error-handling.js`** - Comprehensive error handling and MFA
@@ -119,6 +119,33 @@ Please create an issue on GitHub and include:
 [Create an issue →](https://github.com/Doekse/merossiot/issues)
 
 ## Changelog
+
+### [0.3.0] - 2026-01-15
+
+#### Changed
+- **BREAKING**: Renamed core classes to follow Manager-prefix naming pattern
+  - `MerossManager` → `ManagerMeross` (all imports/exports)
+  - `SubscriptionManager` → `ManagerSubscription` (all imports/exports)
+- **BREAKING**: Replaced method-based access with property-based access patterns
+  - Removed `getSubscriptionManager()` method - use `meross.subscription` property instead
+  - Removed wrapper methods - use `meross.devices.*` instead:
+    - `getDevice(uuid)` → `meross.devices.get(uuid)`
+    - `findDevices(filters)` → `meross.devices.find(filters)`
+    - `getAllDevices()` → `meross.devices.list()`
+- **BREAKING**: Unified device lookup API in DeviceRegistry
+  - Removed `lookupByUuid()` and `lookupByInternalId()` from public API
+  - Added unified `get(identifier)` method that handles both base devices and subdevices:
+    - Base devices: `meross.devices.get('device-uuid')`
+    - Subdevices: `meross.devices.get({ hubUuid: 'hub-uuid', id: 'subdevice-id' })`
+- **BREAKING**: Renamed DeviceRegistry methods for cleaner API
+  - `getAllDevices()` → `list()` (returns all devices)
+  - `findDevices(filters)` → `find(filters)` (search/filter devices)
+
+#### Added
+- Property access to subscription manager: `meross.subscription` returns `ManagerSubscription` instance
+- Property access to device registry: `meross.devices` returns `DeviceRegistry` instance with full API access
+- Unified `get()` method in DeviceRegistry supporting both base devices and subdevices
+- Constructor option `subscription` for configuring subscription manager during initialization
 
 ### [0.2.1] - 2026-01-14
 

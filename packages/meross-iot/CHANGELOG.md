@@ -5,7 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-01-15
+
+### Changed
+- **BREAKING**: Renamed core classes to follow Manager-prefix naming pattern
+  - `MerossManager` → `ManagerMeross` (all imports/exports)
+  - `SubscriptionManager` → `ManagerSubscription` (all imports/exports)
+- **BREAKING**: Replaced method-based access with property-based access patterns
+  - Removed `getSubscriptionManager()` method - use `meross.subscription` property instead
+  - Removed wrapper methods - use `meross.devices.*` instead:
+    - `getDevice(uuid)` → `meross.devices.get(uuid)`
+    - `findDevices(filters)` → `meross.devices.find(filters)`
+    - `getAllDevices()` → `meross.devices.list()`
+- **BREAKING**: Unified device lookup API in DeviceRegistry
+  - Removed `lookupByUuid()` and `lookupByInternalId()` from public API
+  - Added unified `get(identifier)` method that handles both base devices and subdevices:
+    - Base devices: `meross.devices.get('device-uuid')`
+    - Subdevices: `meross.devices.get({ hubUuid: 'hub-uuid', id: 'subdevice-id' })`
+- **BREAKING**: Renamed DeviceRegistry methods for cleaner API
+  - `getAllDevices()` → `list()` (returns all devices)
+  - `findDevices(filters)` → `find(filters)` (search/filter devices)
+
+### Added
+- Property access to subscription manager: `meross.subscription` returns `ManagerSubscription` instance
+- Property access to device registry: `meross.devices` returns `DeviceRegistry` instance with full API access
+- Unified `get()` method in DeviceRegistry supporting both base devices and subdevices
+- Constructor option `subscription` for configuring subscription manager during initialization
 
 ## [0.2.1] - 2026-01-14
 

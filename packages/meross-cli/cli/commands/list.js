@@ -6,7 +6,7 @@ const { MerossHubDevice, MerossSubDevice, OnlineStatus, parsePushNotification } 
 const { formatDevice } = require('../utils/display');
 
 async function listDevices(manager) {
-    const hubs = manager.getAllDevices().filter(device => device instanceof MerossHubDevice);
+    const hubs = manager.devices.list().filter(device => device instanceof MerossHubDevice);
     if (hubs.length > 0) {
         const spinner = ora('Loading devices and refreshing hub status').start();
         // Refresh hub state to update subdevice online status
@@ -48,7 +48,7 @@ async function listDevices(manager) {
         spinner.stop();
     }
 
-    const allDevices = manager.getAllDevices();
+    const allDevices = manager.devices.list();
     const devices = allDevices.filter(device => !(device instanceof MerossSubDevice));
 
     if (devices.length === 0) {

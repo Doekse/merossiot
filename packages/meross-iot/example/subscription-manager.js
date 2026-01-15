@@ -5,14 +5,16 @@
 'use strict';
 
 /**
- * SubscriptionManager Example
+ * ManagerSubscription Example
  * 
- * Demonstrates how to use SubscriptionManager for automatic polling and
- * unified update streams. SubscriptionManager combines push notifications
+ * Demonstrates how to use ManagerSubscription for automatic polling and
+ * unified update streams. ManagerSubscription combines push notifications
  * with periodic polling to provide a single event stream for device updates.
+ * 
+ * This example shows the property access pattern: `meross.subscription`
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
@@ -23,25 +25,26 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        // Create manager with HTTP client
-        const meross = new MerossManager({
+        // Create manager with HTTP client and subscription options
+        const meross = new ManagerMeross({
             httpClient: httpClient,
-            logger: console.log
+            logger: console.log,
+            subscription: {
+                deviceStateInterval: 30000,  // Poll device state every 30 seconds
+                electricityInterval: 30000,  // Poll electricity every 30 seconds
+                consumptionInterval: 60000,  // Poll consumption every 60 seconds
+                smartCaching: true,          // Skip polling when cache is fresh
+                cacheMaxAge: 10000,          // Consider cache fresh for 10 seconds
+                logger: (msg) => console.log(`[Subscription] ${msg}`)
+            }
         });
 
         console.log('Connecting to Meross Cloud...');
         await meross.connect();
         console.log('✓ Connected\n');
 
-        // Get SubscriptionManager instance
-        const subscriptionManager = meross.getSubscriptionManager({
-            deviceStateInterval: 30000,  // Poll device state every 30 seconds
-            electricityInterval: 30000,  // Poll electricity every 30 seconds
-            consumptionInterval: 60000,  // Poll consumption every 60 seconds
-            smartCaching: true,          // Skip polling when cache is fresh
-            cacheMaxAge: 10000,          // Consider cache fresh for 10 seconds
-            logger: (msg) => console.log(`[Subscription] ${msg}`)
-        });
+        // Access subscription manager using property access pattern
+        const subscriptionManager = meross.subscription;
 
         // ===== Example 1: Subscribe to Device Updates =====
         console.log('=== Example 1: Device Updates ===\n');
@@ -143,7 +146,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         console.log('\n=== Example 3: Multiple Listeners ===\n');
 
         // You can add multiple listeners to the same device
-        const devices = meross.getAllDevices();
+        const devices = meross.devices.list();
         if (devices.length > 0) {
             const firstDevice = devices[0].dev;
             if (firstDevice) {
@@ -210,7 +213,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
 
             // Destroy subscription manager to stop all polling
             subscriptionManager.destroy();
-            console.log('✓ SubscriptionManager destroyed');
+            console.log('✓ ManagerSubscription destroyed');
 
             await meross.logout();
             meross.disconnectAll(true);
@@ -218,7 +221,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
 
         console.log('\nListening for updates... (Press Ctrl+C to exit)');
-        console.log('SubscriptionManager will automatically:');
+        console.log('ManagerSubscription will automatically:');
         console.log('  - Poll device state every 30 seconds');
         console.log('  - Poll electricity data every 30 seconds');
         console.log('  - Poll consumption data every 60 seconds');

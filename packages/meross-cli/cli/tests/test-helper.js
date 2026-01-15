@@ -11,14 +11,14 @@ const { OnlineStatus } = require('meross-iot');
 
 /**
  * Waits for devices to be discovered
- * @param {Object} manager - MerossManager instance
+ * @param {Object} manager - ManagerMeross instance
  * @param {number} timeout - Timeout in milliseconds (default: 5000)
  * @returns {Promise<Array>} Array of device objects with structure: { deviceId, deviceDef, device }
  */
 function waitForDevices(manager, timeout = 5000) {
     return new Promise((resolve) => {
         // If devices already exist, return them immediately
-        const existingDevices = manager.getAllDevices();
+        const existingDevices = manager.devices.list();
         if (existingDevices && existingDevices.length > 0) {
             const devices = [];
             const deviceIds = new Set();
@@ -63,7 +63,7 @@ function waitForDevices(manager, timeout = 5000) {
         
         // Also check periodically if devices were added (in case event was missed)
         const checkInterval = setInterval(() => {
-            const currentDevices = manager.getAllDevices();
+            const currentDevices = manager.devices.list();
             if (currentDevices && currentDevices.length > 0) {
                 clearInterval(checkInterval);
                 if (timeoutId) {
@@ -119,7 +119,7 @@ function deviceHasAbility(device, namespace) {
 
 /**
  * Finds devices by ability namespace
- * @param {Object} manager - MerossManager instance
+ * @param {Object} manager - ManagerMeross instance
  * @param {string} namespace - Ability namespace (e.g., 'Appliance.Control.ToggleX')
  * @param {number|null} onlineStatus - OnlineStatus filter (optional, null = any status)
  * @param {Array<Object>} deviceFilter - Optional pre-filtered device list (for CLI device selection)
@@ -166,7 +166,7 @@ async function findDevicesByAbility(manager, namespace, onlineStatus = null, dev
 
 /**
  * Finds devices by device type
- * @param {Object} manager - MerossManager instance
+ * @param {Object} manager - ManagerMeross instance
  * @param {string} deviceType - Device type (e.g., 'mss310', 'msg100')
  * @param {number|null} onlineStatus - OnlineStatus filter (optional, null = any status)
  * @param {Array<Object>} deviceFilter - Optional pre-filtered device list (for CLI device selection)

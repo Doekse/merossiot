@@ -6,7 +6,7 @@ const { displayHubStatus } = require('./hub-status');
 const { displayDeviceStatus } = require('./device-status');
 
 async function getDeviceStatus(manager, filterUuid = null, filterSubdeviceId = null) {
-    const allDevices = filterUuid ? [manager.getDevice(filterUuid)].filter(Boolean) : manager.getAllDevices();
+    const allDevices = filterUuid ? [manager.devices.get(filterUuid)].filter(Boolean) : manager.devices.list();
     const devices = allDevices.filter(device => !(device instanceof MerossSubDevice));
 
     if (devices.length === 0) {

@@ -3,7 +3,7 @@
 const fs = require('fs');
 
 async function dumpRegistry(manager, filename) {
-    const devices = manager.getAllDevices();
+    const devices = manager.devices.list();
     const registry = devices.map(device => {
         return {
             uuid: device.uuid,

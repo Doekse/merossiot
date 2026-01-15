@@ -25,7 +25,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
     while (true) {
         // Clear screen and render simple header
         clearScreen();
-        const deviceCount = currentManager ? currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length : 0;
+        const deviceCount = currentManager ? currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length : 0;
         renderSimpleHeader(currentUser, deviceCount);
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
@@ -102,7 +102,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
 async function showTransportModeSettings(rl, currentManager, currentUser, setTransportMode) {
     // Clear screen and render simple header
     clearScreen();
-    const deviceCount = currentManager ? currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length : 0;
+    const deviceCount = currentManager ? currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length : 0;
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
@@ -135,7 +135,7 @@ async function showTransportModeSettings(rl, currentManager, currentUser, setTra
 async function showStatisticsSettings(rl, currentManager, currentUser, enableStats, setEnableStats) {
     // Clear screen and render simple header
     clearScreen();
-    const deviceCount = currentManager ? currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length : 0;
+    const deviceCount = currentManager ? currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length : 0;
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
@@ -190,7 +190,7 @@ async function showStatisticsSettings(rl, currentManager, currentUser, enableSta
 // Helper functions for user management menu
 function _renderUserManagementHeader(currentManager, currentUser) {
     clearScreen();
-    const deviceCount = currentManager ? currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length : 0;
+    const deviceCount = currentManager ? currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length : 0;
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
     process.stdout.write(chalk.bold('=== User Management ===\n\n'));
@@ -478,7 +478,7 @@ async function showUserManagementMenu(rl, currentManager, currentUser, callbacks
 async function showTimeoutSettings(rl, currentManager, currentUser, timeout, setTimeout) {
     // Clear screen and render simple header
     clearScreen();
-    const deviceCount = currentManager ? currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length : 0;
+    const deviceCount = currentManager ? currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length : 0;
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
@@ -521,7 +521,7 @@ async function showTimeoutSettings(rl, currentManager, currentUser, timeout, set
 async function showVerboseSettings(rl, currentManager, currentUser, verbose, setVerbose) {
     // Clear screen and render simple header
     clearScreen();
-    const deviceCount = currentManager ? currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length : 0;
+    const deviceCount = currentManager ? currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length : 0;
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
@@ -574,7 +574,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
     while (true) {
         // Clear screen and render simple header
         clearScreen();
-        const deviceCount = currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice)).length;
+        const deviceCount = currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice)).length;
         renderSimpleHeader(currentUser, deviceCount);
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
@@ -619,7 +619,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
         if (action === 'back') {
             break;
         } else if (action === 'view-all') {
-            const devices = currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+            const devices = currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice));
             if (devices.length === 0) {
                 console.log(chalk.yellow('\n  No devices found.\n'));
             } else {
@@ -642,7 +642,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 message: 'Press Enter to continue...'
             }]);
         } else if (action === 'view-device') {
-            const devices = currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+            const devices = currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice));
             if (devices.length === 0) {
                 console.log(chalk.yellow('\n  No devices found.\n'));
                 await inquirer.prompt([{
@@ -693,7 +693,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 message: 'Press Enter to continue...'
             }]);
         } else if (action === 'reset-device') {
-            const devices = currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+            const devices = currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice));
             if (devices.length === 0) {
                 console.log(chalk.yellow('\n  No devices found.\n'));
                 await inquirer.prompt([{
@@ -756,7 +756,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
             }]);
 
             if (confirm) {
-                const devices = currentManager.getAllDevices().filter(d => !(d instanceof MerossSubDevice));
+                const devices = currentManager.devices.list().filter(d => !(d instanceof MerossSubDevice));
                 let resetCount = 0;
                 devices.forEach(device => {
                     const uuid = device.uuid;

@@ -14,7 +14,7 @@
  * - Multi-channel devices
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
@@ -26,7 +26,7 @@ const { MerossManager, MerossHttpClient } = require('../index.js');
         });
 
         // Create manager with HTTP client
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });

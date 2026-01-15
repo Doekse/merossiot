@@ -3,8 +3,8 @@
 const EventEmitter = require('events');
 const { OnlineStatus } = require('../model/enums');
 const { parsePushNotification } = require('../model/push');
-// DeviceRegistry is nested in MerossManager but exported separately to avoid circular dependencies
-const { MerossManager } = require('../manager');
+// DeviceRegistry is nested in ManagerMeross but exported separately to avoid circular dependencies
+const { ManagerMeross } = require('../manager');
 const ChannelInfo = require('../model/channel-info');
 const HttpDeviceInfo = require('../model/http/device');
 const {
@@ -299,7 +299,7 @@ class MerossDevice extends EventEmitter {
             throw new UnknownDeviceTypeError('Cannot generate internal ID: device missing UUID');
         }
 
-        this._internalId = MerossManager.DeviceRegistry.generateInternalId(this.uuid);
+        this._internalId = ManagerMeross.DeviceRegistry.generateInternalId(this.uuid);
         return this._internalId;
     }
 

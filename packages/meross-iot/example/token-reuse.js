@@ -11,7 +11,7 @@
  * to avoid repeated logins and MFA requests using the factory pattern.
  */
 
-const { MerossManager, MerossHttpClient } = require('../index.js');
+const { ManagerMeross, MerossHttpClient } = require('../index.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -59,7 +59,7 @@ function loadTokenData() {
         }
         
         // Create manager with HTTP client
-        const meross = new MerossManager({
+        const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
@@ -72,8 +72,8 @@ function loadTokenData() {
         // Save token data for next time
         saveTokenData(meross);
         
-        // List devices
-        const devices = meross.getAllDevices();
+        // List devices using property access pattern
+        const devices = meross.devices.list();
         console.log(`\nFound ${devices.length} device(s)`);
         
         // Example: Get token data programmatically

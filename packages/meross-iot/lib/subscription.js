@@ -12,9 +12,9 @@ const EventEmitter = require('events');
  * @class
  * @extends EventEmitter
  */
-class SubscriptionManager extends EventEmitter {
+class ManagerSubscription extends EventEmitter {
     /**
-     * Creates a new SubscriptionManager instance.
+     * Creates a new ManagerSubscription instance.
      *
      * @param {Object} manager - MerossManager instance that provides device access
      * @param {Object} [options={}] - Configuration options
@@ -184,7 +184,7 @@ class SubscriptionManager extends EventEmitter {
      * Initialize subscription state and register device event handlers.
      *
      * Sets up event listeners on the device to capture push notifications and state
-     * changes, which are then distributed to SubscriptionManager listeners via events.
+     * changes, which are then distributed to ManagerSubscription listeners via events.
      *
      * @private
      * @param {MerossDevice} device - Device to create subscription for
@@ -612,5 +612,5 @@ class SubscriptionManager extends EventEmitter {
 
 }
 
-module.exports = SubscriptionManager;
+module.exports = ManagerSubscription;
 
