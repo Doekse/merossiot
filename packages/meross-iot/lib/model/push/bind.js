@@ -64,7 +64,7 @@ class BindPushNotification extends GenericPushNotification {
      * Gets the hardware information.
      *
      * Returns a HardwareInfo instance that normalizes hardware metadata (version, UUID, MAC, chip type)
-     * from the raw payload, handling both camelCase and snake_case property names.
+     * from the raw payload with camelCase property names.
      *
      * @returns {HardwareInfo|null} HardwareInfo instance or null if not available
      */
@@ -80,7 +80,7 @@ class BindPushNotification extends GenericPushNotification {
      * Gets the firmware information.
      *
      * Returns a FirmwareInfo instance that normalizes firmware metadata (version, WiFi MAC, server info)
-     * from the raw payload, handling both camelCase and snake_case property names.
+     * from the raw payload with camelCase property names.
      *
      * @returns {FirmwareInfo|null} FirmwareInfo instance or null if not available
      */

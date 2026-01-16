@@ -158,7 +158,7 @@ class ManagerMeross extends EventEmitter {
      * @returns {string} returns.userEmail - User email
      * @returns {string} returns.domain - HTTP API domain
      * @returns {string} returns.mqttDomain - MQTT domain
-     * @returns {string} returns.issued_on - ISO timestamp when token was issued
+     * @returns {string} returns.issuedOn - ISO timestamp when token was issued
      */
     getTokenData() {
         if (!this.authenticated || !this.token) {
@@ -171,8 +171,7 @@ class ManagerMeross extends EventEmitter {
             userEmail: this.userEmail,
             domain: this.httpDomain,
             mqttDomain: this.mqttDomain,
-            // eslint-disable-next-line camelcase
-            issued_on: this.issuedOn || new Date().toISOString()
+            issuedOn: this.issuedOn || new Date().toISOString()
         };
     }
 
@@ -1368,12 +1367,12 @@ class DeviceRegistry {
      * All filters are applied as AND conditions (device must match all specified filters).
      *
      * @param {Object} [filters={}] - Filter criteria
-     * @param {Array<string>} [filters.device_uuids] - Array of device UUIDs to match (snake_case to match API)
-     * @param {Array<string>} [filters.internal_ids] - Array of internal IDs to match
-     * @param {string} [filters.device_type] - Device type to match (e.g., "mss310")
-     * @param {string} [filters.device_name] - Device name to match
-     * @param {number} [filters.online_status] - Online status to match (0 = offline, 1 = online)
-     * @param {string|Array<string>|Function} [filters.device_class] - Device capability/class filter.
+     * @param {Array<string>} [filters.deviceUuids] - Array of device UUIDs to match
+     * @param {Array<string>} [filters.internalIds] - Array of internal IDs to match
+     * @param {string} [filters.deviceType] - Device type to match (e.g., "mss310")
+     * @param {string} [filters.deviceName] - Device name to match
+     * @param {number} [filters.onlineStatus] - Online status to match (0 = offline, 1 = online)
+     * @param {string|Array<string>|Function} [filters.deviceClass] - Device capability/class filter.
      *                                                                  Can be:
      *                                                                  - String: 'light', 'thermostat', 'toggle', 'rollerShutter', 'garageDoor', 'diffuser', 'spray', 'hub'
      *                                                                  - Array of strings: matches if device has any of the capabilities
@@ -1383,46 +1382,46 @@ class DeviceRegistry {
     find(filters = {}) {
         let devices = this.list();
 
-        if (filters.device_uuids && Array.isArray(filters.device_uuids) && filters.device_uuids.length > 0) {
-            const uuidSet = new Set(filters.device_uuids);
+        if (filters.deviceUuids && Array.isArray(filters.deviceUuids) && filters.deviceUuids.length > 0) {
+            const uuidSet = new Set(filters.deviceUuids);
             devices = devices.filter(device => {
                 const uuid = device.uuid;
                 return uuidSet.has(uuid);
             });
         }
 
-        if (filters.internal_ids && Array.isArray(filters.internal_ids) && filters.internal_ids.length > 0) {
-            const idSet = new Set(filters.internal_ids);
+        if (filters.internalIds && Array.isArray(filters.internalIds) && filters.internalIds.length > 0) {
+            const idSet = new Set(filters.internalIds);
             devices = devices.filter(device => {
                 return idSet.has(this._getInternalId(device));
             });
         }
 
-        if (filters.device_type) {
+        if (filters.deviceType) {
             devices = devices.filter(device => {
                 const deviceType = device.deviceType;
-                return deviceType === filters.device_type;
+                return deviceType === filters.deviceType;
             });
         }
 
-        if (filters.device_name) {
+        if (filters.deviceName) {
             devices = devices.filter(device => {
                 const name = device.name;
-                return name === filters.device_name;
+                return name === filters.deviceName;
             });
         }
 
-        if (filters.online_status !== undefined) {
+        if (filters.onlineStatus !== undefined) {
             devices = devices.filter(device => {
                 const status = device.onlineStatus || device._onlineStatus;
-                return status === filters.online_status;
+                return status === filters.onlineStatus;
             });
         }
 
-        if (filters.device_class) {
-            const capabilityChecks = Array.isArray(filters.device_class)
-                ? filters.device_class
-                : [filters.device_class];
+        if (filters.deviceClass) {
+            const capabilityChecks = Array.isArray(filters.deviceClass)
+                ? filters.deviceClass
+                : [filters.deviceClass];
 
             devices = devices.filter(device => {
                 return capabilityChecks.some(check => {

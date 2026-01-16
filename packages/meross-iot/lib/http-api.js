@@ -727,9 +727,9 @@ class MerossHttpClient {
      * @static
      * @example
      * const client = MerossHttpClient.fromCredentials({
-     *     token: 'saved_token',
-     *     key: 'saved_key',
-     *     userId: 'user_id',
+     *     token: 'savedToken',
+     *     key: 'savedKey',
+     *     userId: 'userId123',
      *     domain: 'iotx-eu.meross.com',
      *     mqttDomain: 'eu-iotx.meross.com'
      * });

@@ -260,7 +260,7 @@ const subdevice = meross.devices.get({
 });
 
 // Find devices by filters
-const lights = meross.devices.find({ device_class: 'light' });
+const lights = meross.devices.find({ deviceClass: 'light' });
 
 // List all devices
 const allDevices = meross.devices.list();

@@ -42,7 +42,7 @@ class MerossSubDevice extends MerossDevice {
      */
     constructor(hubDeviceUuid, subdeviceId, manager, kwargs = {}) {
         // eslint-disable-next-line camelcase
-        const hubs = manager.devices.find({ device_uuids: [hubDeviceUuid] });
+        const hubs = manager.devices.find({ deviceUuids: [hubDeviceUuid] });
         if (!hubs || hubs.length < 1) {
             throw new UnknownDeviceTypeError(`Specified hub device ${hubDeviceUuid} is not present`);
         }

@@ -13,7 +13,7 @@ const GenericPushNotification = require('./generic');
  * @example
  * hubDevice.on('pushNotification', (notification) => {
  *     if (notification instanceof HubSensorSmokePushNotification) {
- *         console.log('Smoke alarm from subdevice:', notification.subdevice_id);
+ *         console.log('Smoke alarm from subdevice:', notification.subdeviceId);
  *         console.log('Status:', notification.status);
  *         console.log('Timestamp:', notification.timestamp);
  *         if (notification.testEvent) {
@@ -63,8 +63,7 @@ class HubSensorSmokePushNotification extends GenericPushNotification {
      *
      * @returns {string|number|undefined} Subdevice ID or undefined if not available
      */
-    // eslint-disable-next-line camelcase
-    get subdevice_id() {
+    get subdeviceId() {
         return this._subDeviceId;
     }
 

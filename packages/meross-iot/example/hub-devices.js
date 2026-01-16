@@ -113,7 +113,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         
         // Find hub devices specifically using property access pattern
         const hubDevices = meross.devices.find({
-            device_class: 'hub'
+            deviceClass: 'hub'
         });
         
         console.log(`\nFound ${hubDevices.length} hub device(s)`);

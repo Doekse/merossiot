@@ -83,7 +83,7 @@ function loadTokenData() {
             console.log(`  User: ${tokenData.userEmail}`);
             console.log(`  Domain: ${tokenData.domain}`);
             console.log(`  MQTT Domain: ${tokenData.mqttDomain}`);
-            console.log(`  Issued: ${tokenData.issued_on}`);
+            console.log(`  Issued: ${tokenData.issuedOn}`);
         }
         
         // Keep running

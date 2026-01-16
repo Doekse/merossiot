@@ -164,10 +164,10 @@ declare module 'meross-iot' {
         /**
          * Creates an HttpDeviceInfo instance from a dictionary object.
          * 
-         * Normalizes incoming keys (handles camelCase and snake_case) to camelCase.
+         * Accepts camelCase API response format directly (no normalization needed).
          * This is the only way to create instances.
          * 
-         * @param jsonDict - Dictionary object from the API response
+         * @param jsonDict - Dictionary object from the API response with camelCase keys
          * @returns New HttpDeviceInfo instance
          */
         static fromDict(jsonDict: { [key: string]: any }): HttpDeviceInfo
@@ -223,7 +223,8 @@ declare module 'meross-iot' {
         readonly subDeviceIconId: string | null
         /**
          * Creates an HttpSubdeviceInfo instance from a dictionary object.
-         * Normalizes incoming keys (handles camelCase, snake_case, and generic keys) to camelCase.
+         * Accepts camelCase API response format. Generic keys ('id', 'type', 'name') are supported
+         * as fallbacks for API variations and are normalized to camelCase properties.
          * This is the only way to create instances.
          */
         static fromDict(jsonDict: { [key: string]: any }): HttpSubdeviceInfo
@@ -252,7 +253,7 @@ declare module 'meross-iot' {
         readonly chipType: string | null
         /**
          * Creates a HardwareInfo instance from a dictionary object.
-         * Normalizes incoming keys (handles camelCase and snake_case) to camelCase.
+         * Accepts camelCase API response format directly (no normalization needed).
          * This is the only way to create instances.
          */
         static fromDict(jsonDict: { [key: string]: any }): HardwareInfo | null
@@ -280,7 +281,7 @@ declare module 'meross-iot' {
         readonly compileTime: string | null
         /**
          * Creates a FirmwareInfo instance from a dictionary object.
-         * Normalizes incoming keys (handles camelCase and snake_case) to camelCase.
+         * Accepts camelCase API response format directly (no normalization needed).
          * This is the only way to create instances.
          */
         static fromDict(jsonDict: { [key: string]: any }): FirmwareInfo | null
@@ -305,7 +306,7 @@ declare module 'meross-iot' {
         readonly timeRule: string | null
         /**
          * Creates a TimeInfo instance from a dictionary object.
-         * Normalizes incoming keys (handles camelCase and snake_case) to camelCase.
+         * Accepts camelCase API response format directly (no normalization needed).
          * This is the only way to create instances.
          */
         static fromDict(jsonDict: { [key: string]: any }): TimeInfo | null
@@ -386,7 +387,7 @@ declare module 'meross-iot' {
         /** MQTT domain */
         mqttDomain: string;
         /** Token issue timestamp (optional) */
-        issued_on?: string;
+        issuedOn?: string;
     }
 
     /**
@@ -875,7 +876,7 @@ declare module 'meross-iot' {
         readonly value?: number | string | Record<string, any>;
         readonly timestamp?: number;
         readonly channel?: number;
-        readonly subdevice_id?: string;
+        readonly subdeviceId?: string;
         constructor(originatingDeviceUuid: string, rawData: any);
     }
 
@@ -894,7 +895,7 @@ declare module 'meross-iot' {
         readonly syncedTime?: number | Record<string, any>;
         readonly latestSampleTime?: number;
         readonly latestSampleIsLeak?: number;
-        readonly subdevice_id?: string;
+        readonly subdeviceId?: string;
         readonly samples?: Array<{ time: number; isLeak: number; [key: string]: any }>;
         constructor(originatingDeviceUuid: string, rawData: any);
     }
@@ -965,7 +966,7 @@ declare module 'meross-iot' {
     }
 
     export class HubSensorSmokePushNotification extends GenericPushNotification {
-        readonly subdevice_id?: string | number;
+        readonly subdeviceId?: string | number;
         readonly status?: number;
         readonly interConn?: number | Record<string, any>;
         readonly timestamp?: number;
@@ -1122,30 +1123,30 @@ declare module 'meross-iot' {
      * @example
      * ```typescript
      * // Find online devices
-     * const onlineDevices = manager.devices.find({ online_status: 1 });
+     * const onlineDevices = manager.devices.find({ onlineStatus: 1 });
      * 
      * // Find specific device types
-     * const plugs = manager.devices.find({ device_type: 'mss310' });
+     * const plugs = manager.devices.find({ deviceType: 'mss310' });
      * 
      * // Find by custom filter function
      * const customDevices = manager.devices.find({
-     *   device_class: (device) => device.deviceType.startsWith('mss')
+     *   deviceClass: (device) => device.deviceType.startsWith('mss')
      * });
      * ```
      */
     export interface FindDevicesFilters {
         /** Array of device UUIDs to filter by */
-        device_uuids?: string[];
+        deviceUuids?: string[];
         /** Array of internal device IDs to filter by */
-        internal_ids?: string[];
+        internalIds?: string[];
         /** Device type to filter by */
-        device_type?: string;
+        deviceType?: string;
         /** Device name to filter by */
-        device_name?: string;
+        deviceName?: string;
         /** Online status to filter by (0=connecting, 1=online, 2=offline, -1=unknown, 3=upgrading) */
-        online_status?: number;
+        onlineStatus?: number;
         /** Device class filter - can be a string, function, or array of filters */
-        device_class?: string | ((device: MerossDevice) => boolean) | Array<string | ((device: MerossDevice) => boolean)>;
+        deviceClass?: string | ((device: MerossDevice) => boolean) | Array<string | ((device: MerossDevice) => boolean)>;
     }
 
     /**
@@ -1168,7 +1169,7 @@ declare module 'meross-iot' {
      * const subdevice = manager.devices.get({ hubUuid: 'hub-uuid', id: 'subdevice-id' });
      * 
      * // Find devices matching filters
-     * const lights = manager.devices.find({ device_class: 'light' });
+     * const lights = manager.devices.find({ deviceClass: 'light' });
      * 
      * // Get all devices
      * const allDevices = manager.devices.list();

@@ -57,9 +57,9 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
     try {
         // Load saved credentials (from previous session)
         const savedCredentials = {
-            token: 'saved_token',
-            key: 'saved_key',
-            userId: 'user_id',
+            token: 'savedToken',
+            key: 'savedKey',
+            userId: 'userId123',
             domain: 'iotx-eu.meross.com',
             mqttDomain: 'eu-iotx.meross.com'
         };

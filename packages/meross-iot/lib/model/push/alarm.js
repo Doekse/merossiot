@@ -17,8 +17,8 @@ const GenericPushNotification = require('./generic');
  *         console.log('Alarm triggered on channel:', notification.channel);
  *         console.log('Alarm value:', notification.value);
  *         console.log('Timestamp:', notification.timestamp);
- *         if (notification.subdevice_id) {
- *             console.log('From subdevice:', notification.subdevice_id);
+ *         if (notification.subdeviceId) {
+ *             console.log('From subdevice:', notification.subdeviceId);
  *         }
  *     }
  * });
@@ -102,8 +102,7 @@ class AlarmPushNotification extends GenericPushNotification {
      *
      * @returns {string|number|undefined} Subdevice ID or undefined if not from a subdevice
      */
-    // eslint-disable-next-line camelcase
-    get subdevice_id() {
+    get subdeviceId() {
         return this._subDeviceId;
     }
 }
