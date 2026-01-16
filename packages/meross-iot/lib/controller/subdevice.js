@@ -60,9 +60,7 @@ class MerossSubDevice extends MerossDevice {
         }
 
         // Subdevices share hub's network configuration since they communicate through the hub
-        this._mqttHost = hub.mqttHost;
-        this._mqttPort = hub.mqttPort;
-        this._lanIp = hub.lanIp;
+        this.lanIp = hub.lanIp;
 
         this._onlineStatus = OnlineStatus.UNKNOWN;
     }

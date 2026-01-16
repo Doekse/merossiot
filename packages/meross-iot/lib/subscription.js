@@ -295,8 +295,8 @@ class ManagerSubscription extends EventEmitter {
         }
 
         const config = subscription.config || this.defaultConfig;
-        if (config.smartCaching && device._lastFullUpdateTimestamp) {
-            const cacheAge = Date.now() - device._lastFullUpdateTimestamp;
+        if (config.smartCaching && device.lastFullUpdateTimestamp) {
+            const cacheAge = Date.now() - device.lastFullUpdateTimestamp;
             if (cacheAge < config.cacheMaxAge) {
                 this._emitCachedState(device, subscription);
                 return;

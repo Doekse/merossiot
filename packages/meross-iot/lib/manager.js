@@ -509,7 +509,7 @@ class ManagerMeross extends EventEmitter {
 
         if (this._requestQueue) {
             devices.forEach(device => {
-                const uuid = device.uuid || device.dev?.uuid;
+                const uuid = device.uuid;
                 if (uuid) {
                     this._requestQueue.clearQueue(uuid);
                 }
@@ -820,8 +820,8 @@ class ManagerMeross extends EventEmitter {
         if (device && typeof device.supportEncryption === 'function' && device.supportEncryption()) {
             if (!device.isEncryptionKeySet()) {
                 // Encryption key is derived from MAC address, so it must be available
-                if (device._macAddress && this.key) {
-                    device.setEncryptionKey(device.uuid, this.key, device._macAddress);
+                if (device.macAddress && this.key) {
+                    device.setEncryptionKey(device.uuid, this.key, device.macAddress);
                 } else {
                     if (this.options.logger) {
                         this.options.logger(`Warning: Device ${device.uuid} supports encryption but MAC address not available yet. Falling back to MQTT.`);
@@ -1179,7 +1179,7 @@ class ManagerMeross extends EventEmitter {
             }
         });
 
-        this.emit('deviceInitialized', deviceId, dev, deviceObj);
+        this.emit('deviceInitialized', deviceId, deviceObj);
 
         await this.initMqtt(dev);
 
@@ -1561,7 +1561,6 @@ ManagerMeross.DeviceRegistry = DeviceRegistry;
  * @typedef {Object} MerossCloudEvents
  * @property {Function} deviceInitialized - Emitted when a device is initialized
  *   @param {string} deviceId - Device UUID
- *   @param {Object} deviceDef - Device definition object from API
  *   @param {MerossDevice|MerossHubDevice} device - Device instance
  * @property {Function} connected - Emitted when a device connects
  *   @param {string} deviceId - Device UUID

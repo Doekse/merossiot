@@ -236,7 +236,6 @@ module.exports = {
      */
     _updateAbilitiesWithEncryption(abilities) {
         this._initializeEncryption();
-        this._abilities = abilities;
         this._supportsEncryption = abilities && typeof abilities === 'object' &&
                                    'Appliance.Encrypt.ECDHE' in abilities;
     },

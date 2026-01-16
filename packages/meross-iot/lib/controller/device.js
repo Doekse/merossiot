@@ -96,14 +96,24 @@ class MerossDevice extends EventEmitter {
             this.onlineStatus = dev.onlineStatus !== undefined ? dev.onlineStatus : OnlineStatus.UNKNOWN;
         }
 
-        this._abilities = null;
-        this._macAddress = null;
-        this._lanIp = null;
-        this._mqttHost = null;
-        this._mqttPort = port;
-        this._lastFullUpdateTimestamp = null;
+        this.abilities = null;
+        this.macAddress = null;
+        this.lanIp = null;
+        this.mqttHost = null;
+        this.mqttPort = port;
+        this.lastFullUpdateTimestamp = null;
         // Lazy initialization avoids registry computation during construction
         this._internalId = null;
+        
+        // Extended HTTP device info properties (populated from HttpDeviceInfo when available)
+        this.reservedDomain = null;
+        this.subType = null;
+        this.bindTime = null;
+        this.skillNumber = null;
+        this.userDevIcon = null;
+        this.iconType = null;
+        this.region = null;
+        this.devIconId = null;
     }
 
     /**
@@ -149,24 +159,34 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
-     * Initializes HTTP device info and channels.
+     * Initializes HTTP device info and channels from raw API data.
      *
-     * Only creates HttpDeviceInfo when a full device object is available (not just UUID),
-     * as subdevices may be initialized with UUID only and lack HTTP API metadata.
+     * Uses HttpDeviceInfo.fromDict() to normalize data types (bindTime from Unix timestamp
+     * to Date, onlineStatus validation) before copying properties directly to the device
+     * instance. The HttpDeviceInfo instance is not stored to avoid redundancy.
      *
      * @private
-     * @param {Object} dev - Device information object
+     * @param {Object} dev - Device information object from API response
      */
     _initializeHttpInfo(dev) {
-        this._cachedHttpInfo = null;
-        this._channels = [];
+        this.channels = [];
 
         if (dev && dev.uuid && typeof dev === 'object' && dev.deviceType !== undefined) {
             try {
-                this._cachedHttpInfo = HttpDeviceInfo.fromDict(dev);
-                this._channels = MerossDevice._parseChannels(dev.channels);
+                const httpInfo = HttpDeviceInfo.fromDict(dev);
+                this.channels = MerossDevice._parseChannels(dev.channels);
+                
+                // Copy extended properties directly to device instance (bindTime already normalized to Date)
+                this.reservedDomain = httpInfo.reservedDomain || null;
+                this.subType = httpInfo.subType || null;
+                this.bindTime = httpInfo.bindTime || null;
+                this.skillNumber = httpInfo.skillNumber || null;
+                this.userDevIcon = httpInfo.userDevIcon || null;
+                this.iconType = httpInfo.iconType || null;
+                this.region = httpInfo.region || null;
+                this.devIconId = httpInfo.devIconId || null;
             } catch (error) {
-                // Continue without HttpDeviceInfo if parsing fails
+                // Device may be created without HTTP info (e.g., subdevices with UUID only)
             }
         }
     }
@@ -213,7 +233,7 @@ class MerossDevice extends EventEmitter {
      * @param {Object} abilities - Device abilities object
      */
     updateAbilities(abilities) {
-        this._abilities = abilities;
+        this.abilities = abilities;
         if (typeof this._updateAbilitiesWithEncryption === 'function') {
             this._updateAbilitiesWithEncryption(abilities);
         }
@@ -227,59 +247,12 @@ class MerossDevice extends EventEmitter {
      * @param {string} mac - MAC address string
      */
     updateMacAddress(mac) {
-        this._macAddress = mac;
+        this.macAddress = mac;
         if (typeof this._updateMacAddressWithEncryption === 'function') {
             this._updateMacAddressWithEncryption(mac);
         }
     }
 
-    /**
-     * Gets the device's MAC address
-     * @returns {string|null} MAC address or null if not available
-     */
-    get macAddress() {
-        return this._macAddress;
-    }
-
-    /**
-     * Gets the device's local network IP address
-     * @returns {string|null} LAN IP address or null if not available
-     */
-    get lanIp() {
-        return this._lanIp;
-    }
-
-    /**
-     * Gets the MQTT broker hostname
-     * @returns {string|null} MQTT hostname or null if not available
-     */
-    get mqttHost() {
-        return this._mqttHost;
-    }
-
-    /**
-     * Gets the MQTT broker port
-     * @returns {number|null} MQTT port or null if not available
-     */
-    get mqttPort() {
-        return this._mqttPort;
-    }
-
-    /**
-     * Gets the device's abilities dictionary
-     * @returns {Object|null} Abilities object or null if not available
-     */
-    get abilities() {
-        return this._abilities;
-    }
-
-    /**
-     * Gets the timestamp of the last full state update
-     * @returns {number|null} Timestamp in milliseconds or null if never updated
-     */
-    get lastFullUpdateTimestamp() {
-        return this._lastFullUpdateTimestamp;
-    }
 
     /**
      * Gets the internal ID used for device registry.
@@ -303,29 +276,6 @@ class MerossDevice extends EventEmitter {
         return this._internalId;
     }
 
-    /**
-     * Gets the list of channels exposed by this device
-     *
-     * Multi-channel devices might expose a master switch at index 0.
-     * Channels are parsed from the HTTP device info during device initialization.
-     *
-     * @returns {Array<ChannelInfo>} Array of ChannelInfo objects
-     */
-    get channels() {
-        return this._channels;
-    }
-
-    /**
-     * Gets the cached HTTP device info
-     *
-     * Returns the original device information object from the HTTP API,
-     * or null if not available (e.g., for subdevices created without HTTP info).
-     *
-     * @returns {HttpDeviceInfo|null} Cached HTTP device info or null
-     */
-    get cachedHttpInfo() {
-        return this._cachedHttpInfo;
-    }
 
     /**
      * Validates that the device state has been refreshed.
@@ -336,7 +286,7 @@ class MerossDevice extends EventEmitter {
      * @returns {boolean} True if state has been refreshed, false otherwise
      */
     validateState() {
-        const updateDone = this._lastFullUpdateTimestamp !== null;
+        const updateDone = this.lastFullUpdateTimestamp !== null;
         if (!updateDone) {
             const deviceName = this.name || this.uuid || 'unknown device';
             const logger = this.cloudInst?.options?.logger || console.error;
@@ -359,7 +309,7 @@ class MerossDevice extends EventEmitter {
             await this.getSystemAllData();
 
             this.emit('stateRefreshed', {
-                timestamp: this._lastFullUpdateTimestamp || Date.now(),
+                timestamp: this.lastFullUpdateTimestamp || Date.now(),
                 state: this.getUnifiedState()
             });
         } else {
@@ -378,7 +328,7 @@ class MerossDevice extends EventEmitter {
     getUnifiedState() {
         const state = {
             online: this.onlineStatus,
-            timestamp: this._lastFullUpdateTimestamp || Date.now()
+            timestamp: this.lastFullUpdateTimestamp || Date.now()
         };
 
         this._collectFeatureStates(state);
@@ -698,15 +648,15 @@ class MerossDevice extends EventEmitter {
         const firmware = system.firmware;
         if (firmware) {
             if (firmware.innerIp) {
-                this._lanIp = firmware.innerIp;
+                this.lanIp = firmware.innerIp;
             }
             if (firmware.server) {
-                this._mqttHost = firmware.server;
+                this.mqttHost = firmware.server;
             }
             if (firmware.port) {
-                this._mqttPort = firmware.port;
+                this.mqttPort = firmware.port;
             }
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         if (system.online) {
@@ -1092,14 +1042,14 @@ class MerossDevice extends EventEmitter {
      * @param {string} ip - Local IP address
      */
     setKnownLocalIp(ip) {
-        this._lanIp = ip;
+        this.lanIp = ip;
     }
 
     /**
      * Removes the known local IP address
      */
     removeKnownLocalIp() {
-        this._lanIp = null;
+        this.lanIp = null;
     }
 
     /**
@@ -1126,7 +1076,7 @@ class MerossDevice extends EventEmitter {
                     return reject(new UnconnectedError('Device is not connected', this.uuid));
                 }
 
-                const res = await this.cloudInst.requestMessage(this, this._lanIp, data, transportMode);
+                const res = await this.cloudInst.requestMessage(this, this.lanIp, data, transportMode);
                 if (!res) {
                     return reject(new UnconnectedError('Device has no data connection available', this.uuid));
                 }
@@ -1232,9 +1182,9 @@ class MerossDevice extends EventEmitter {
     lookupChannel(channelIdOrName) {
         let res = [];
         if (typeof channelIdOrName === 'string') {
-            res = this._channels.filter(c => c.name === channelIdOrName);
+            res = this.channels.filter(c => c.name === channelIdOrName);
         } else if (typeof channelIdOrName === 'number') {
-            res = this._channels.filter(c => c.index === channelIdOrName);
+            res = this.channels.filter(c => c.index === channelIdOrName);
         }
 
         if (res.length === 1) {
@@ -1245,14 +1195,16 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
-     * Updates device information from HTTP device info
+     * Updates device properties from HttpDeviceInfo object.
      *
-     * Updates the device's cached HTTP info, channels, and all device properties
-     * from an HttpDeviceInfo object (created via HttpDeviceInfo.fromDict()). Validates that the UUID matches before updating.
+     * Synchronizes the device instance with updated HTTP device info, including channels,
+     * core properties, and extended metadata. Validates UUID match to prevent updating
+     * the wrong device. Properties are copied directly to the device instance; the
+     * HttpDeviceInfo object is not stored.
      *
-     * @param {HttpDeviceInfo} deviceInfo - HttpDeviceInfo object from HTTP API
+     * @param {HttpDeviceInfo} deviceInfo - HttpDeviceInfo object created via HttpDeviceInfo.fromDict()
      * @returns {Promise<MerossDevice>} Promise that resolves with this device instance
-     * @throws {Error} If device UUID doesn't match
+     * @throws {Error} If device info is missing or UUID doesn't match
      * @example
      * const updatedInfo = HttpDeviceInfo.fromDict(deviceDataFromApi);
      * await device.updateFromHttpState(updatedInfo);
@@ -1266,13 +1218,9 @@ class MerossDevice extends EventEmitter {
             throw new Error(`Cannot update device (${this.uuid}) with HttpDeviceInfo for device id ${deviceInfo.uuid}`);
         }
 
-        // Update cached HTTP info
-        this._cachedHttpInfo = deviceInfo;
+        this.channels = MerossDevice._parseChannels(deviceInfo.channels);
 
-        // Update channels
-        this._channels = MerossDevice._parseChannels(deviceInfo.channels);
-
-        // Update device properties
+        // Subdevices override name and onlineStatus as getter-only properties
         if (!MerossDevice._isGetterOnly(this, 'name')) {
             this.name = deviceInfo.devName || this.uuid || 'unknown';
         }
@@ -1285,6 +1233,16 @@ class MerossDevice extends EventEmitter {
         if (!MerossDevice._isGetterOnly(this, 'onlineStatus')) {
             this.onlineStatus = deviceInfo.onlineStatus !== undefined ? deviceInfo.onlineStatus : OnlineStatus.UNKNOWN;
         }
+
+        // Extended HTTP device info properties (bindTime already normalized to Date by HttpDeviceInfo)
+        this.reservedDomain = deviceInfo.reservedDomain || null;
+        this.subType = deviceInfo.subType || null;
+        this.bindTime = deviceInfo.bindTime || null;
+        this.skillNumber = deviceInfo.skillNumber || null;
+        this.userDevIcon = deviceInfo.userDevIcon || null;
+        this.iconType = deviceInfo.iconType || null;
+        this.region = deviceInfo.region || null;
+        this.devIconId = deviceInfo.devIconId || null;
 
         return this;
     }

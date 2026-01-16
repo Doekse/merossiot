@@ -84,35 +84,41 @@ function _displayChannels(device) {
 }
 
 /**
- * Builds HTTP device info data array.
+ * Extracts HTTP device info properties for display.
+ *
+ * Collects HTTP metadata properties (domain, reservedDomain, subType, region, etc.)
+ * that are now directly accessible on the device instance for formatting in the CLI output.
+ *
+ * @param {Object} device - MerossDevice instance
+ * @returns {Array<Array<string>>} Array of [label, value] pairs for display
  */
-function _buildHttpInfoData(httpInfo) {
+function _buildHttpInfoData(device) {
     const httpInfoData = [];
 
-    if (httpInfo.domain) {
-        httpInfoData.push(['MQTT Domain', httpInfo.domain]);
+    if (device.domain) {
+        httpInfoData.push(['MQTT Domain', device.domain]);
     }
-    if (httpInfo.reservedDomain) {
-        httpInfoData.push(['Reserved Domain', httpInfo.reservedDomain]);
+    if (device.reservedDomain) {
+        httpInfoData.push(['Reserved Domain', device.reservedDomain]);
     }
-    if (httpInfo.subType) {
-        httpInfoData.push(['Sub Type', httpInfo.subType]);
+    if (device.subType) {
+        httpInfoData.push(['Sub Type', device.subType]);
     }
-    if (httpInfo.region) {
-        httpInfoData.push(['Region', httpInfo.region]);
+    if (device.region) {
+        httpInfoData.push(['Region', device.region]);
     }
-    if (httpInfo.skillNumber) {
-        httpInfoData.push(['Skill Number', httpInfo.skillNumber]);
+    if (device.skillNumber) {
+        httpInfoData.push(['Skill Number', device.skillNumber]);
     }
-    if (httpInfo.devIconId) {
-        httpInfoData.push(['Icon ID', httpInfo.devIconId]);
+    if (device.devIconId) {
+        httpInfoData.push(['Icon ID', device.devIconId]);
     }
-    if (httpInfo.bindTime) {
-        httpInfoData.push(['Bind Time', httpInfo.bindTime.toLocaleString()]);
+    if (device.bindTime) {
+        httpInfoData.push(['Bind Time', device.bindTime.toLocaleString()]);
     }
-    if (httpInfo.onlineStatus !== undefined) {
-        const onlineStatusText = httpInfo.onlineStatus === OnlineStatus.ONLINE ? chalk.green('Online') :
-            httpInfo.onlineStatus === OnlineStatus.OFFLINE ? chalk.red('Offline') :
+    if (device.onlineStatus !== undefined) {
+        const onlineStatusText = device.onlineStatus === OnlineStatus.ONLINE ? chalk.green('Online') :
+            device.onlineStatus === OnlineStatus.OFFLINE ? chalk.red('Offline') :
                 chalk.yellow('Unknown');
         httpInfoData.push(['Online Status', onlineStatusText]);
     }
@@ -121,15 +127,12 @@ function _buildHttpInfoData(httpInfo) {
 }
 
 /**
- * Displays HTTP device info if available.
+ * Displays HTTP device info section if properties are available.
+ *
+ * @param {Object} device - MerossDevice instance
  */
 function _displayHttpInfo(device) {
-    if (!device.cachedHttpInfo) {
-        return;
-    }
-
-    const httpInfo = device.cachedHttpInfo;
-    const httpInfoData = _buildHttpInfoData(httpInfo);
+    const httpInfoData = _buildHttpInfoData(device);
 
     if (httpInfoData.length === 0) {
         return;

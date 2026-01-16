@@ -10,10 +10,15 @@ const { OnlineStatus } = require('meross-iot');
  */
 
 /**
- * Waits for devices to be discovered
+ * Waits for devices to be discovered.
+ *
+ * Returns an array of MerossDevice instances once they are initialized. Uses
+ * device UUID (or subdevice ID) for deduplication to avoid returning the same
+ * device multiple times.
+ *
  * @param {Object} manager - ManagerMeross instance
  * @param {number} timeout - Timeout in milliseconds (default: 5000)
- * @returns {Promise<Array>} Array of device objects with structure: { deviceId, deviceDef, device }
+ * @returns {Promise<Array<MerossDevice>>} Array of device instances
  */
 function waitForDevices(manager, timeout = 5000) {
     return new Promise((resolve) => {
@@ -24,33 +29,28 @@ function waitForDevices(manager, timeout = 5000) {
             const deviceIds = new Set();
             
             for (const device of existingDevices) {
-                // Use unique identifier for subdevices (internalId) or UUID for base devices
+                // Use unique identifier for subdevices (parentUUID:subdeviceId) or UUID for base devices
                 const deviceId = device.subdeviceId 
-                    ? `${device.dev?.uuid || device.uuid}:${device.subdeviceId}` 
-                    : (device.dev?.uuid || device.uuid);
+                    ? `${device.uuid}:${device.subdeviceId}` 
+                    : device.uuid;
                 
                 if (!deviceIds.has(deviceId)) {
                     deviceIds.add(deviceId);
-                    devices.push({ 
-                        deviceId: deviceId, 
-                        deviceDef: device.dev || { uuid: device.uuid }, 
-                        device 
-                    });
+                    devices.push(device);
                 }
             }
             resolve(devices);
             return;
         }
         
-        // Wait for devices to be initialized
         const devices = [];
         const deviceIds = new Set();
         let timeoutId = null;
         
-        const onDeviceInitialized = (deviceId, deviceDef, device) => {
+        const onDeviceInitialized = (deviceId, device) => {
             if (!deviceIds.has(deviceId)) {
                 deviceIds.add(deviceId);
-                devices.push({ deviceId, deviceDef, device });
+                devices.push(device);
             }
         };
         
@@ -61,7 +61,8 @@ function waitForDevices(manager, timeout = 5000) {
             resolve(devices);
         }, timeout);
         
-        // Also check periodically if devices were added (in case event was missed)
+        // Periodic check handles cases where deviceInitialized event was missed
+        // (e.g., devices initialized before event handler was attached)
         const checkInterval = setInterval(() => {
             const currentDevices = manager.devices.list();
             if (currentDevices && currentDevices.length > 0) {
@@ -71,19 +72,14 @@ function waitForDevices(manager, timeout = 5000) {
                 }
                 manager.removeListener('deviceInitialized', onDeviceInitialized);
                 
-                // Add any new devices
                 for (const device of currentDevices) {
                     const deviceId = device.subdeviceId 
-                        ? `${device.dev?.uuid || device.uuid}:${device.subdeviceId}` 
-                        : (device.dev?.uuid || device.uuid);
+                        ? `${device.uuid}:${device.subdeviceId}` 
+                        : device.uuid;
                     
                     if (!deviceIds.has(deviceId)) {
                         deviceIds.add(deviceId);
-                        devices.push({ 
-                            deviceId: deviceId, 
-                            deviceDef: device.dev || { uuid: device.uuid }, 
-                            device 
-                        });
+                        devices.push(device);
                     }
                 }
                 resolve(devices);
@@ -98,13 +94,7 @@ function waitForDevices(manager, timeout = 5000) {
  * @returns {number|null} OnlineStatus value or null if not available
  */
 function getDeviceOnlineStatus(device) {
-    if (device.onlineStatus !== undefined) {
-        return device.onlineStatus;
-    }
-    if (device.dev && device.dev.onlineStatus !== undefined) {
-        return device.dev.onlineStatus;
-    }
-    return null;
+    return device.onlineStatus !== undefined ? device.onlineStatus : null;
 }
 
 /**
@@ -114,7 +104,7 @@ function getDeviceOnlineStatus(device) {
  * @returns {boolean} True if device has the ability
  */
 function deviceHasAbility(device, namespace) {
-    return !!(device._abilities && device._abilities[namespace]);
+    return !!(device.abilities && device.abilities[namespace]);
 }
 
 /**
@@ -146,7 +136,7 @@ async function findDevicesByAbility(manager, namespace, onlineStatus = null, dev
     const devices = await waitForDevices(manager, 2000);
     const filteredDevices = [];
     
-    for (const { device } of devices) {
+    for (const device of devices) {
         // Check if device has the ability
         if (deviceHasAbility(device, namespace)) {
             // Filter by online status if specified
@@ -176,7 +166,7 @@ async function findDevicesByType(manager, deviceType, onlineStatus = null, devic
     // If device filter is provided, use it instead of discovering devices
     if (deviceFilter && Array.isArray(deviceFilter) && deviceFilter.length > 0) {
         return deviceFilter.filter(device => {
-            const baseDeviceType = device.dev?.deviceType;
+            const baseDeviceType = device.deviceType;
             const subdeviceType = device.type || device._type;
             const matchesType = baseDeviceType === deviceType || subdeviceType === deviceType;
             
@@ -197,9 +187,9 @@ async function findDevicesByType(manager, deviceType, onlineStatus = null, devic
     const devices = await waitForDevices(manager, 2000);
     const filteredDevices = [];
     
-    for (const { device } of devices) {
+    for (const device of devices) {
         // Check both base device type and subdevice type
-        const baseDeviceType = device.dev?.deviceType;
+        const baseDeviceType = device.deviceType;
         const subdeviceType = device.type || device._type;
         const matchesType = baseDeviceType === deviceType || subdeviceType === deviceType;
         

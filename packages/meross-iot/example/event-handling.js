@@ -33,82 +33,8 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         // ===== Manager-Level Events =====
         
         // Device initialized (discovered)
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-    // Device connected
-    device.on('connected', () => {
-        console.log(`\n[Device] ${deviceDef.devName} connected`);
-    });
-    
-    // Device disconnected
-    device.on('close', (error) => {
-        console.log(`\n[Device] ${deviceDef.devName} closed${error ? `: ${error}` : ''}`);
-    });
-    
-    // Device error
-    device.on('error', (error) => {
-        console.error(`\n[Device] ${deviceDef.devName} error: ${error.message}`);
-    });
-    
-    // Device reconnected
-    device.on('reconnect', () => {
-        console.log(`\n[Device] ${deviceDef.devName} reconnected`);
-    });
-    
-    // Push notification from this device
-    device.on('pushNotification', (notification) => {
-        console.log(`\n[Device] ${deviceDef.devName} push notification:`);
-        console.log(`  Namespace: ${notification.namespace}`);
-        console.log(`  Data: ${JSON.stringify(notification.rawData, null, 2)}`);
-    });
-    
-    // Data received from this device
-    device.on('data', (namespace, payload) => {
-        console.log(`\n[Device] ${deviceDef.devName} data (${namespace}):`);
-        console.log(`  Payload: ${JSON.stringify(payload, null, 2)}`);
-    });
-    
-    // Online status changed
-    device.on('onlineStatusChange', (newStatus, oldStatus) => {
-        const statusNames = { 
-            0: 'Not Online', 
-            1: 'Online', 
-            2: 'Offline', 
-            3: 'Upgrading' 
-        };
-        console.log(`\n[Device] ${deviceDef.devName} status changed:`);
-        console.log(`  ${statusNames[oldStatus] || oldStatus} → ${statusNames[newStatus] || newStatus}`);
-    });
-    
-    // Raw send data (for debugging)
-    device.on('rawSendData', (message) => {
-        console.log(`\n[Device] ${deviceDef.devName} sending:`);
-        // Uncomment to see outgoing messages:
-        // console.log(`  Message: ${JSON.stringify(message, null, 2)}`);
-    });
-});
-
-// ===== Main Execution =====
-
-(async () => {
-    try {
-        // Create HTTP client using factory method
-        const httpClient = await MerossHttpClient.fromUserPassword({
-            email: 'your@email.com',
-            password: 'yourpassword',
-            logger: console.log
-        });
-
-        // Create manager with HTTP client
-        const meross = new ManagerMeross({
-            httpClient: httpClient,
-            logger: console.log
-        });
-
-        // ===== Manager-Level Events =====
-        
-        // Device initialized (discovered)
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-            console.log(`\n[Manager] Device initialized: ${deviceDef.devName} (${deviceId})`);
+        meross.on('deviceInitialized', (deviceId, device) => {
+            console.log(`\n[Manager] Device initialized: ${device.name} (${deviceId})`);
         });
 
         // Device connected
@@ -151,37 +77,37 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
         // ===== Device-Level Events =====
 
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
+        meross.on('deviceInitialized', (deviceId, device) => {
             // Device connected
             device.on('connected', () => {
-                console.log(`\n[Device] ${deviceDef.devName} connected`);
+                console.log(`\n[Device] ${device.name} connected`);
             });
             
             // Device disconnected
             device.on('close', (error) => {
-                console.log(`\n[Device] ${deviceDef.devName} closed${error ? `: ${error}` : ''}`);
+                console.log(`\n[Device] ${device.name} closed${error ? `: ${error}` : ''}`);
             });
             
             // Device error
             device.on('error', (error) => {
-                console.error(`\n[Device] ${deviceDef.devName} error: ${error.message}`);
+                console.error(`\n[Device] ${device.name} error: ${error.message}`);
             });
             
             // Device reconnected
             device.on('reconnect', () => {
-                console.log(`\n[Device] ${deviceDef.devName} reconnected`);
+                console.log(`\n[Device] ${device.name} reconnected`);
             });
             
             // Push notification from this device
             device.on('pushNotification', (notification) => {
-                console.log(`\n[Device] ${deviceDef.devName} push notification:`);
+                console.log(`\n[Device] ${device.name} push notification:`);
                 console.log(`  Namespace: ${notification.namespace}`);
                 console.log(`  Data: ${JSON.stringify(notification.rawData, null, 2)}`);
             });
             
             // Data received from this device
             device.on('data', (namespace, payload) => {
-                console.log(`\n[Device] ${deviceDef.devName} data (${namespace}):`);
+                console.log(`\n[Device] ${device.name} data (${namespace}):`);
                 console.log(`  Payload: ${JSON.stringify(payload, null, 2)}`);
             });
             
@@ -193,13 +119,13 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
                     2: 'Offline', 
                     3: 'Upgrading' 
                 };
-                console.log(`\n[Device] ${deviceDef.devName} status changed:`);
+                console.log(`\n[Device] ${device.name} status changed:`);
                 console.log(`  ${statusNames[oldStatus] || oldStatus} → ${statusNames[newStatus] || newStatus}`);
             });
             
             // Raw send data (for debugging)
             device.on('rawSendData', (message) => {
-                console.log(`\n[Device] ${deviceDef.devName} sending:`);
+                console.log(`\n[Device] ${device.name} sending:`);
                 // Uncomment to see outgoing messages:
                 // console.log(`  Message: ${JSON.stringify(message, null, 2)}`);
             });

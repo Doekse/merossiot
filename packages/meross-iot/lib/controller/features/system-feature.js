@@ -29,15 +29,15 @@ module.exports = {
             if (system.firmware) {
                 const { firmware } = system;
                 if (firmware.innerIp) {
-                    this._lanIp = firmware.innerIp;
+                    this.lanIp = firmware.innerIp;
                 }
                 if (firmware.server) {
-                    this._mqttHost = firmware.server;
+                    this.mqttHost = firmware.server;
                 }
                 if (firmware.port) {
-                    this._mqttPort = firmware.port;
+                    this.mqttPort = firmware.port;
                 }
-                this._lastFullUpdateTimestamp = Date.now();
+                this.lastFullUpdateTimestamp = Date.now();
             }
             if (system.online) {
                 const onlineStatus = system.online.status;
@@ -188,13 +188,13 @@ module.exports = {
         if (response && response.firmware) {
             this._systemFirmware = response.firmware;
             if (response.firmware.innerIp) {
-                this._lanIp = response.firmware.innerIp;
+                this.lanIp = response.firmware.innerIp;
             }
             if (response.firmware.server) {
-                this._mqttHost = response.firmware.server;
+                this.mqttHost = response.firmware.server;
             }
             if (response.firmware.port) {
-                this._mqttPort = response.firmware.port;
+                this.mqttPort = response.firmware.port;
             }
         }
         return response;

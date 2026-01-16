@@ -75,7 +75,7 @@ module.exports = {
         const response = await this.publishMessage('SET', 'Appliance.Control.Thermostat.Mode', payload);
         if (response && response.mode) {
             this._updateThermostatMode(response.mode, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },
@@ -96,7 +96,7 @@ module.exports = {
      */
     async setThermostatModeB(options = {}) {
         const channel = normalizeChannel(options);
-        if (!this._abilities || !this._abilities['Appliance.Control.Thermostat.ModeB']) {
+        if (!this.abilities || !this.abilities['Appliance.Control.Thermostat.ModeB']) {
             const { CommandError } = require('../../model/exception');
             throw new CommandError(
                 'Device does not support Appliance.Control.Thermostat.ModeB namespace',
@@ -159,7 +159,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.Thermostat.Mode', payload);
         if (response && response.mode) {
             this._updateThermostatMode(response.mode, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },
@@ -179,7 +179,7 @@ module.exports = {
      */
     async getThermostatModeB(options = {}) {
         const channel = normalizeChannel(options);
-        if (!this._abilities || !this._abilities['Appliance.Control.Thermostat.ModeB']) {
+        if (!this.abilities || !this.abilities['Appliance.Control.Thermostat.ModeB']) {
             const { CommandError } = require('../../model/exception');
             throw new CommandError(
                 'Device does not support Appliance.Control.Thermostat.ModeB namespace',
@@ -192,7 +192,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.Thermostat.ModeB', payload);
         if (response && response.modeB) {
             this._updateThermostatModeB(response.modeB, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },

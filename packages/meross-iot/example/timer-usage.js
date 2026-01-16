@@ -39,7 +39,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         }
 
         const device = devices[0];
-        console.log(`\nUsing device: ${device.dev?.devName || 'Unknown'}`);
+        console.log(`\nUsing device: ${device.name || 'Unknown'}`);
 
         // Wait for device to connect
         if (!device.deviceConnected) {

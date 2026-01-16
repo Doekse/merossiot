@@ -25,11 +25,10 @@ async function runTests(context) {
         // Runtime is typically available on most devices, so we'll test with any online device
         const allDevices = manager.devices.list();
         testDevices = allDevices.filter(device => {
-            const status = device.onlineStatus !== undefined ? device.onlineStatus : (device.dev?.onlineStatus);
-            if (status !== OnlineStatus.ONLINE) return false;
+            if (device.onlineStatus !== OnlineStatus.ONLINE) return false;
             // Check if device has runtime ability or if it's a common device type
-            return device._abilities && (
-                device._abilities['Appliance.System.Runtime'] ||
+            return device.abilities && (
+                device.abilities['Appliance.System.Runtime'] ||
                 // Most devices support runtime, so we'll test with any online device
                 true
             );

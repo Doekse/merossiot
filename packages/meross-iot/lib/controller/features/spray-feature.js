@@ -34,10 +34,10 @@ module.exports = {
 
         if (response && response.spray) {
             this._updateSprayState(response.spray, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else {
             this._updateSprayState({ channel, mode: modeValue }, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -56,7 +56,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.Spray', {});
         if (response && response.spray) {
             this._updateSprayState(response.spray, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },

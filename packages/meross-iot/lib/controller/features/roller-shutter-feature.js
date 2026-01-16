@@ -29,10 +29,10 @@ module.exports = {
 
         if (response && response.position) {
             this._updateRollerShutterPosition(response.position, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else {
             this._updateRollerShutterPosition([{ channel, position: options.position }], 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -154,7 +154,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.RollerShutter.State', {});
         if (response && response.state) {
             this._updateRollerShutterState(response.state, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },

@@ -29,10 +29,10 @@ module.exports = {
 
         if (response && response.light) {
             this._updateLightState(response.light, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else if (options.light) {
             this._updateLightState(options.light, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -50,7 +50,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.Light', {}, null);
         if (response && response.light) {
             this._updateLightState(response.light, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },
@@ -79,9 +79,9 @@ module.exports = {
      */
     getLightIsOn(channel = 0) {
         this.validateState();
-        if (this._abilities) {
-            const hasToggleX = this._abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this._abilities['Appliance.Control.Toggle'];
+        if (this.abilities) {
+            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
+            const hasToggle = this.abilities['Appliance.Control.Toggle'];
             if (hasToggleX || hasToggle) {
                 if (typeof this.isOn === 'function') {
                     return this.isOn(channel);
@@ -202,9 +202,9 @@ module.exports = {
      * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
      */
     async turnOn(options = {}) {
-        if (this._abilities) {
-            const hasToggleX = this._abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this._abilities['Appliance.Control.Toggle'];
+        if (this.abilities) {
+            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
+            const hasToggle = this.abilities['Appliance.Control.Toggle'];
 
             if (hasToggleX && typeof this.setToggleX === 'function') {
                 return await this.setToggleX({ ...options, onoff: true });
@@ -229,9 +229,9 @@ module.exports = {
      * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
      */
     async turnOff(options = {}) {
-        if (this._abilities) {
-            const hasToggleX = this._abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this._abilities['Appliance.Control.Toggle'];
+        if (this.abilities) {
+            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
+            const hasToggle = this.abilities['Appliance.Control.Toggle'];
 
             if (hasToggleX && typeof this.setToggleX === 'function') {
                 return await this.setToggleX({ ...options, onoff: false });
@@ -265,8 +265,8 @@ module.exports = {
         const { onoff, rgb, luminance, temperature, gradual } = options;
 
         const currentIsOn = this.getLightIsOn(channel);
-        const hasToggleX = this._abilities && this._abilities['Appliance.Control.ToggleX'];
-        const hasToggle = this._abilities && this._abilities['Appliance.Control.Toggle'];
+        const hasToggleX = this.abilities && this.abilities['Appliance.Control.ToggleX'];
+        const hasToggle = this.abilities && this.abilities['Appliance.Control.Toggle'];
         const hasToggleSupport = hasToggleX || hasToggle;
 
         if (hasToggleSupport && onoff === false && currentIsOn !== false) {
@@ -341,9 +341,9 @@ module.exports = {
      * @private
      */
     _supportsLightMode(mode) {
-        if (!this._abilities) {return false;}
+        if (!this.abilities) {return false;}
 
-        const lightAbility = this._abilities['Appliance.Control.Light'];
+        const lightAbility = this.abilities['Appliance.Control.Light'];
         if (!lightAbility || !lightAbility.capacity) {return false;}
 
         const { capacity } = lightAbility;

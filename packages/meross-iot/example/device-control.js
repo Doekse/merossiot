@@ -31,9 +31,9 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-    device.on('connected', async () => {
-        console.log(`\n[Connected] ${deviceDef.devName}`);
+        meross.on('deviceInitialized', (deviceId, device) => {
+            device.on('connected', async () => {
+                console.log(`\n[Connected] ${device.name}`);
         
         try {
             // Example 1: Toggle Control (Switches/Plugs)

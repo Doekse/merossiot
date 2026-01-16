@@ -45,21 +45,21 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         });
 
         // Handle devices from Account 1
-        account1.on('deviceInitialized', (deviceId, deviceDef, device) => {
-            console.log(`\n[Account 1] Device initialized: ${deviceDef.devName} (${deviceId})`);
+        account1.on('deviceInitialized', (deviceId, device) => {
+            console.log(`\n[Account 1] Device initialized: ${device.name} (${deviceId})`);
             
             device.on('connected', async () => {
-                console.log(`[Account 1] Device connected: ${deviceDef.devName}`);
+                console.log(`[Account 1] Device connected: ${device.name}`);
                 // Your device control logic here
             });
         });
 
         // Handle devices from Account 2
-        account2.on('deviceInitialized', (deviceId, deviceDef, device) => {
-            console.log(`\n[Account 2] Device initialized: ${deviceDef.devName} (${deviceId})`);
+        account2.on('deviceInitialized', (deviceId, device) => {
+            console.log(`\n[Account 2] Device initialized: ${device.name} (${deviceId})`);
             
             device.on('connected', async () => {
-                console.log(`[Account 2] Device connected: ${deviceDef.devName}`);
+                console.log(`[Account 2] Device connected: ${device.name}`);
                 // Your device control logic here
             });
         });
@@ -79,25 +79,25 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         
         console.log(`\nAccount 1 devices:`);
         account1Devices.forEach(device => {
-            console.log(`  - ${device.dev?.devName || 'Unknown'} (${device.dev?.uuid || device.uuid})`);
+            console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
         });
         
         console.log(`\nAccount 2 devices:`);
         account2Devices.forEach(device => {
-            console.log(`  - ${device.dev?.devName || 'Unknown'} (${device.dev?.uuid || device.uuid})`);
+            console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
         });
         
         // Example: Control a device from Account 1
         if (account1Devices.length > 0) {
             const device = account1Devices[0];
-            console.log(`\nControlling device from Account 1: ${device.dev?.devName}`);
+            console.log(`\nControlling device from Account 1: ${device.name}`);
             // await device.setToggleX({ channel: 1, onoff: true });
         }
         
         // Example: Control a device from Account 2
         if (account2Devices.length > 0) {
             const device = account2Devices[0];
-            console.log(`\nControlling device from Account 2: ${device.dev?.devName}`);
+            console.log(`\nControlling device from Account 2: ${device.name}`);
             // await device.setToggleX({ channel: 1, onoff: true });
         }
         

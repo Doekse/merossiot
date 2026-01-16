@@ -126,7 +126,7 @@ async function connectWithMFA(email, password, mfaCode) {
 
 // Example: Handling device command errors
 async function handleDeviceCommands(meross) {
-    meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
+    meross.on('deviceInitialized', (deviceId, device) => {
         device.on('connected', async () => {
             try {
                 // This might fail if device doesn't support the command

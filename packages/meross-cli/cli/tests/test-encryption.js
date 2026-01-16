@@ -31,7 +31,7 @@ async function runTests(context) {
         // Combine and deduplicate
         const allDevices = [...encryptionDevices];
         for (const device of suiteDevices) {
-            if (!allDevices.find(d => d.dev.uuid === device.dev.uuid)) {
+            if (!allDevices.find(d => d.uuid === device.uuid)) {
                 allDevices.push(device);
             }
         }
@@ -115,8 +115,8 @@ async function runTests(context) {
             const isKeySet = testDevice.isEncryptionKeySet();
             
             // If key is not set and we have the required info, set it
-            if (!isKeySet && testDevice.dev && testDevice.dev.uuid && manager.key && testDevice._macAddress) {
-                testDevice.setEncryptionKey(testDevice.dev.uuid, manager.key, testDevice._macAddress);
+            if (!isKeySet && testDevice.uuid && manager.key && testDevice.macAddress) {
+                testDevice.setEncryptionKey(testDevice.uuid, manager.key, testDevice.macAddress);
                 
                 const keySetAfter = testDevice.isEncryptionKeySet();
                 
@@ -180,8 +180,8 @@ async function runTests(context) {
         } else {
             // Ensure encryption key is set
             if (!testDevice.isEncryptionKeySet()) {
-                if (testDevice.dev && testDevice.dev.uuid && manager.key && testDevice._macAddress) {
-                    testDevice.setEncryptionKey(testDevice.dev.uuid, manager.key, testDevice._macAddress);
+                if (testDevice.uuid && manager.key && testDevice.macAddress) {
+                    testDevice.setEncryptionKey(testDevice.uuid, manager.key, testDevice.macAddress);
                 } else {
                     results.push({
                         name: 'should encrypt and decrypt messages if encryption key is set',

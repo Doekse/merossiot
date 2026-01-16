@@ -212,7 +212,7 @@ module.exports = {
 
         if (response && response.latest) {
             this._updatePresenceState(response.latest, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;

@@ -36,7 +36,7 @@ async function runTests(context) {
         // Also try finding by hub sensor abilities
         const sensorHubs = await findDevicesByAbility(manager, 'Appliance.Hub.Sensor.All', OnlineStatus.ONLINE);
         for (const device of sensorHubs) {
-            if (!hubDevices.find(d => (d.dev?.uuid || d.uuid) === (device.dev?.uuid || device.uuid))) {
+            if (!hubDevices.find(d => d.uuid === device.uuid)) {
                 hubDevices.push(device);
             }
         }

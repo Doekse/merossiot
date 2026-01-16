@@ -28,14 +28,14 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-    // Check if this is a hub device
-    if (device.getSubdevices) {
-        console.log(`\n[Hub Device] ${deviceDef.devName} (${deviceId})`);
-        console.log(`  Type: ${deviceDef.deviceType}`);
-        
-        device.on('connected', async () => {
-            console.log(`\n[Hub Connected] ${deviceDef.devName}`);
+        meross.on('deviceInitialized', (deviceId, device) => {
+            // Check if this is a hub device
+            if (device.getSubdevices) {
+                console.log(`\n[Hub Device] ${device.name} (${deviceId})`);
+                console.log(`  Type: ${device.deviceType}`);
+                
+                device.on('connected', async () => {
+                    console.log(`\n[Hub Connected] ${device.name}`);
             
             try {
                 // Get all subdevices
@@ -101,10 +101,11 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             } catch (error) {
                 console.error(`  Error: ${error.message}`);
             }
-        });
-    } else {
-        // Regular device (not a hub)
-        console.log(`\n[Regular Device] ${deviceDef.devName} (${deviceId})`);
+                });
+            } else {
+                // Regular device (not a hub)
+                console.log(`\n[Regular Device] ${device.name} (${deviceId})`);
+            }
         });
 
         console.log('Connecting to Meross Cloud...');

@@ -49,10 +49,10 @@ module.exports = {
 
         if (response && response.togglex) {
             this._updateToggleState(response.togglex, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else {
             this._updateToggleState({ channel, onoff: options.onoff ? 1 : 0 }, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -73,7 +73,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.ToggleX', payload);
         if (response && response.togglex) {
             this._updateToggleState(response.togglex, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },
@@ -134,9 +134,9 @@ module.exports = {
      * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
      */
     async turnOn(options = {}) {
-        if (this._abilities) {
-            const hasToggleX = this._abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this._abilities['Appliance.Control.Toggle'];
+        if (this.abilities) {
+            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
+            const hasToggle = this.abilities['Appliance.Control.Toggle'];
 
             if (hasToggleX) {
                 return await this.setToggleX({ ...options, onoff: true });
@@ -162,9 +162,9 @@ module.exports = {
      * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
      */
     async turnOff(options = {}) {
-        if (this._abilities) {
-            const hasToggleX = this._abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this._abilities['Appliance.Control.Toggle'];
+        if (this.abilities) {
+            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
+            const hasToggle = this.abilities['Appliance.Control.Toggle'];
 
             if (hasToggleX) {
                 return await this.setToggleX({ ...options, onoff: false });

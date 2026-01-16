@@ -1107,7 +1107,7 @@ declare module 'meross-iot' {
     export type ErrorCallback = (error: Error | null) => void
     export type DeviceInitializedEvent = 'deviceInitialized'
 
-    export type DeviceInitializedCallback = (deviceId: string, deviceDef: DeviceDefinition, device: MerossDevice) => void
+    export type DeviceInitializedCallback = (deviceId: string, device: MerossDevice) => void
 
     export type PushNotificationEvent = 'pushNotification'
     export type PushNotificationCallback = (deviceId: string, notification: GenericPushNotification, device: MerossDevice) => void
@@ -1501,8 +1501,8 @@ declare module 'meross-iot' {
      * const manager = new ManagerMeross({ httpClient });
      * await manager.connect();
      * 
-     * manager.on('deviceInitialized', (deviceId, deviceDef, device) => {
-     *   console.log(`Device ${deviceId} initialized`);
+     * manager.on('deviceInitialized', (deviceId, device) => {
+     *   console.log(`Device ${deviceId} initialized: ${device.name}`);
      * });
      * 
      * const devices = manager.devices.list();
@@ -1935,7 +1935,22 @@ declare module 'meross-iot' {
         readonly isOnline: boolean
         readonly internalId: string
         readonly channels: ChannelInfo[]
-        readonly cachedHttpInfo: HttpDeviceInfo | null
+        /** Reserved MQTT domain (fallback domain) */
+        readonly reservedDomain: string | null
+        /** Device sub-type */
+        readonly subType: string | null
+        /** When the device was bound to the account */
+        readonly bindTime: Date | null
+        /** Skill number */
+        readonly skillNumber: string | null
+        /** User-defined device icon */
+        readonly userDevIcon: string | null
+        /** Icon type */
+        readonly iconType: number | null
+        /** Device region */
+        readonly region: string | null
+        /** Device icon ID */
+        readonly devIconId: string | null
 
         /**
          * Validates the current device state.

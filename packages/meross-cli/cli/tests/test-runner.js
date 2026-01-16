@@ -325,7 +325,7 @@ async function findDevicesForTestType(testType, manager) {
     if (!allDevices || allDevices.length === 0) {
         const { waitForDevices } = require('./test-helper');
         const deviceList = await waitForDevices(manager, 1000);
-        return deviceList.map(({ device }) => device).filter(d => d);
+        return deviceList.filter(d => d);
     }
     
     const matchingDevices = [];
@@ -340,13 +340,12 @@ async function findDevicesForTestType(testType, manager) {
     }
     
     for (const device of allDevices) {
-        const uuid = device.dev?.uuid || device.uuid;
+        const uuid = device.uuid;
         if (seenUuids.has(uuid)) {
             continue;
         }
         
-        if (device.onlineStatus !== OnlineStatus.ONLINE && 
-            device.dev?.onlineStatus !== OnlineStatus.ONLINE) {
+        if (device.onlineStatus !== OnlineStatus.ONLINE) {
             continue;
         }
         
@@ -371,7 +370,7 @@ async function findDevicesForTestType(testType, manager) {
         }
         
         const hasAbility = abilities.some(ability => 
-            device._abilities && device._abilities[ability]
+            device.abilities && device.abilities[ability]
         );
         
         if (hasAbility) {
@@ -383,17 +382,15 @@ async function findDevicesForTestType(testType, manager) {
     // For garage, also try by device type if no matches found
     if (testType.toLowerCase() === 'garage' && matchingDevices.length === 0) {
         for (const device of allDevices) {
-            const uuid = device.dev?.uuid || device.uuid;
+            const uuid = device.uuid;
             if (seenUuids.has(uuid)) {
                 continue;
             }
             
-            const baseDeviceType = device.dev?.deviceType;
             const subdeviceType = device.type || device._type;
-            const matchesType = baseDeviceType === 'msg100' || subdeviceType === 'msg100';
+            const matchesType = device.deviceType === 'msg100' || subdeviceType === 'msg100';
             
-            if (matchesType && (device.onlineStatus === OnlineStatus.ONLINE || 
-                                device.dev?.onlineStatus === OnlineStatus.ONLINE)) {
+            if (matchesType && device.onlineStatus === OnlineStatus.ONLINE) {
                 seenUuids.add(uuid);
                 matchingDevices.push(device);
             }

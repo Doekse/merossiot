@@ -61,7 +61,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
     if (devices.length > 0) {
         const device = devices[0];
             if (device.toggle) {
-                console.log(`\nToggling ${device.dev?.devName || 'device'}...`);
+                console.log(`\nToggling ${device.name || 'device'}...`);
                 await device.toggle();
                 console.log('✓ Device toggled');
             }

@@ -51,8 +51,8 @@ const { ManagerMeross, MerossHttpClient } = require('meross-iot');
   });
 
   // Listen for device events
-  meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-    console.log(`Device found: ${deviceDef.devName} (${deviceDef.deviceType})`);
+  meross.on('deviceInitialized', (deviceId, device) => {
+    console.log(`Device found: ${device.name} (${device.deviceType})`);
   });
 
   // Connect and discover devices

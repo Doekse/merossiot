@@ -27,10 +27,10 @@ async function runTests(context) {
     if (devices && devices.length > 0) {
         // Use provided devices, filter by capabilities
         lightDevices = devices.filter(d => 
-            d._abilities && d._abilities['Appliance.Control.Diffuser.Light']
+            d.abilities && d.abilities['Appliance.Control.Diffuser.Light']
         );
         sprayDevices = devices.filter(d => 
-            d._abilities && d._abilities['Appliance.Control.Diffuser.Spray']
+            d.abilities && d.abilities['Appliance.Control.Diffuser.Spray']
         );
     } else {
         // Find diffuser light devices

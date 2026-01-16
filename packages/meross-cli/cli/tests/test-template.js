@@ -52,8 +52,8 @@ async function runTests(context) {
         // Combine and deduplicate
         testDevices = [...toggleXDevices];
         for (const device of toggleDevices) {
-            const uuid = device.dev?.uuid || device.uuid;
-            if (!testDevices.find(d => (d.dev?.uuid || d.uuid) === uuid)) {
+            const uuid = device.uuid;
+            if (!testDevices.find(d => d.uuid === uuid)) {
                 testDevices.push(device);
             }
         }

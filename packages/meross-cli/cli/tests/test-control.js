@@ -28,15 +28,14 @@ async function runTests(context) {
         // Also get any online device for testing control features
         const allDevices = manager.devices.list();
         const onlineDevices = allDevices.filter(device => {
-            const status = device.onlineStatus !== undefined ? device.onlineStatus : (device.dev?.onlineStatus);
-            return status === OnlineStatus.ONLINE;
+            return device.onlineStatus === OnlineStatus.ONLINE;
         });
         
         // Combine and deduplicate
         testDevices = [...multipleDevices];
         for (const device of onlineDevices.slice(0, 2)) {
-            const uuid = device.dev?.uuid || device.uuid;
-            if (!testDevices.find(d => (d.dev?.uuid || d.uuid) === uuid)) {
+            const uuid = device.uuid;
+            if (!testDevices.find(d => d.uuid === uuid)) {
                 testDevices.push(device);
             }
         }

@@ -30,10 +30,10 @@ module.exports = {
 
         if (response && response.state) {
             this._updateGarageDoorState(response.state, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else {
             this._updateGarageDoorState([{ channel, open: options.open ? 1 : 0 }], 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -56,7 +56,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.GarageDoor.State', payload);
         if (response && response.state) {
             this._updateGarageDoorState(response.state, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },
@@ -75,7 +75,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.GarageDoor.MultipleConfig', {});
         if (response && response.config) {
             this._updateGarageDoorConfig(response.config);
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },

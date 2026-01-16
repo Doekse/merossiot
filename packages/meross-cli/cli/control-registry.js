@@ -762,10 +762,10 @@ function getMethodsByCategory() {
  * @returns {boolean} True if device supports the namespace
  */
 function deviceSupportsNamespace(device, namespace) {
-    if (!device._abilities || typeof device._abilities !== 'object') {
+    if (!device.abilities || typeof device.abilities !== 'object') {
         return false;
     }
-    return !!device._abilities[namespace];
+    return !!device.abilities[namespace];
 }
 
 /**

@@ -49,8 +49,8 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         // ===== Example 1: Subscribe to Device Updates =====
         console.log('=== Example 1: Device Updates ===\n');
 
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-            console.log(`Device found: ${deviceDef.devName} (${deviceId})`);
+        meross.on('deviceInitialized', (deviceId, device) => {
+            console.log(`Device found: ${device.name} (${deviceId})`);
 
             // Subscribe to device updates
             subscriptionManager.subscribe(device, {
@@ -62,7 +62,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
             // Listen for device updates
             subscriptionManager.on(eventName, (update) => {
-                console.log(`\n[Update] ${deviceDef.devName}:`);
+                console.log(`\n[Update] ${device.name}:`);
                 console.log(`  Source: ${update.source}`);
                 console.log(`  Timestamp: ${new Date(update.timestamp).toISOString()}`);
 
@@ -110,7 +110,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             // Handle errors for this device
             subscriptionManager.on('error', (error, context) => {
                 if (context === deviceId) {
-                    console.error(`[Error] ${deviceDef.devName}: ${error.message}`);
+                    console.error(`[Error] ${device.name}: ${error.message}`);
                 }
             });
         });
@@ -148,42 +148,38 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         // You can add multiple listeners to the same device
         const devices = meross.devices.list();
         if (devices.length > 0) {
-            const firstDevice = devices[0].dev;
-            if (firstDevice) {
-                subscriptionManager.subscribe(firstDevice);
-                const eventName = `deviceUpdate:${firstDevice.uuid}`;
+            const firstDevice = devices[0];
+            subscriptionManager.subscribe(firstDevice);
+            const eventName = `deviceUpdate:${firstDevice.uuid}`;
 
-                // First listener - logs updates
-                subscriptionManager.on(eventName, (update) => {
-                    console.log(`[Listener 1] Device ${firstDevice.name} updated`);
-                });
+            // First listener - logs updates
+            subscriptionManager.on(eventName, (update) => {
+                console.log(`[Listener 1] Device ${firstDevice.name} updated`);
+            });
 
-                // Second listener - processes changes
-                subscriptionManager.on(eventName, (update) => {
-                    if (update.changes.toggle) {
-                        console.log(`[Listener 2] Toggle state changed`);
-                    }
-                });
+            // Second listener - processes changes
+            subscriptionManager.on(eventName, (update) => {
+                if (update.changes.toggle) {
+                    console.log(`[Listener 2] Toggle state changed`);
+                }
+            });
 
-                console.log(`Added multiple listeners to ${firstDevice.name}`);
-                console.log(`Total listeners: ${subscriptionManager.listenerCount(eventName)}`);
-            }
+            console.log(`Added multiple listeners to ${firstDevice.name}`);
+            console.log(`Total listeners: ${subscriptionManager.listenerCount(eventName)}`);
         }
 
         // ===== Example 4: One-Time Events =====
         console.log('\n=== Example 4: One-Time Events ===\n');
 
         if (devices.length > 0) {
-            const firstDevice = devices[0].dev;
-            if (firstDevice) {
-                const eventName = `deviceUpdate:${firstDevice.uuid}`;
+            const firstDevice = devices[0];
+            const eventName = `deviceUpdate:${firstDevice.uuid}`;
 
-                // Listen for only the next update
-                subscriptionManager.once(eventName, (update) => {
-                    console.log(`[One-Time] Received first update from ${firstDevice.name}`);
-                    console.log(`  This listener will be removed after this event`);
-                });
-            }
+            // Listen for only the next update
+            subscriptionManager.once(eventName, (update) => {
+                console.log(`[One-Time] Received first update from ${firstDevice.name}`);
+                console.log(`  This listener will be removed after this event`);
+            });
         }
 
         // ===== Example 5: Unsubscribing =====
@@ -192,18 +188,16 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         // Wait a bit, then demonstrate unsubscribing
         setTimeout(() => {
             if (devices.length > 0) {
-                const firstDevice = devices[0].dev;
-                if (firstDevice) {
-                    const eventName = `deviceUpdate:${firstDevice.uuid}`;
-                    const listenerCount = subscriptionManager.listenerCount(eventName);
+                const firstDevice = devices[0];
+                const eventName = `deviceUpdate:${firstDevice.uuid}`;
+                const listenerCount = subscriptionManager.listenerCount(eventName);
 
-                    console.log(`Removing all listeners from ${firstDevice.name}`);
-                    subscriptionManager.removeAllListeners(eventName);
+                console.log(`Removing all listeners from ${firstDevice.name}`);
+                subscriptionManager.removeAllListeners(eventName);
 
-                    // Unsubscribe to stop polling (if no listeners remain)
-                    subscriptionManager.unsubscribe(firstDevice.uuid);
-                    console.log(`Unsubscribed from ${firstDevice.name}`);
-                }
+                // Unsubscribe to stop polling (if no listeners remain)
+                subscriptionManager.unsubscribe(firstDevice.uuid);
+                console.log(`Unsubscribed from ${firstDevice.name}`);
             }
         }, 10000);
 

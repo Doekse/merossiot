@@ -37,10 +37,10 @@ module.exports = {
 
         if (response && response.light) {
             this._updateDiffuserLightState(response.light);
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else if (light) {
             this._updateDiffuserLightState([light]);
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -69,10 +69,10 @@ module.exports = {
 
         if (response && response.spray) {
             this._updateDiffuserSprayState(response.spray, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         } else {
             this._updateDiffuserSprayState([{ channel, mode: options.mode || 0 }], 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
 
         return response;
@@ -91,7 +91,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.Diffuser.Light', {});
         if (response && response.light) {
             this._updateDiffuserLightState(response.light, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },
@@ -109,7 +109,7 @@ module.exports = {
         const response = await this.publishMessage('GET', 'Appliance.Control.Diffuser.Spray', {});
         if (response && response.spray) {
             this._updateDiffuserSprayState(response.spray, 'response');
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
         }
         return response;
     },

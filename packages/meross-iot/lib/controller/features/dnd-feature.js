@@ -19,10 +19,10 @@ module.exports = {
         if (result && result.DNDMode && result.DNDMode.mode !== undefined) {
             const modeValue = result.DNDMode.mode;
             const enumKey = Object.keys(DNDMode).find(key => DNDMode[key] === modeValue);
-            this._lastFullUpdateTimestamp = Date.now();
+            this.lastFullUpdateTimestamp = Date.now();
             return enumKey ? DNDMode[enumKey] : DNDMode.DND_DISABLED;
         }
-        this._lastFullUpdateTimestamp = Date.now();
+        this.lastFullUpdateTimestamp = Date.now();
         return DNDMode.DND_DISABLED;
     },
 

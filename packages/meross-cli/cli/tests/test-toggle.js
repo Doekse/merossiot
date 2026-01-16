@@ -29,8 +29,8 @@ async function findAllToggleDevices(manager) {
     // Combine and deduplicate
     const allToggleDevices = [...toggleXDevices];
     for (const device of toggleDevices) {
-        const uuid = device.dev?.uuid || device.uuid;
-        if (!allToggleDevices.find(d => (d.dev?.uuid || d.uuid) === uuid)) {
+        const uuid = device.uuid;
+        if (!allToggleDevices.find(d => d.uuid === uuid)) {
             allToggleDevices.push(device);
         }
     }

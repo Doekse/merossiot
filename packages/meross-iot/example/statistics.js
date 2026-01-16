@@ -35,9 +35,9 @@ const { createDebugUtils } = require('../lib/utilities/debug');
 
         const debug = createDebugUtils(meross);
 
-meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-    device.on('connected', async () => {
-        console.log(`\n[Connected] ${deviceDef.devName}`);
+        meross.on('deviceInitialized', (deviceId, device) => {
+            device.on('connected', async () => {
+                console.log(`\n[Connected] ${device.name}`);
         
                 // Example: Toggle device to generate some API calls
                 if (device.toggle) {

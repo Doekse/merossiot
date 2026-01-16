@@ -29,10 +29,10 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         });
 
         // Listen for when devices are discovered
-        meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-            console.log(`Device found: ${deviceDef.devName} (${deviceId})`);
-            console.log(`  Type: ${deviceDef.deviceType}`);
-            console.log(`  Status: ${deviceDef.onlineStatus === 1 ? 'Online' : 'Offline'}`);
+        meross.on('deviceInitialized', (deviceId, device) => {
+            console.log(`Device found: ${device.name} (${deviceId})`);
+            console.log(`  Type: ${device.deviceType}`);
+            console.log(`  Status: ${device.onlineStatus === 1 ? 'Online' : 'Offline'}`);
         });
 
         console.log('Connecting to Meross Cloud...');
@@ -43,7 +43,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         const devices = meross.devices.list();
         console.log('\nAll devices:');
         devices.forEach(device => {
-            console.log(`  - ${device.dev?.devName || 'Unknown'}`);
+            console.log(`  - ${device.name || 'Unknown'}`);
         });
         
         // Keep running to receive events
