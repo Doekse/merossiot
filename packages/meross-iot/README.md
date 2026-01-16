@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.3.1
+npm install meross-iot@0.4.0
 ```
 
 ## Usage & Documentation
@@ -120,13 +120,38 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.4.0] - 2026-01-16
+
+#### Changed
+- **BREAKING**: Renamed `getDevices()` to `initializeDevices()` in `ManagerMeross`
+  - The method name better reflects that it performs full device discovery, initialization, and connection setup, not just retrieval
+  - Updated `login()` and `connect()` to use `initializeDevices()`
+  - Updated all examples and TypeScript definitions
+- **BREAKING**: Simplified device API by establishing single source of truth
+  - Removed `deviceDef` parameter from `deviceInitialized` event - now just `(deviceId, device)`
+  - Removed `cachedHttpInfo` property; all properties are now directly accessible on `MerossDevice`
+  - Converted simple getters to direct properties (`macAddress`, `lanIp`, `mqttHost`, etc.)
+  - Updated all feature files to use public properties (`abilities`, `lastFullUpdateTimestamp`)
+  - Removed unnecessary defensive fallback patterns (`device.dev?.uuid` → `device.uuid`)
+  - Fixed subdevice property consistency
+- **BREAKING**: Removed snake_case handling, standardized on camelCase
+  - Removed snake_case property mappings from `HttpDeviceInfo`, `HttpSubdeviceInfo`, `HardwareInfo`, `FirmwareInfo`, and `TimeInfo`
+  - Updated filter parameters to camelCase (`deviceUuids`, `deviceType`, `onlineStatus`, etc.)
+  - Changed `subdevice_id` getter to `subdeviceId` in push notification classes
+  - Updated `TokenData` interface: `issued_on` → `issuedOn`
+  - All JSDoc comments now reflect direct camelCase acceptance
+
+#### Updated
+- Updated all examples to use camelCase consistently
+- Updated all examples to use `initializeDevices()` instead of `getDevices()`
+
+<details>
+<summary>Older</summary>
+
 ### [0.3.1] - 2026-01-15
 
 #### Fixed
 - Fixed `ManagerSubscription` constructor bug: now properly calls `super()` before accessing `this` to correctly initialize EventEmitter parent class
-
-<details>
-<summary>Older</summary>
 
 ### [0.3.0] - 2026-01-15
 

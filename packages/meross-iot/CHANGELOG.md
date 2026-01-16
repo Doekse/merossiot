@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-16
+
+### Changed
+- **BREAKING**: Renamed `getDevices()` to `initializeDevices()` in `ManagerMeross`
+  - The method name better reflects that it performs full device discovery, initialization, and connection setup, not just retrieval
+  - Updated `login()` and `connect()` to use `initializeDevices()`
+  - Updated all examples and TypeScript definitions
+- **BREAKING**: Simplified device API by establishing single source of truth
+  - Removed `deviceDef` parameter from `deviceInitialized` event - now just `(deviceId, device)`
+  - Removed `cachedHttpInfo` property; all properties are now directly accessible on `MerossDevice`
+  - Converted simple getters to direct properties (`macAddress`, `lanIp`, `mqttHost`, etc.)
+  - Updated all feature files to use public properties (`abilities`, `lastFullUpdateTimestamp`)
+  - Removed unnecessary defensive fallback patterns (`device.dev?.uuid` → `device.uuid`)
+  - Fixed subdevice property consistency
+- **BREAKING**: Removed snake_case handling, standardized on camelCase
+  - Removed snake_case property mappings from `HttpDeviceInfo`, `HttpSubdeviceInfo`, `HardwareInfo`, `FirmwareInfo`, and `TimeInfo`
+  - Updated filter parameters to camelCase (`deviceUuids`, `deviceType`, `onlineStatus`, etc.)
+  - Changed `subdevice_id` getter to `subdeviceId` in push notification classes
+  - Updated `TokenData` interface: `issued_on` → `issuedOn`
+  - All JSDoc comments now reflect direct camelCase acceptance
+
+### Updated
+- Updated all examples to use camelCase consistently
+- Updated all examples to use `initializeDevices()` instead of `getDevices()`
+
 ## [0.3.1] - 2026-01-15
 
 ### Fixed
