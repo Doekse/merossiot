@@ -1525,6 +1525,30 @@ declare module 'meross-iot' {
         connect(): Promise<number>
         
         /**
+         * Initializes all devices from the Meross cloud.
+         * 
+         * Fetches device list from cloud API, creates device instances, and sets up
+         * MQTT connections. Emits 'deviceInitialized' event for each device.
+         * 
+         * @returns Promise resolving to the number of devices initialized
+         * @throws {HttpApiError} If API request fails
+         * @throws {TokenExpiredError} If authentication token has expired
+         */
+        initializeDevices(): Promise<number>
+        
+        /**
+         * Authenticates with Meross cloud and discovers devices.
+         * 
+         * Alias for initializeDevices(). Retrieves device list and initializes device connections.
+         * The httpClient should already be authenticated when passed to the constructor.
+         * 
+         * @returns Promise resolving to the number of devices discovered
+         * @throws {HttpApiError} If API request fails
+         * @throws {TokenExpiredError} If authentication token has expired
+         */
+        login(): Promise<number>
+        
+        /**
          * Registers a handler for device initialization events.
          * 
          * @param name - Event name ('deviceInitialized')

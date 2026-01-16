@@ -188,11 +188,11 @@ class ManagerMeross extends EventEmitter {
      * @throws {TokenExpiredError} If authentication token has expired
      */
     async login() {
-        return await this.getDevices();
+        return await this.initializeDevices();
     }
 
     /**
-     * Retrieves and initializes all devices from the Meross cloud
+     * Initializes all devices from the Meross cloud
      *
      * Fetches device list from cloud API, creates device instances, and sets up
      * MQTT connections. Emits 'deviceInitialized' event for each device.
@@ -201,7 +201,7 @@ class ManagerMeross extends EventEmitter {
      * @throws {HttpApiError} If API request fails
      * @throws {TokenExpiredError} If authentication token has expired
      */
-    async getDevices() {
+    async initializeDevices() {
         const deviceList = await this.httpClient.getDevices();
 
         if (!deviceList || !Array.isArray(deviceList)) {
@@ -454,7 +454,7 @@ class ManagerMeross extends EventEmitter {
      */
     async connect() {
         try {
-            const deviceListLength = await this.getDevices();
+            const deviceListLength = await this.initializeDevices();
             this.authenticated = true;
             return deviceListLength;
         } catch (err) {

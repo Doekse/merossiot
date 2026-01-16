@@ -33,9 +33,9 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        // Get devices (no login needed - client is already authenticated)
+        // Initialize devices (no login needed - client is already authenticated)
         console.log('Discovering devices...');
-        const deviceCount = await manager.getDevices();
+        const deviceCount = await manager.initializeDevices();
         console.log(`✓ Found ${deviceCount} device(s)\n`);
 
         // Use devices with property access pattern
@@ -74,8 +74,8 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             httpClient: httpClient
         });
 
-        // Get devices
-        await manager.getDevices();
+        // Initialize devices
+        await manager.initializeDevices();
         console.log('✓ Saved credentials pattern works!\n');
 
     } catch (error) {
