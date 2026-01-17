@@ -127,5 +127,5 @@ const MerossHttpClient = require('./lib/http-api');
 module.exports.MerossHttpClient = MerossHttpClient;
 
 // Export ManagerSubscription class
-const ManagerSubscription = require('./lib/subscription');
+const ManagerSubscription = require('./lib/managers/subscription');
 module.exports.ManagerSubscription = ManagerSubscription;

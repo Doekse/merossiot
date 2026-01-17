@@ -143,7 +143,7 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
             }
 
             // Check error budget if using LAN HTTP transport modes
-            const transportMode = manager.defaultTransportMode;
+            const transportMode = manager.transport.defaultMode;
             const usesLanHttp = transportMode === TransportMode.LAN_HTTP_FIRST ||
                                 transportMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET;
             if (usesLanHttp) {

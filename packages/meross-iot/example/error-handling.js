@@ -6,8 +6,8 @@
 
 /**
  * Error Handling and MFA Example
- * 
- * This example demonstrates how to handle various error scenarios:
+ *
+ * Demonstrates how to handle various error scenarios:
  * - Authentication errors
  * - MFA (Multi-Factor Authentication)
  * - Token expiration
@@ -19,7 +19,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 async function connectWithMFA(email, password, mfaCode) {
     try {
-        // Create HTTP client with MFA code
         const httpClient = await MerossHttpClient.fromUserPassword({
             email: email,
             password: password,
@@ -27,7 +26,6 @@ async function connectWithMFA(email, password, mfaCode) {
             logger: console.log
         });
 
-        // Create manager with HTTP client
         const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
@@ -42,7 +40,6 @@ async function connectWithMFA(email, password, mfaCode) {
 
 (async () => {
     try {
-        // Create HTTP client using factory method
         const httpClient = await MerossHttpClient.fromUserPassword({
             email: 'your@email.com',
             password: 'yourpassword',
@@ -50,20 +47,18 @@ async function connectWithMFA(email, password, mfaCode) {
             // mfaCode: '123456'  // Provide MFA code if required
         });
 
-        // Create manager with HTTP client
         const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
-        
+
         console.log('Connecting to Meross Cloud...');
         await meross.connect();
         console.log('✓ Connected successfully');
-        
+
     } catch (error) {
         console.error(`\n✗ Connection error: ${error.message}`);
-        
-        // Handle specific error types
+
         if (error instanceof ManagerMeross.MFARequiredError) {
             console.error('\n  MFA (Multi-Factor Authentication) is required.');
             console.error('  Please provide mfaCode in the options or use connectWithMFA().');
@@ -71,7 +66,7 @@ async function connectWithMFA(email, password, mfaCode) {
             // Example: Prompt for MFA code (in real app, use readline or similar)
             // const mfaCode = await promptForMFACode();
             // const meross = await connectWithMFA('your@email.com', 'yourpassword', mfaCode);
-            
+
         } else if (error instanceof ManagerMeross.WrongMFAError) {
             console.error('\n  MFA code is incorrect.');
             console.error('  Please check your MFA code and try again.');
@@ -113,7 +108,6 @@ async function connectWithMFA(email, password, mfaCode) {
             console.error(`  API Status: ${error.apiStatus || 'Unknown'}`);
             
         } else {
-            // Generic error
             console.error('\n  Unexpected error occurred.');
             if (error.stack) {
                 console.error(`  Stack: ${error.stack}`);
@@ -129,7 +123,6 @@ async function handleDeviceCommands(meross) {
     meross.on('deviceInitialized', (deviceId, device) => {
         device.on('connected', async () => {
             try {
-                // This might fail if device doesn't support the command
                 await device.setToggleX({ channel: 1, onoff: true });
                 console.log('✓ Command succeeded');
             } catch (error) {
@@ -138,7 +131,7 @@ async function handleDeviceCommands(meross) {
                     console.error(`Device returned: ${JSON.stringify(error.payload)}`);
                 } else if (error instanceof ManagerMeross.CommandTimeoutError) {
                     console.error(`Command timed out after ${error.timeout}ms`);
-                    // You might want to retry or use a different transport mode
+                    // Consider retrying or using a different transport mode
                 } else {
                     console.error(`Unexpected error: ${error.message}`);
                 }
@@ -148,13 +141,14 @@ async function handleDeviceCommands(meross) {
 }
 
 // Example: Retry logic for failed commands
+// Exponential backoff increases delay between retries to avoid overwhelming the device
 async function retryCommand(device, commandFn, maxRetries = 3) {
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await commandFn();
         } catch (error) {
             if (i === maxRetries - 1) {
-                throw error; // Re-throw on last attempt
+                throw error;
             }
             console.log(`Attempt ${i + 1} failed, retrying...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));

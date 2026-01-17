@@ -3,8 +3,7 @@
 const EventEmitter = require('events');
 const { OnlineStatus } = require('../model/enums');
 const { parsePushNotification } = require('../model/push');
-// DeviceRegistry is nested in ManagerMeross but exported separately to avoid circular dependencies
-const { ManagerMeross } = require('../manager');
+const DeviceRegistry = require('../device-registry');
 const ChannelInfo = require('../model/channel-info');
 const HttpDeviceInfo = require('../model/http/device');
 const {
@@ -52,7 +51,8 @@ class MerossDevice extends EventEmitter {
     constructor(cloudInstance, devOrUuid, domain = null, port = null) {
         super();
 
-        // Accept both object and string to support subdevices initialized with UUID only
+        // Accept both object and string to support subdevices initialized with UUID only,
+        // which lack full HTTP device info at construction time
         const dev = typeof devOrUuid === 'string' ? { uuid: devOrUuid } : devOrUuid;
 
         if (!dev || !dev.uuid) {
@@ -102,10 +102,11 @@ class MerossDevice extends EventEmitter {
         this.mqttHost = null;
         this.mqttPort = port;
         this.lastFullUpdateTimestamp = null;
-        // Lazy initialization avoids registry computation during construction
+        // Lazy initialization avoids registry computation during construction,
+        // deferring ID generation until first access
         this._internalId = null;
-        
-        // Extended HTTP device info properties (populated from HttpDeviceInfo when available)
+
+        // Extended HTTP device info properties populated from HttpDeviceInfo when available
         this.reservedDomain = null;
         this.subType = null;
         this.bindTime = null;
@@ -152,7 +153,8 @@ class MerossDevice extends EventEmitter {
         this.deviceConnected = false;
         this.clientResponseTopic = null;
         this.waitingMessageIds = {};
-        // Track push notification activity to detect when device is actively sending updates
+        // Track push notification activity to detect when device is actively sending updates,
+        // allowing polling to be reduced when push notifications are active
         this._pushNotificationActive = false;
         this._lastPushNotificationTime = null;
         this._pushInactivityTimer = null;
@@ -175,8 +177,9 @@ class MerossDevice extends EventEmitter {
             try {
                 const httpInfo = HttpDeviceInfo.fromDict(dev);
                 this.channels = MerossDevice._parseChannels(dev.channels);
-                
-                // Copy extended properties directly to device instance (bindTime already normalized to Date)
+
+                // Copy extended properties directly to device instance; bindTime already
+                // normalized to Date by HttpDeviceInfo.fromDict()
                 this.reservedDomain = httpInfo.reservedDomain || null;
                 this.subType = httpInfo.subType || null;
                 this.bindTime = httpInfo.bindTime || null;
@@ -186,7 +189,7 @@ class MerossDevice extends EventEmitter {
                 this.region = httpInfo.region || null;
                 this.devIconId = httpInfo.devIconId || null;
             } catch (error) {
-                // Device may be created without HTTP info (e.g., subdevices with UUID only)
+                // Device may be created without HTTP info (e.g., subdevices initialized with UUID only)
             }
         }
     }
@@ -272,7 +275,7 @@ class MerossDevice extends EventEmitter {
             throw new UnknownDeviceTypeError('Cannot generate internal ID: device missing UUID');
         }
 
-        this._internalId = ManagerMeross.DeviceRegistry.generateInternalId(this.uuid);
+        this._internalId = DeviceRegistry.generateInternalId(this.uuid);
         return this._internalId;
     }
 
@@ -348,7 +351,7 @@ class MerossDevice extends EventEmitter {
     _collectFeatureStates(state) {
         const channels = this.channels || [{ index: 0 }];
 
-        // Toggle uses Map-based storage, handled separately
+        // Toggle uses Map-based storage (getAllCachedToggleStates), handled separately
         this._collectToggleState(state);
 
         const channelFeatures = [
@@ -365,7 +368,7 @@ class MerossDevice extends EventEmitter {
             this._collectChannelFeature(state, feature.key, feature.getter, channels);
         }
 
-        // Features requiring custom transforms for unified state format
+        // Features requiring custom transforms to map internal state to unified format
         this._collectPresenceSensorState(state, channels);
         this._collectDiffuserLightState(state, channels);
         this._collectDiffuserSprayState(state, channels);
@@ -585,7 +588,8 @@ class MerossDevice extends EventEmitter {
             return;
         }
 
-        // System.All can appear in any message type, extract it first
+        // System.All can appear in any message type (responses, push notifications),
+        // so extract it first to update device metadata regardless of message type
         if (message.payload?.all) {
             this._handleSystemAllUpdate(message.payload);
         }
@@ -835,7 +839,8 @@ class MerossDevice extends EventEmitter {
 
         this._routePushNotificationToFeatures(namespace, payload);
 
-        // Feature modules can override for custom routing (e.g., hub subdevices)
+        // Feature modules can override for custom routing (e.g., hub subdevices that
+        // need to route notifications to child devices)
         if (typeof this.handlePushNotification === 'function') {
             this.handlePushNotification(namespace, payload);
         }
@@ -867,7 +872,8 @@ class MerossDevice extends EventEmitter {
                 check: (p) => p?.toggle,
                 handler: '_updateToggleState',
                 getData: (p) => {
-                    // Legacy namespace lacks channel field, default to 0 for compatibility
+                    // Legacy namespace lacks channel field; default to 0 for compatibility
+                    // with older devices that don't specify channel
                     const toggleData = p.toggle;
                     if (toggleData.channel === undefined) {
                         toggleData.channel = 0;
@@ -992,7 +998,7 @@ class MerossDevice extends EventEmitter {
             return;
         }
 
-        // System.Online is handled directly, not through feature handlers
+        // System.Online updates online status directly without feature handler routing
         if (namespace === 'Appliance.System.Online') {
             const onlineStatus = route.getData(payload);
             this._updateOnlineStatus(onlineStatus);
@@ -1025,6 +1031,7 @@ class MerossDevice extends EventEmitter {
             if (typeof this.getSystemAllData === 'function') {
                 this.getSystemAllData().catch(_err => {
                     // Ignore initial fetch failures as device may still be initializing
+                    // and will retry on subsequent operations
                 });
             }
         }, 500);
@@ -1067,7 +1074,7 @@ class MerossDevice extends EventEmitter {
      * @throws {Error} If message times out
      */
     async publishMessage(method, namespace, payload, transportMode = null) {
-        const data = this.cloudInst.encodeMessage(method, namespace, payload, this.uuid);
+        const data = this.cloudInst.mqtt.encode(method, namespace, payload, this.uuid);
         const { messageId } = data.header;
 
         return new Promise(async (resolve, reject) => {
@@ -1076,7 +1083,7 @@ class MerossDevice extends EventEmitter {
                     return reject(new UnconnectedError('Device is not connected', this.uuid));
                 }
 
-                const res = await this.cloudInst.requestMessage(this, this.lanIp, data, transportMode);
+                const res = await this.cloudInst.transport.request(this, this.lanIp, data, transportMode);
                 if (!res) {
                     return reject(new UnconnectedError('Device has no data connection available', this.uuid));
                 }
@@ -1220,7 +1227,8 @@ class MerossDevice extends EventEmitter {
 
         this.channels = MerossDevice._parseChannels(deviceInfo.channels);
 
-        // Subdevices override name and onlineStatus as getter-only properties
+        // Subdevices override name and onlineStatus as getter-only properties that
+        // compute values from parent hub, so we must check before assignment
         if (!MerossDevice._isGetterOnly(this, 'name')) {
             this.name = deviceInfo.devName || this.uuid || 'unknown';
         }
@@ -1234,7 +1242,7 @@ class MerossDevice extends EventEmitter {
             this.onlineStatus = deviceInfo.onlineStatus !== undefined ? deviceInfo.onlineStatus : OnlineStatus.UNKNOWN;
         }
 
-        // Extended HTTP device info properties (bindTime already normalized to Date by HttpDeviceInfo)
+        // Extended HTTP device info properties; bindTime already normalized to Date by HttpDeviceInfo
         this.reservedDomain = deviceInfo.reservedDomain || null;
         this.subType = deviceInfo.subType || null;
         this.bindTime = deviceInfo.bindTime || null;
@@ -1258,7 +1266,8 @@ class MerossDevice extends EventEmitter {
  */
 
 // Mix feature modules into device prototype to enable device-specific capabilities.
-// Encryption is included for all devices as firmware may enable it dynamically.
+// Encryption is included for all devices since firmware may enable it dynamically
+// based on device configuration or firmware version.
 Object.assign(MerossDevice.prototype, encryptionFeature);
 Object.assign(MerossDevice.prototype, systemFeature);
 Object.assign(MerossDevice.prototype, toggleFeature);

@@ -160,14 +160,6 @@ class MerossHttpClient {
         this.mqttDomain = domain;
     }
 
-    /**
-     * Gets the HTTP statistics counter (if statistics tracking is enabled)
-     *
-     * @returns {HttpStatsCounter|null} Statistics counter or null if not enabled
-     */
-    get stats() {
-        return this._httpStatsCounter;
-    }
 
     /**
      * Prepares an authenticated HTTP request with signing, headers, and payload
@@ -455,8 +447,8 @@ class MerossHttpClient {
             const apiResponseCode = body.apiStatus ?? null;
 
             // Track statistics after parsing response to capture both HTTP and API-level status codes
-            if (this._httpStatsCounter) {
-                this._httpStatsCounter.notifyHttpRequest(url, 'POST', 200, apiResponseCode);
+            if (this._manager) {
+                this._manager.statistics.notifyHttpRequest(url, 'POST', 200, apiResponseCode);
             }
 
             if (body.apiStatus === 0) {
@@ -474,8 +466,8 @@ class MerossHttpClient {
         } catch (error) {
             // Track error statistics by extracting HTTP and API status codes from various error types
             const { httpCode, apiCode } = this._extractErrorCodes(error);
-            if (this._httpStatsCounter) {
-                this._httpStatsCounter.notifyHttpRequest(url, 'POST', httpCode, apiCode);
+            if (this._manager) {
+                this._manager.statistics.notifyHttpRequest(url, 'POST', httpCode, apiCode);
             }
 
             // Preserve custom error types for proper error handling upstream

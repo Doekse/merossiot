@@ -6,8 +6,8 @@
 
 /**
  * Device Control Examples
- * 
- * This example demonstrates how to control different types of Meross devices:
+ *
+ * Demonstrates how to control different types of Meross devices:
  * - Toggle switches (on/off)
  * - Smart lights (color, brightness)
  * - Electricity monitoring
@@ -18,14 +18,12 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
-        // Create HTTP client using factory method
         const httpClient = await MerossHttpClient.fromUserPassword({
             email: 'your@email.com',
             password: 'yourpassword',
             logger: console.log
         });
 
-        // Create manager with HTTP client
         const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
@@ -34,51 +32,47 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         meross.on('deviceInitialized', (deviceId, device) => {
             device.on('connected', async () => {
                 console.log(`\n[Connected] ${device.name}`);
-        
+
         try {
             // Example 1: Toggle Control (Switches/Plugs)
+            // Check device abilities before attempting control to avoid errors
             if (device.abilities && device.abilities['Appliance.Control.ToggleX']) {
                 console.log('  Supports ToggleX control');
-                
-                // Turn on channel 1
+
                 await device.setToggleX({ channel: 1, onoff: true });
                 console.log('  ✓ Turned on channel 1');
-                
-                // Wait 2 seconds
+
                 await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // Turn off channel 1
+
                 await device.setToggleX({ channel: 1, onoff: false });
                 console.log('  ✓ Turned off channel 1');
-                
+
                 // Alternative: Use simpler methods for single-channel devices
                 // await device.turnOn({ channel: 1 });
                 // await device.turnOff({ channel: 1 });
             }
-            
+
             // Example 2: Light Control
             if (device.abilities && device.abilities['Appliance.Control.Light']) {
                 console.log('  Supports Light control');
-                
-                // Get current light state
+
                 const lightState = await device.getLightState({ channel: 0 });
                 console.log(`  Current brightness: ${lightState.luminance || 'N/A'}%`);
-                
-                // Set brightness to 50%
+
                 await device.setLightColor({ channel: 0, luminance: 50 });
                 console.log('  ✓ Set brightness to 50%');
-                
-                // Set RGB color (if supported)
+
+                // RGB support must be checked separately as not all light devices support it
                 if (device.getSupportsRgb && device.getSupportsRgb()) {
-                    await device.setLightColor({ channel: 0, rgb: [255, 0, 0] }); // Red
+                    await device.setLightColor({ channel: 0, rgb: [255, 0, 0] });
                     console.log('  ✓ Set color to red');
                 }
             }
-            
+
             // Example 3: Electricity Monitoring
             if (device.abilities && device.abilities['Appliance.Control.Electricity']) {
                 console.log('  Supports Electricity monitoring');
-                
+
                 const electricity = await device.getElectricity({ channel: 0 });
                 if (electricity) {
                     console.log(`  Current: ${electricity.amperage.toFixed(2)} A`);
@@ -86,7 +80,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
                     console.log(`  Power: ${electricity.wattage.toFixed(2)} W`);
                 }
             }
-            
+
             // Example 4: Get all device data
             const allData = await device.getSystemAllData();
             console.log('  System data retrieved');

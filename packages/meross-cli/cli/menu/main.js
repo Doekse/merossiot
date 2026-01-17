@@ -2,13 +2,14 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
+const ora = require('ora');
 const { MerossHubDevice, MerossSubDevice, createDebugUtils, TransportMode } = require('meross-iot');
 const testRunner = require('../tests/test-runner');
 const { clearScreen, renderLogoAtTop, renderSimpleHeader, clearMenuArea, CONTENT_START_LINE, SIMPLE_CONTENT_START_LINE, createRL, question, promptForPassword } = require('../utils/terminal');
 const { formatDevice } = require('../utils/display');
 const { listDevices, showStats, dumpRegistry, listMqttConnections, getDeviceStatus, showDeviceInfo, controlDeviceMenu, runTestCommand, snifferMenu } = require('../commands');
 const { addUser, getUser, listUsers } = require('../config/users');
-const { createMerossInstance, connectMeross, disconnectMeross } = require('../helpers/meross');
+const { createMerossInstance, disconnectMeross } = require('../helpers/meross');
 const { showSettingsMenu } = require('./settings');
 
 // Helper functions
@@ -167,6 +168,166 @@ async function _saveCredentialsPrompt(rl, currentCredentials) {
     }
 
     return null;
+}
+
+/**
+ * Prompts user to select devices and subdevices to initialize.
+ *
+ * Discovers available devices and subdevices, presents them in a hierarchical
+ * selection UI with subdevices indented under their hubs, and initializes
+ * only the selected items.
+ *
+ * @param {ManagerMeross} manager - Meross manager instance
+ * @returns {Promise<boolean>} True if initialization succeeded, false otherwise
+ * @private
+ */
+async function _selectDevicesToInitialize(manager) {
+    const spinner = ora('Discovering available devices...').start();
+    try {
+        const [baseDevices, subdevices] = await Promise.all([
+            manager.devices.discover({ onlineOnly: true }),
+            manager.devices.discoverSubdevices({ onlineOnly: true })
+        ]);
+        spinner.stop();
+
+        if ((!baseDevices || baseDevices.length === 0) && (!subdevices || subdevices.length === 0)) {
+            console.log(chalk.yellow('\nNo online devices or subdevices found.'));
+            return false;
+        }
+
+        // Group subdevices by hub UUID to display them hierarchically
+        const subdevicesByHub = new Map();
+        if (subdevices && subdevices.length > 0) {
+            for (const subdevice of subdevices) {
+                const hubUuid = subdevice.hubUuid;
+                if (!subdevicesByHub.has(hubUuid)) {
+                    subdevicesByHub.set(hubUuid, []);
+                }
+                subdevicesByHub.get(hubUuid).push(subdevice);
+            }
+        }
+
+        const deviceChoices = [];
+        const deviceUuids = new Set();
+
+        if (baseDevices && baseDevices.length > 0) {
+            for (const device of baseDevices) {
+                const hasSubdevices = subdevicesByHub.has(device.uuid);
+                if (hasSubdevices) {
+                    deviceUuids.add(device.uuid);
+                }
+
+                deviceChoices.push({
+                    name: `${device.devName || 'Unknown'} (${device.deviceType}) - ${chalk.grey(device.uuid)}`,
+                    value: `device:${device.uuid}`,
+                    checked: true
+                });
+
+                // Display subdevices indented under their hub for visual hierarchy
+                if (hasSubdevices) {
+                    const hubSubdevices = subdevicesByHub.get(device.uuid);
+                    for (const subdevice of hubSubdevices) {
+                        deviceChoices.push({
+                            name: `  └─ ${subdevice.subdeviceName || 'Unknown'} (${subdevice.subdeviceType}) - ${chalk.grey(subdevice.subdeviceId)}`,
+                            value: `subdevice:${subdevice.hubUuid}:${subdevice.subdeviceId}`,
+                            checked: true
+                        });
+                    }
+                }
+            }
+        }
+
+        // Handle edge case where subdevices exist but their hub isn't in base device list
+        for (const [hubUuid, hubSubdevices] of subdevicesByHub) {
+            if (!deviceUuids.has(hubUuid)) {
+                for (const subdevice of hubSubdevices) {
+                    deviceChoices.push({
+                        name: `  └─ ${subdevice.subdeviceName || 'Unknown'} (${subdevice.subdeviceType}) - ${chalk.grey(subdevice.subdeviceId)} [Hub: ${chalk.grey(subdevice.hubUuid)}]`,
+                        value: `subdevice:${subdevice.hubUuid}:${subdevice.subdeviceId}`,
+                        checked: true
+                    });
+                }
+            }
+        }
+
+        if (deviceChoices.length === 0) {
+            console.log(chalk.yellow('\nNo devices or subdevices found.'));
+            return false;
+        }
+
+        const { selectedItems } = await inquirer.prompt([{
+            type: 'checkbox',
+            name: 'selectedItems',
+            message: 'Select devices/subdevices to initialize (use space to toggle, enter to confirm):',
+            choices: deviceChoices,
+            pageSize: 20
+        }]);
+
+        if (!selectedItems || selectedItems.length === 0) {
+            console.log(chalk.yellow('\nNo devices selected. Skipping initialization.'));
+            return false;
+        }
+
+        // Parse selection into base devices and subdevices for different initialization paths
+        const baseDeviceUuids = [];
+        const subdeviceIdentifiers = [];
+
+        for (const item of selectedItems) {
+            if (item.startsWith('device:')) {
+                baseDeviceUuids.push(item.replace('device:', ''));
+            } else if (item.startsWith('subdevice:')) {
+                const parts = item.replace('subdevice:', '').split(':');
+                if (parts.length === 2) {
+                    subdeviceIdentifiers.push({ hubUuid: parts[0], id: parts[1] });
+                }
+            }
+        }
+
+        spinner.start('Initializing selected devices...');
+        try {
+            let totalInitialized = 0;
+
+            if (baseDeviceUuids.length > 0) {
+                const deviceCount = await manager.devices.initialize({ uuids: baseDeviceUuids });
+                totalInitialized += deviceCount;
+            }
+
+            // Initialize subdevices individually since they require hub context
+            for (const subdeviceId of subdeviceIdentifiers) {
+                try {
+                    const subdevice = await manager.devices.initializeDevice(subdeviceId);
+                    if (subdevice) {
+                        totalInitialized++;
+                    }
+                } catch (error) {
+                    if (manager.options && manager.options.logger) {
+                        manager.options.logger(`Failed to initialize subdevice ${subdeviceId.id}: ${error.message}`);
+                    }
+                }
+            }
+
+            spinner.succeed(`Initialized ${totalInitialized} device(s)`);
+
+            // Allow time for MQTT connections to establish
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            manager.authenticated = true;
+
+            return true;
+        } catch (error) {
+            spinner.fail(`Initialization error: ${error.message}`);
+            if (error.stack && process.env.MEROSS_VERBOSE) {
+                console.error(error.stack);
+            }
+            return false;
+        }
+    } catch (error) {
+        spinner.fail(`Discovery error: ${error.message}`);
+        if (error.stack && process.env.MEROSS_VERBOSE) {
+            console.error(error.stack);
+        }
+        return false;
+    }
 }
 
 async function _selectDevice(manager, message = 'Select device:') {
@@ -384,12 +545,12 @@ function _buildSettingsCallbacks(
                 enableStatsRef.current,
                 verboseRef.current
             );
-            const connected = await connectMeross(managerRef.current, rl);
+            const connected = await _selectDevicesToInitialize(managerRef.current);
             if (connected) {
                 currentUserRef.current = userName;
                 return { success: true };
             }
-            return { success: false, error: 'Failed to connect with new user' };
+            return { success: false, error: 'Failed to initialize devices with new user' };
         },
         onSaveCredentials: async (name) => {
             if (!currentCredentials) {
@@ -408,15 +569,15 @@ function _buildSettingsCallbacks(
 }
 
 async function _handleSettingsCommand(manager, rl, currentUserRef, currentCredentials) {
-    const transportModeRef = { current: manager.defaultTransportMode || TransportMode.MQTT_ONLY };
+    const transportModeRef = { current: manager.transport.defaultMode || TransportMode.MQTT_ONLY };
     const timeoutRef = { current: 10000 };
-    const enableStatsRef = { current: manager._mqttStatsCounter !== null || manager.httpClient._httpStatsCounter !== null };
+    const enableStatsRef = { current: manager.statistics.isEnabled() };
     const verboseRef = { current: manager.options && manager.options.logger !== null };
     const managerRef = { current: manager };
 
     const setTransportMode = (mode) => {
         transportModeRef.current = mode;
-        managerRef.current.defaultTransportMode = mode;
+        managerRef.current.transport.defaultMode = mode;
     };
     const setTimeout = (newTimeout) => {
         timeoutRef.current = newTimeout;
@@ -540,10 +701,10 @@ async function menuMode() {
         currentCredentials = result.credentials;
     }
 
-    // Connect
-    const connected = await connectMeross(currentManager, rl);
+    // Discover and select devices to initialize
+    const connected = await _selectDevicesToInitialize(currentManager);
     if (!connected) {
-        console.error('Failed to connect. Exiting.');
+        console.error('Failed to initialize devices. Exiting.');
         rl.close();
         return;
     }

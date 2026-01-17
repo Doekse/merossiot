@@ -6,9 +6,9 @@
 
 /**
  * Factory Pattern Usage Example
- * 
- * This example demonstrates the factory pattern for creating HTTP clients.
- * This approach provides better flexibility and testability.
+ *
+ * Demonstrates the factory pattern for creating HTTP clients, which enables
+ * dependency injection and improves testability.
  */
 
 const { ManagerMeross, MerossHttpClient } = require('../index.js');
@@ -18,7 +18,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
     try {
         console.log('=== Factory Pattern Example ===\n');
 
-        // Create HTTP client using factory method
         const httpClient = await MerossHttpClient.fromUserPassword({
             email: 'your@email.com',
             password: 'yourpassword',
@@ -27,24 +26,22 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
         console.log('✓ HTTP client created and authenticated\n');
 
-        // Create manager with HTTP client (dependency injection)
         const manager = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
         });
 
-        // Initialize devices (no login needed - client is already authenticated)
+        // HTTP client is already authenticated, so no login needed
         console.log('Discovering devices...');
-        const deviceCount = await manager.initializeDevices();
+        const deviceCount = await manager.devices.initialize();
         console.log(`✓ Found ${deviceCount} device(s)\n`);
 
-        // Use devices with property access pattern
         const devices = manager.devices.list();
         devices.forEach(device => {
             console.log(`  - ${device.name} (${device.uuid.substring(0, 8)}...)`);
         });
 
-        console.log('\n✓ Factory pattern works!\n');
+        console.log('\n✓ Factory pattern example complete!\n');
 
     } catch (error) {
         console.error(`Error: ${error.message}`);
@@ -55,7 +52,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 // Example 2: Using saved credentials
 (async () => {
     try {
-        // Load saved credentials (from previous session)
+        // Reuse credentials from a previous session to avoid re-authentication
         const savedCredentials = {
             token: 'savedToken',
             key: 'savedKey',
@@ -64,19 +61,16 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             mqttDomain: 'eu-iotx.meross.com'
         };
 
-        // Create HTTP client from saved credentials
         const httpClient = MerossHttpClient.fromCredentials(savedCredentials, {
             logger: console.log
         });
 
-        // Create manager
         const manager = new ManagerMeross({
             httpClient: httpClient
         });
 
-        // Initialize devices
-        await manager.initializeDevices();
-        console.log('✓ Saved credentials pattern works!\n');
+        await manager.devices.initialize();
+        console.log('✓ Saved credentials example complete!\n');
 
     } catch (error) {
         console.error(`Error: ${error.message}`);

@@ -2,8 +2,7 @@
 
 const { MerossDevice } = require('./device');
 const { OnlineStatus, SmokeAlarmStatus } = require('../model/enums');
-// DeviceRegistry is nested in ManagerMeross but exported separately to avoid circular dependencies
-const { ManagerMeross } = require('../manager');
+const DeviceRegistry = require('../device-registry');
 const { UnknownDeviceTypeError, CommandError } = require('../model/exception');
 
 /**
@@ -41,7 +40,6 @@ class MerossSubDevice extends MerossDevice {
      * @throws {Error} If hub device is not found or subdevice ID is missing
      */
     constructor(hubDeviceUuid, subdeviceId, manager, kwargs = {}) {
-        // eslint-disable-next-line camelcase
         const hubs = manager.devices.find({ deviceUuids: [hubDeviceUuid] });
         if (!hubs || hubs.length < 1) {
             throw new UnknownDeviceTypeError(`Specified hub device ${hubDeviceUuid} is not present`);
@@ -135,7 +133,7 @@ class MerossSubDevice extends MerossDevice {
             throw new UnknownDeviceTypeError('Cannot generate internal ID: hub missing UUID');
         }
 
-        this._internalId = ManagerMeross.DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, this._subdeviceId);
+        this._internalId = DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, this._subdeviceId);
         return this._internalId;
     }
 

@@ -59,10 +59,7 @@ function createDebugUtils(manager) {
          * @returns {ApiStatsResult|null} Statistics result object or null if statistics not enabled
          */
         getMqttStats(timeWindowMs = 60000) {
-            if (!manager._mqttStatsCounter) {
-                return null;
-            }
-            return manager._mqttStatsCounter.getApiStats(timeWindowMs);
+            return manager.statistics.getMqttStats(timeWindowMs);
         },
 
         /**
@@ -77,10 +74,7 @@ function createDebugUtils(manager) {
          * @returns {HttpStatsResult|null} Statistics result object or null if statistics not enabled
          */
         getHttpStats(timeWindowMs = 60000) {
-            if (!manager.httpClient || !manager.httpClient.stats) {
-                return null;
-            }
-            return manager.httpClient.stats.getStats(timeWindowMs);
+            return manager.statistics.getHttpStats(timeWindowMs);
         },
 
         /**
@@ -94,10 +88,7 @@ function createDebugUtils(manager) {
          * @returns {ApiStatsResult|null} Statistics result object or null if statistics not enabled
          */
         getDelayedMqttStats(timeWindowMs = 60000) {
-            if (!manager._mqttStatsCounter) {
-                return null;
-            }
-            return manager._mqttStatsCounter.getDelayedApiStats(timeWindowMs);
+            return manager.statistics.getDelayedMqttStats(timeWindowMs);
         },
 
         /**
@@ -112,10 +103,7 @@ function createDebugUtils(manager) {
          * @returns {ApiStatsResult|null} Statistics result object or null if statistics not enabled
          */
         getDroppedMqttStats(timeWindowMs = 60000) {
-            if (!manager._mqttStatsCounter) {
-                return null;
-            }
-            return manager._mqttStatsCounter.getDroppedApiStats(timeWindowMs);
+            return manager.statistics.getDroppedMqttStats(timeWindowMs);
         },
 
         /**
@@ -130,7 +118,7 @@ function createDebugUtils(manager) {
             if (!manager._mqttStatsCounter) {
                 manager._mqttStatsCounter = new MqttStatsCounter(maxStatsSamples);
             }
-            if (!manager.httpClient.stats) {
+            if (!manager.httpClient._httpStatsCounter) {
                 manager.httpClient._httpStatsCounter = new HttpStatsCounter(maxStatsSamples);
             }
         },
@@ -154,7 +142,7 @@ function createDebugUtils(manager) {
          * @returns {boolean} True if statistics tracking is enabled, false otherwise
          */
         isStatsEnabled() {
-            return manager._mqttStatsCounter !== null && manager.httpClient && manager.httpClient.stats !== null;
+            return manager.statistics.isEnabled();
         }
     };
 }

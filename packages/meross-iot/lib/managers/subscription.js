@@ -79,7 +79,8 @@ class ManagerSubscription extends EventEmitter {
         const subscription = this.subscriptions.get(deviceUuid);
         const isNewSubscription = !subscription.pollingIntervals || subscription.pollingIntervals.size === 0;
 
-        // Merge configuration using shortest intervals to satisfy all listeners
+        // Merge configuration using shortest intervals to ensure all listeners
+        // receive updates at least as frequently as required
         const existingConfig = subscription.config || { ...this.defaultConfig };
         subscription.config = {
             deviceStateInterval: Math.min(
@@ -615,4 +616,3 @@ class ManagerSubscription extends EventEmitter {
 }
 
 module.exports = ManagerSubscription;
-

@@ -6,9 +6,9 @@
 
 /**
  * Transport Modes Example
- * 
- * This example demonstrates the different transport modes available
- * for communicating with devices:
+ *
+ * Demonstrates the different transport modes available for communicating
+ * with devices:
  * - MQTT_ONLY: Always use cloud MQTT
  * - LAN_HTTP_FIRST: Try local HTTP first, fallback to MQTT
  * - LAN_HTTP_FIRST_ONLY_GET: Try local HTTP for GET requests only, use MQTT for SET
@@ -18,48 +18,45 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
-        // Create HTTP client using factory method
         const httpClient = await MerossHttpClient.fromUserPassword({
             email: 'your@email.com',
             password: 'yourpassword',
             logger: console.log
         });
 
-// Example 1: MQTT Only (default)
-// All communication goes through the cloud MQTT broker
+        // Example 1: MQTT Only (default)
+        // All communication goes through the cloud MQTT broker
         const mqttOnly = new ManagerMeross({
             httpClient: httpClient,
             transportMode: ManagerMeross.TransportMode.MQTT_ONLY,
-    logger: (msg) => console.log(`[MQTT Only] ${msg}`)
-});
+            logger: (msg) => console.log(`[MQTT Only] ${msg}`)
+        });
 
-// Example 2: LAN HTTP First
-// Tries to communicate via local HTTP first, falls back to MQTT if it fails
+        // Example 2: LAN HTTP First
+        // Tries to communicate via local HTTP first, falls back to MQTT if it fails
         const lanHttpFirst = new ManagerMeross({
             httpClient: httpClient,
             transportMode: ManagerMeross.TransportMode.LAN_HTTP_FIRST,
-    logger: (msg) => console.log(`[LAN HTTP First] ${msg}`)
-});
+            logger: (msg) => console.log(`[LAN HTTP First] ${msg}`)
+        });
 
-// Example 3: LAN HTTP First (GET only)
+        // Example 3: LAN HTTP First (GET only)
         // Uses local HTTP for GET requests, MQTT for SET requests
         const lanHttpGetOnly = new ManagerMeross({
             httpClient: httpClient,
             transportMode: ManagerMeross.TransportMode.LAN_HTTP_FIRST_ONLY_GET,
-    logger: (msg) => console.log(`[LAN HTTP GET Only] ${msg}`)
-});
+            logger: (msg) => console.log(`[LAN HTTP GET Only] ${msg}`)
+        });
 
-        // Use one of the managers
         const meross = mqttOnly;
 
         console.log('Connecting to Meross Cloud...');
         const deviceCount = await meross.connect();
         console.log(`\n✓ Successfully connected to ${deviceCount} device(s)`);
-    
-        // Example: Toggle a device using property access pattern
-    const devices = meross.devices.list();
-    if (devices.length > 0) {
-        const device = devices[0];
+
+        const devices = meross.devices.list();
+        if (devices.length > 0) {
+            const device = devices[0];
             if (device.toggle) {
                 console.log(`\nToggling ${device.name || 'device'}...`);
                 await device.toggle();
@@ -67,7 +64,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             }
         }
 
-        // Keep running
         console.log('\nListening... (Press Ctrl+C to exit)');
         
         process.on('SIGINT', async () => {

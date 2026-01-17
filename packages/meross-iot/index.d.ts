@@ -78,6 +78,48 @@ declare module 'meross-iot' {
     }
 
     /**
+     * Subdevice information structure with hub context.
+     * 
+     * Contains subdevice metadata returned from discoverSubdevices() with additional
+     * hub context information for device selection UIs.
+     * 
+     * @example
+     * ```typescript
+     * const smokeAlarms = await manager.devices.discoverSubdevices({ subdeviceType: 'ma151' });
+     * const alarm = smokeAlarms[0]; // SubdeviceInfo
+     * console.log(`Smoke alarm: ${alarm.subdeviceName} on hub ${alarm.hubName}`);
+     * ```
+     */
+    export interface SubdeviceInfo {
+        /** Hub UUID that the subdevice belongs to */
+        hubUuid: string
+        /** Hub device name */
+        hubName: string
+        /** Hub device type */
+        hubDeviceType: string
+        /** Subdevice ID */
+        subdeviceId: string
+        /** Subdevice type */
+        subdeviceType: string
+        /** Subdevice name */
+        subdeviceName: string
+        /** Subdevice icon ID */
+        subdeviceIconId?: string
+        /** Subdevice subtype */
+        subdeviceSubType?: string
+        /** Subdevice vendor */
+        subdeviceVendor?: string
+        /** True ID */
+        trueId?: string
+        /** Bind time (Unix timestamp) */
+        bindTime?: number
+        /** Icon type */
+        iconType?: number
+        /** Additional properties from HTTP API */
+        [key: string]: any
+    }
+
+    /**
      * Channel metadata for a device.
      * 
      * Encapsulates channel information parsed from device initialization data.
@@ -1508,6 +1550,213 @@ declare module 'meross-iot' {
      * const devices = manager.devices.list();
      * ```
      */
+    /**
+     * Manages device discovery, initialization, and lifecycle.
+     * 
+     * Handles device discovery from Meross cloud, device enrollment,
+     * subdevice management, and device removal. Provides a clean
+     * interface for device operations separate from transport concerns.
+     * 
+     * @example
+     * ```typescript
+     * // Discover devices
+     * const devices = await manager.devices.discover({ onlineOnly: true });
+     * 
+     * // Initialize all devices
+     * const count = await manager.devices.initialize();
+     * 
+     * // Get a device
+     * const device = manager.devices.get('device-uuid');
+     * 
+     * // List all devices
+     * const allDevices = manager.devices.list();
+     * ```
+     */
+    export class ManagerDevices {
+        /**
+         * Gets a device by UUID or subdevice identifier.
+         * 
+         * @param identifier - Device UUID or subdevice identifier
+         * @returns Device instance or null if not found
+         */
+        get(identifier: string | { hubUuid: string; id: string }): MerossDevice | MerossHubDevice | MerossSubDevice | null
+        
+        /**
+         * Lists all registered devices.
+         * 
+         * @returns Array of device instances
+         */
+        list(): Array<MerossDevice | MerossHubDevice | MerossSubDevice>
+        
+        /**
+         * Finds devices matching the provided filters.
+         * 
+         * @param filters - Filter criteria
+         * @returns Array of matching device instances
+         */
+        find(filters?: FindDevicesFilters): Array<MerossDevice | MerossHubDevice | MerossSubDevice>
+        
+        /**
+         * Discovers available base devices without initializing them.
+         * 
+         * @param options - Optional filter options
+         * @returns Promise resolving to array of device info objects
+         */
+        discover(options?: { deviceTypes?: string[], onlineOnly?: boolean, excludeHubs?: boolean }): Promise<DeviceDefinition[]>
+        
+        /**
+         * Discovers available subdevices without initializing devices.
+         * 
+         * @param options - Optional filter options
+         * @returns Promise resolving to array of subdevice info objects
+         */
+        discoverSubdevices(options?: { hubUuids?: string[], subdeviceType?: string, onlineOnly?: boolean }): Promise<SubdeviceInfo[]>
+        
+        /**
+         * Initializes devices from the Meross cloud.
+         * 
+         * @param options - Optional filter options
+         * @returns Promise resolving to the number of devices initialized
+         */
+        initialize(options?: { uuids?: string[] }): Promise<number>
+        
+        /**
+         * Initializes a single device by UUID or subdevice by identifier.
+         * 
+         * @param identifier - Device identifier
+         * @returns Promise resolving to device instance, or null if initialization fails
+         */
+        initializeDevice(identifier: string | { hubUuid: string, id: string }): Promise<MerossDevice | MerossHubDevice | MerossSubDevice | null>
+        
+        /**
+         * Removes a device from the manager.
+         * 
+         * @param identifier - Device identifier
+         * @returns Promise resolving to true if device was removed, false if not found
+         */
+        remove(identifier: string | { hubUuid: string, id: string }): Promise<boolean>
+    }
+
+    /**
+     * Manages MQTT connections and message publishing.
+     * 
+     * Handles MQTT client creation, connection management, message encoding,
+     * and message routing. Provides a clean interface for MQTT operations
+     * separate from device management.
+     * 
+     * @example
+     * ```typescript
+     * // Initialize MQTT for a device
+     * await manager.mqtt.init(deviceDef);
+     * 
+     * // Encode a message
+     * const data = manager.mqtt.encode('GET', 'Appliance.Control.ToggleX', {}, 'device-uuid');
+     * 
+     * // Send a message
+     * manager.mqtt.send(device, data);
+     * ```
+         */
+    export class ManagerMqtt {
+        /**
+         * Initializes MQTT connection for a device.
+         * 
+         * @param dev - Device definition object with uuid and optional domain
+         * @returns Promise that resolves when MQTT connection is ready
+         */
+        init(dev: { uuid: string; domain?: string }): Promise<void>
+        
+        /**
+         * Sends a message to a device via MQTT.
+         * 
+         * @param device - Device instance
+         * @param data - Message data object with header and payload
+         * @returns True if message was sent successfully, false if MQTT connection not available
+         */
+        send(device: MerossDevice | MerossHubDevice | MerossSubDevice, data: any): boolean
+        
+        /**
+         * Encodes a message for Meross device communication.
+         * 
+         * @param method - Message method ('GET', 'SET', 'PUSH')
+         * @param namespace - Message namespace
+         * @param payload - Message payload object
+         * @param deviceUuid - Target device UUID
+         * @returns Encoded message object with header and payload
+         */
+        encode(method: string, namespace: string, payload: any, deviceUuid: string): any
+        
+        /**
+         * Disconnects all MQTT connections.
+         * 
+         * @param force - Force disconnect flag
+         */
+        disconnectAll(force?: boolean): void
+    }
+
+    /**
+     * Manages LAN HTTP communication with devices.
+     * 
+     * Handles local HTTP communication directly with Meross devices
+     * on the local network, bypassing the cloud MQTT broker.
+     * 
+     * @example
+     * ```typescript
+     * // Send a message via LAN HTTP
+     * await manager.http.send(device, '192.168.1.100', data);
+     * ```
+     */
+    export class ManagerHttp {
+        /**
+         * Sends a message to a device via LAN HTTP.
+         * 
+         * @param device - Device instance
+         * @param ip - Device LAN IP address
+         * @param payload - Message payload
+         * @param timeoutOverride - Optional timeout override in milliseconds
+         * @returns Promise that resolves when message is sent
+         */
+        send(device: MerossDevice | MerossHubDevice | MerossSubDevice, ip: string, payload: any, timeoutOverride?: number): Promise<void>
+    }
+
+    /**
+     * Manages transport mode selection and message routing.
+     * 
+     * Handles transport mode configuration and coordinates between MQTT and HTTP
+     * managers to route messages based on the selected transport mode. Provides
+     * error budget checking and automatic fallback logic.
+     * 
+     * @example
+     * ```typescript
+     * // Set default transport mode
+     * manager.transport.defaultMode = TransportMode.LAN_HTTP_FIRST;
+     * 
+     * // Request a message with transport mode override
+     * await manager.transport.request(device, '192.168.1.100', data, TransportMode.MQTT_ONLY);
+     * ```
+     */
+    export class ManagerTransport {
+        /**
+         * Gets the default transport mode for device communication.
+         */
+        defaultMode: number
+        
+        /**
+         * Sets the default transport mode for device communication.
+         */
+        set defaultMode(value: number)
+        
+        /**
+         * Requests a message to be sent to a device.
+         * 
+         * @param device - Device instance
+         * @param ip - Device LAN IP address (null if not available)
+         * @param data - Message data object with header and payload
+         * @param overrideMode - Optional override transport mode
+         * @returns Promise that resolves to true if message was sent successfully
+         */
+        request(device: MerossDevice | MerossHubDevice | MerossSubDevice, ip: string | null, data: any, overrideMode?: number | null): Promise<boolean>
+    }
+
     export class ManagerMeross extends EventEmitter {
         /**
          * Creates a new ManagerMeross instance.
@@ -1525,21 +1774,9 @@ declare module 'meross-iot' {
         connect(): Promise<number>
         
         /**
-         * Initializes all devices from the Meross cloud.
-         * 
-         * Fetches device list from cloud API, creates device instances, and sets up
-         * MQTT connections. Emits 'deviceInitialized' event for each device.
-         * 
-         * @returns Promise resolving to the number of devices initialized
-         * @throws {HttpApiError} If API request fails
-         * @throws {TokenExpiredError} If authentication token has expired
-         */
-        initializeDevices(): Promise<number>
-        
-        /**
          * Authenticates with Meross cloud and discovers devices.
          * 
-         * Alias for initializeDevices(). Retrieves device list and initializes device connections.
+         * Alias for devices.initialize(). Retrieves device list and initializes device connections.
          * The httpClient should already be authenticated when passed to the constructor.
          * 
          * @returns Promise resolving to the number of devices discovered
@@ -1602,8 +1839,17 @@ declare module 'meross-iot' {
         /** Subscription manager instance for automatic polling and data provisioning */
         readonly subscription: ManagerSubscription
         
-        /** Device registry instance for device lookups and queries */
-        readonly devices: DeviceRegistry
+        /** Device manager instance for device discovery, initialization, and lifecycle */
+        readonly devices: ManagerDevices
+        
+        /** MQTT manager instance for MQTT connection management and message publishing */
+        readonly mqtt: ManagerMqtt
+        
+        /** HTTP manager instance for LAN HTTP communication */
+        readonly http: ManagerHttp
+        
+        /** Transport manager instance for transport mode selection and message routing */
+        readonly transport: ManagerTransport
     }
 
 

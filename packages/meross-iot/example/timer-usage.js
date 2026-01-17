@@ -7,22 +7,19 @@
 /**
  * Timer Usage Example
  *
- * This example demonstrates how to easily create and manage timers using
- * the convenient helper methods and utilities.
+ * Demonstrates how to create and manage timers using helper methods and utilities.
  */
 
 const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 (async () => {
     try {
-        // Create HTTP client
         const httpClient = await MerossHttpClient.fromUserPassword({
             email: 'your@email.com',
             password: 'yourpassword',
             logger: console.log
         });
 
-        // Create manager
         const meross = new ManagerMeross({
             httpClient: httpClient,
             logger: console.log
@@ -31,7 +28,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         console.log('Connecting to Meross Cloud...');
         await meross.connect();
 
-        // Get a device (assumes you have at least one device) using property access pattern
         const devices = meross.devices.list();
         if (devices.length === 0) {
             console.log('No devices found.');
@@ -41,13 +37,11 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         const device = devices[0];
         console.log(`\nUsing device: ${device.name || 'Unknown'}`);
 
-        // Wait for device to connect
         if (!device.deviceConnected) {
             console.log('Waiting for device to connect...');
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
-        // Example 1: Create a daily timer (every day at 18:00)
         console.log('\n=== Creating Daily Timer ===');
         try {
             const dailyTimer = await device.setTimerX({
@@ -62,7 +56,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to create daily timer:', error.message);
         }
 
-        // Example 2: Weekday timer (Monday-Friday at 09:00)
         console.log('\n=== Creating Weekday Timer ===');
         try {
             const weekdayTimer = await device.setTimerX({
@@ -77,7 +70,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to create weekday timer:', error.message);
         }
 
-        // Example 3: Custom days timer
         console.log('\n=== Creating Custom Days Timer ===');
         try {
             const customTimer = await device.setTimerX({
@@ -93,7 +85,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to create custom timer:', error.message);
         }
 
-        // Example 4: One-time timer
         console.log('\n=== Creating One-Time Timer ===');
         try {
             const oneTimeTimer = await device.setTimerX({
@@ -109,7 +100,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to create one-time timer:', error.message);
         }
 
-        // Example 6: List all timers
         console.log('\n=== Listing All Timers ===');
         try {
             const timers = await device.getTimerX({ channel: 0 });
@@ -128,7 +118,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to list timers:', error.message);
         }
 
-        // Example 7: Find a timer by alias
         console.log('\n=== Finding Timer by Alias ===');
         try {
             const timer = await device.findTimerByAlias({ alias: 'Evening Lights', channel: 0 });
@@ -146,7 +135,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to find timer:', error.message);
         }
 
-        // Example 8: Delete a timer by alias
         console.log('\n=== Deleting Timer by Alias ===');
         try {
             const result = await device.deleteTimerByAlias({ alias: 'Movie Night', channel: 0 });
@@ -155,7 +143,6 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             console.error('Failed to delete timer:', error.message);
         }
 
-        // Example 9: Delete all timers (be careful!)
         // Uncomment to delete all timers:
         /*
         console.log('\n=== Deleting All Timers ===');
@@ -167,16 +154,12 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         }
         */
 
-        // Example 5: Using timer utilities directly
         console.log('\n=== Using Timer Utilities ===');
         const { timeToMinutes, daysToWeekMask, minutesToTime } = require('../lib/utilities/timer');
 
-        // Convert time formats
-        console.log('Time to minutes:', timeToMinutes('14:30')); // 870
-        console.log('Minutes to time:', minutesToTime(870)); // "14:30"
-
-        // Convert days to bitmask
-        console.log('Days to bitmask:', daysToWeekMask(['monday', 'friday'])); // 131 (bits 0+4+7)
+        console.log('Time to minutes:', timeToMinutes('14:30'));
+        console.log('Minutes to time:', minutesToTime(870));
+        console.log('Days to bitmask:', daysToWeekMask(['monday', 'friday']));
 
         console.log('\n✓ Examples completed!');
 

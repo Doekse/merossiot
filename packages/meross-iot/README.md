@@ -84,6 +84,63 @@ The `example/` directory contains focused examples for different use cases:
 - **`multiple-accounts.js`** - Using multiple Meross accounts simultaneously
 - **`factory-pattern-usage.js`** - Recommended factory pattern for creating HTTP clients and managers
 - **`timer-usage.js`** - Creating and managing device timers
+- **`selective-initialization.js`** - Selectively initializing devices and subdevices
+
+## Adding and Removing Devices
+
+You can dynamically add and remove devices from the manager after initialization:
+
+```javascript
+// Add a single device
+const device = await manager.devices.initializeDevice('device-uuid');
+
+// Add a subdevice (hub will be auto-initialized if needed)
+const subdevice = await manager.devices.initializeDevice({ 
+  hubUuid: 'hub-uuid', 
+  id: 'subdevice-id' 
+});
+
+// Remove a device
+const removed = await manager.devices.remove('device-uuid');
+
+// Remove a subdevice
+const removed = await manager.devices.remove({ 
+  hubUuid: 'hub-uuid', 
+  id: 'subdevice-id' 
+});
+```
+
+When removing a hub device, all its subdevices are automatically removed as well.
+
+## API Organization
+
+The library follows a modular architecture with specialized managers for different concerns:
+
+- **`manager.devices`** - Device discovery, initialization, and lifecycle management
+- **`manager.mqtt`** - MQTT connection management and message publishing
+- **`manager.http`** - LAN HTTP communication with devices
+- **`manager.transport`** - Transport mode selection and message routing
+- **`manager.subscription`** - Automatic polling and unified update streams
+
+This organization makes the API more discoverable and easier to use. For example:
+
+```javascript
+// Discover devices without initializing
+const availableDevices = await manager.devices.discover({ onlineOnly: true });
+
+// Initialize devices
+const count = await manager.devices.initialize();
+
+// Encode and send a message via MQTT
+const data = manager.mqtt.encode('GET', 'Appliance.Control.ToggleX', {}, device.uuid);
+manager.mqtt.send(device, data);
+
+// Send a message via LAN HTTP
+await manager.http.send(device, '192.168.1.100', data);
+
+// Use transport manager for automatic routing
+await manager.transport.request(device, '192.168.1.100', data);
+```
 
 ## Supported Devices
 

@@ -149,6 +149,22 @@ Demonstrates how to use ManagerSubscription for automatic polling and unified up
 node example/subscription-manager.js
 ```
 
+### `selective-initialization.js`
+Demonstrates how to selectively initialize devices and subdevices instead of initializing all devices:
+- Discovering available devices without initializing (`devices.discover()`)
+- Discovering available subdevices without initializing (`devices.discoverSubdevices()`)
+- Initializing a single base device by UUID (`devices.initializeDevice(uuid)`)
+- Initializing a single subdevice by identifier (`devices.initializeDevice({ hubUuid, id })`)
+- Initializing multiple devices using filter (`devices.initialize({ uuids: [...] })`)
+- Filtering devices by type (e.g., only smart plugs)
+- Filtering subdevices by type (e.g., only smoke alarms)
+- Perfect for platforms like Homey where users choose which devices to add
+
+**Run:**
+```bash
+node example/selective-initialization.js
+```
+
 ## Configuration
 
 Before running any example, update the credentials using the factory pattern:
@@ -264,6 +280,39 @@ const lights = meross.devices.find({ deviceClass: 'light' });
 
 // List all devices
 const allDevices = meross.devices.list();
+```
+
+### Selective Device Initialization
+
+For platforms that allow users to choose which devices to add:
+
+```javascript
+// Discover available devices without initializing
+const devices = await meross.devices.discover({ onlineOnly: true });
+
+// Discover available subdevices without initializing
+const subdevices = await meross.devices.discoverSubdevices({ subdeviceType: 'ma151' });
+
+// Initialize a single base device
+const device = await meross.devices.initializeDevice('device-uuid');
+
+// Initialize a single subdevice (hub auto-initialized if needed)
+const subdevice = await meross.devices.initializeDevice({
+  hubUuid: 'hub-uuid',
+  id: 'subdevice-id'
+});
+
+// Initialize multiple devices using filter
+const count = await meross.devices.initialize({ uuids: ['uuid1', 'uuid2'] });
+
+// Remove a device (disconnects and cleans up resources)
+const removed = await meross.devices.remove('device-uuid');
+
+// Remove a subdevice
+const removed = await meross.devices.remove({
+  hubUuid: 'hub-uuid',
+  id: 'subdevice-id'
+});
 ```
 
 

@@ -32,7 +32,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
         const debug = currentManager ? createDebugUtils(currentManager) : null;
         const currentStatsEnabled = debug ? debug.isStatsEnabled() : enableStats;
         const currentTransportMode = currentManager
-            ? getTransportModeName(currentManager.defaultTransportMode)
+            ? getTransportModeName(currentManager.transport.defaultMode)
             : getTransportModeName(TransportMode.MQTT_ONLY);
         const currentVerboseState = currentManager && currentManager.options ? (currentManager.options.logger !== null) : verbose;
 
@@ -111,7 +111,7 @@ async function showTransportModeSettings(rl, currentManager, currentUser, setTra
         type: 'list',
         name: 'mode',
         message: 'Transport Mode',
-        default: currentManager.defaultTransportMode,
+        default: currentManager.transport.defaultMode,
         choices: [
             {
                 name: 'MQTT Only (default, works remotely)',

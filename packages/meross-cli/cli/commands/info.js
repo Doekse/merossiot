@@ -34,7 +34,7 @@ function _buildBasicDeviceInfo(device, manager) {
 
     info.push(['Connected', status]);
     info.push(['Online', onlineStatus]);
-    info.push(['Transport', getTransportModeName(manager.defaultTransportMode)]);
+    info.push(['Transport', getTransportModeName(manager.transport.defaultMode)]);
 
     return info;
 }

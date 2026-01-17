@@ -7,103 +7,94 @@
 const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
 /**
- * Example demonstrating how to use multiple Meross accounts simultaneously
- * 
- * Each ManagerMeross instance manages one account and its own MQTT connections.
- * To use multiple accounts, create separate HTTP clients and managers for each account.
+ * Multiple Accounts Example
+ *
+ * Demonstrates how to use multiple Meross accounts simultaneously. Each
+ * ManagerMeross instance manages one account and its own MQTT connections.
+ * To use multiple accounts, create separate HTTP clients and managers for
+ * each account.
  */
 
-// Main execution
 (async () => {
     try {
         console.log('Connecting to multiple Meross accounts...\n');
-        
-        // Create HTTP clients for both accounts
+
         const httpClient1 = await MerossHttpClient.fromUserPassword({
             email: 'account1@example.com',
             password: 'password1',
             logger: (msg) => console.log(`[Account 1 HTTP] ${msg}`)
         });
-        
+
         const httpClient2 = await MerossHttpClient.fromUserPassword({
             email: 'account2@example.com',
             password: 'password2',
             logger: (msg) => console.log(`[Account 2 HTTP] ${msg}`)
         });
-        
-        // Create managers for both accounts
+
         const account1 = new ManagerMeross({
             httpClient: httpClient1,
             logger: (msg) => console.log(`[Account 1] ${msg}`),
             transportMode: ManagerMeross.TransportMode.MQTT_ONLY
         });
-        
+
         const account2 = new ManagerMeross({
             httpClient: httpClient2,
             logger: (msg) => console.log(`[Account 2] ${msg}`),
             transportMode: ManagerMeross.TransportMode.MQTT_ONLY
         });
 
-        // Handle devices from Account 1
         account1.on('deviceInitialized', (deviceId, device) => {
             console.log(`\n[Account 1] Device initialized: ${device.name} (${deviceId})`);
-            
+
             device.on('connected', async () => {
                 console.log(`[Account 1] Device connected: ${device.name}`);
-                // Your device control logic here
             });
         });
 
-        // Handle devices from Account 2
         account2.on('deviceInitialized', (deviceId, device) => {
             console.log(`\n[Account 2] Device initialized: ${device.name} (${deviceId})`);
-            
+
             device.on('connected', async () => {
                 console.log(`[Account 2] Device connected: ${device.name}`);
-                // Your device control logic here
             });
         });
-        
-        // Connect both accounts in parallel
+
+        // Connect both accounts in parallel for efficiency
         const [deviceCount1, deviceCount2] = await Promise.all([
             account1.connect(),
             account2.connect()
         ]);
-        
+
         console.log(`\n✓ Account 1: Connected to ${deviceCount1} device(s)`);
         console.log(`✓ Account 2: Connected to ${deviceCount2} device(s)`);
-        
-        // Get devices from each account using property access pattern
+
         const account1Devices = account1.devices.list();
         const account2Devices = account2.devices.list();
-        
+
         console.log(`\nAccount 1 devices:`);
         account1Devices.forEach(device => {
             console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
         });
-        
+
         console.log(`\nAccount 2 devices:`);
         account2Devices.forEach(device => {
             console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
         });
-        
-        // Example: Control a device from Account 1
+
         if (account1Devices.length > 0) {
             const device = account1Devices[0];
             console.log(`\nControlling device from Account 1: ${device.name}`);
             // await device.setToggleX({ channel: 1, onoff: true });
         }
-        
-        // Example: Control a device from Account 2
+
         if (account2Devices.length > 0) {
             const device = account2Devices[0];
             console.log(`\nControlling device from Account 2: ${device.name}`);
             // await device.setToggleX({ channel: 1, onoff: true });
         }
-        
+
         console.log('\nListening for device events... (Press Ctrl+C to exit)');
-        
-        // Handle graceful shutdown
+
         process.on('SIGINT', async () => {
             console.log('\n\nShutting down...');
             try {

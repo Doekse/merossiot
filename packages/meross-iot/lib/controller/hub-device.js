@@ -14,7 +14,7 @@ const { MerossDevice } = require('./device');
  * @extends MerossDevice
  * @example
  * // Hub devices are created automatically when devices with hub capabilities are discovered
- * const deviceCount = await merossCloud.initializeDevices();
+ * const deviceCount = await merossCloud.devices.initialize();
  * const hub = devices.find(d => d instanceof MerossHubDevice);
  *
  * // Get all subdevices connected to the hub
