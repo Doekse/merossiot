@@ -467,7 +467,7 @@ declare module 'meross-iot' {
     }
 
     export const SensitivityLevel: {
-        RESPONSIVE: 0;
+        RESPONSIVE: 3;
         ANTI_INTERFERENCE: 1;
         BALANCE: 2;
     }
@@ -2529,9 +2529,27 @@ declare module 'meross-iot' {
      * and consistent error handling throughout the library.
      */
     export class MerossError extends Error {
+        /** String identifier for the error type */
+        code: string
         /** API error code (if available) */
         errorCode: number | null
-        constructor(message: string, errorCode?: number | null)
+        /** Whether this is an operational (recoverable) error */
+        isOperational: boolean
+        /** The underlying error that caused this error (error chaining) */
+        cause?: Error | null
+        constructor(message: string, errorCode?: number | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        /** Returns a JSON-serializable representation of the error */
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+        }
     }
 
     /**
@@ -2539,10 +2557,22 @@ declare module 'meross-iot' {
      * 
      * Thrown when an HTTP request to the Meross API fails or returns an error response.
      */
-    export class HttpApiError extends MerossError {
+    export class MerossErrorHttpApi extends MerossError {
         /** HTTP status code (if available) */
         httpStatusCode: number | null
-        constructor(message?: string, errorCode?: number | null, httpStatusCode?: number | null)
+        constructor(message?: string, errorCode?: number | null, httpStatusCode?: number | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            httpStatusCode?: number
+        }
     }
 
     /**
@@ -2550,8 +2580,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when authentication fails due to invalid credentials or account issues.
      */
-    export class AuthenticationError extends MerossError {
-        constructor(message?: string, errorCode?: number)
+    export class MerossErrorAuthentication extends MerossError {
+        constructor(message?: string, errorCode?: number, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2559,8 +2593,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when multi-factor authentication is required but not provided.
      */
-    export class MFARequiredError extends AuthenticationError {
-        constructor(message?: string)
+    export class MerossErrorMFARequired extends MerossErrorAuthentication {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2568,8 +2606,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when MFA is required but the code was not provided.
      */
-    export class MissingMFAError extends MFARequiredError {
-        constructor(message?: string)
+    export class MerossErrorMissingMFA extends MerossErrorMFARequired {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2577,8 +2619,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when an incorrect MFA code is provided.
      */
-    export class WrongMFAError extends AuthenticationError {
-        constructor(message?: string)
+    export class MerossErrorWrongMFA extends MerossErrorAuthentication {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2586,8 +2632,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when the authentication token has expired and needs to be refreshed.
      */
-    export class TokenExpiredError extends MerossError {
-        constructor(message?: string, errorCode?: number)
+    export class MerossErrorTokenExpired extends MerossError {
+        constructor(message?: string, errorCode?: number, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2595,8 +2645,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when the maximum number of active tokens has been reached.
      */
-    export class TooManyTokensError extends MerossError {
-        constructor(message?: string)
+    export class MerossErrorTooManyTokens extends MerossError {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2604,8 +2658,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when authentication is required but not provided or invalid.
      */
-    export class UnauthorizedError extends HttpApiError {
-        constructor(message?: string, errorCode?: number | null, httpStatusCode?: number)
+    export class MerossErrorUnauthorized extends MerossErrorHttpApi {
+        constructor(message?: string, errorCode?: number | null, httpStatusCode?: number, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2613,12 +2671,25 @@ declare module 'meross-iot' {
      * 
      * Thrown when the API or MQTT domain is incorrect or unreachable.
      */
-    export class BadDomainError extends MerossError {
+    export class MerossErrorBadDomain extends MerossError {
         /** API domain that failed */
         apiDomain: string | null
         /** MQTT domain that failed */
         mqttDomain: string | null
-        constructor(message?: string, apiDomain?: string | null, mqttDomain?: string | null)
+        constructor(message?: string, apiDomain?: string | null, mqttDomain?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            apiDomain?: string
+            mqttDomain?: string
+        }
     }
 
     /**
@@ -2626,8 +2697,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when the API rate limit has been exceeded.
      */
-    export class ApiLimitReachedError extends MerossError {
-        constructor(message?: string)
+    export class MerossErrorApiLimitReached extends MerossError {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2635,8 +2710,12 @@ declare module 'meross-iot' {
      * 
      * Thrown when access to a resource is denied due to insufficient permissions.
      */
-    export class ResourceAccessDeniedError extends MerossError {
-        constructor(message?: string)
+    export class MerossErrorResourceAccessDenied extends MerossError {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
     }
 
     /**
@@ -2644,14 +2723,28 @@ declare module 'meross-iot' {
      * 
      * Thrown when a device command doesn't receive a response within the timeout period.
      */
-    export class CommandTimeoutError extends MerossError {
+    export class MerossErrorCommandTimeout extends MerossError {
         /** UUID of the device that timed out */
         deviceUuid: string | null
         /** Timeout duration in milliseconds */
         timeout: number | null
         /** Command information */
         command: any
-        constructor(message?: string, deviceUuid?: string | null, timeout?: number | null, command?: any)
+        constructor(message?: string, deviceUuid?: string | null, timeout?: number | null, command?: any, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            deviceUuid?: string
+            timeout?: number
+            command?: any
+        }
     }
 
     /**
@@ -2659,12 +2752,25 @@ declare module 'meross-iot' {
      * 
      * Thrown when a device command fails and the device returns an error response.
      */
-    export class CommandError extends MerossError {
+    export class MerossErrorCommand extends MerossError {
         /** Error payload from device response */
         errorPayload: any
         /** UUID of the device that returned the error */
         deviceUuid: string | null
-        constructor(message?: string, errorPayload?: any, deviceUuid?: string | null)
+        constructor(message?: string, errorPayload?: any, deviceUuid?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            errorPayload?: any
+            deviceUuid?: string
+        }
     }
 
     /**
@@ -2672,12 +2778,25 @@ declare module 'meross-iot' {
      * 
      * Thrown when MQTT connection or communication fails.
      */
-    export class MqttError extends MerossError {
+    export class MerossErrorMqtt extends MerossError {
         /** MQTT topic related to the error */
         topic: string | null
         /** MQTT message related to the error */
         mqttMessage: any
-        constructor(message?: string, topic?: string | null, mqttMessage?: any)
+        constructor(message?: string, topic?: string | null, mqttMessage?: any, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            topic?: string
+            mqttMessage?: any
+        }
     }
 
     /**
@@ -2685,10 +2804,22 @@ declare module 'meross-iot' {
      * 
      * Thrown when attempting to send a command to a device that is not connected.
      */
-    export class UnconnectedError extends MerossError {
+    export class MerossErrorUnconnected extends MerossError {
         /** UUID of the device that is not connected */
         deviceUuid: string | null
-        constructor(message?: string, deviceUuid?: string | null)
+        constructor(message?: string, deviceUuid?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            deviceUuid?: string
+        }
     }
 
     /**
@@ -2696,10 +2827,209 @@ declare module 'meross-iot' {
      * 
      * Thrown when a device operation is attempted on a device type that doesn't support it.
      */
-    export class UnknownDeviceTypeError extends MerossError {
+    export class MerossErrorUnknownDeviceType extends MerossError {
         /** Device type that is unsupported */
         deviceType: string | null
-        constructor(message?: string, deviceType?: string | null)
+        constructor(message?: string, deviceType?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            deviceType?: string
+        }
+    }
+
+    /**
+     * Validation error.
+     * 
+     * Thrown when function arguments are invalid, missing required parameters,
+     * or have incorrect types/values. Indicates a programming error.
+     */
+    export class MerossErrorValidation extends MerossError {
+        /** The field/parameter that failed validation */
+        field: string | null
+        constructor(message?: string, field?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            field?: string
+        }
+    }
+
+    /**
+     * Resource not found error.
+     * 
+     * Thrown when a requested resource (device, channel, trigger, timer, etc.)
+     * cannot be found. Indicates the resource doesn't exist or is not accessible.
+     */
+    export class MerossErrorNotFound extends MerossError {
+        /** Type of resource that was not found (e.g., 'device', 'channel') */
+        resourceType: string | null
+        /** Identifier of the resource that was not found */
+        resourceId: string | null
+        constructor(message?: string, resourceType?: string | null, resourceId?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            resourceType?: string
+            resourceId?: string
+        }
+    }
+
+    /**
+     * Network/HTTP request timeout error.
+     * 
+     * Thrown when an HTTP or network request times out before receiving a response.
+     * Different from CommandTimeoutError which is for device command timeouts.
+     */
+    export class MerossErrorNetworkTimeout extends MerossError {
+        /** Timeout duration in milliseconds */
+        timeout: number | null
+        /** URL or endpoint that timed out */
+        url: string | null
+        constructor(message?: string, timeout?: number | null, url?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            timeout?: number
+            url?: string
+        }
+    }
+
+    /**
+     * Parse/serialization error.
+     * 
+     * Thrown when data parsing fails (e.g., JSON parsing, protocol parsing).
+     * Indicates data corruption, protocol mismatch, or malformed data.
+     */
+    export class MerossErrorParse extends MerossError {
+        /** The data that failed to parse */
+        data: any
+        /** The expected format (e.g., 'json', 'xml') */
+        format: string | null
+        constructor(message?: string, data?: any, format?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            format?: string
+        }
+    }
+
+    /**
+     * Rate limit error (error code 1028).
+     * 
+     * Thrown when requests are made too frequently. Different from ApiLimitReachedError
+     * (1042) which indicates the API top limit has been reached.
+     */
+    export class MerossErrorRateLimit extends MerossError {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+    }
+
+    /**
+     * Operation locked error (error code 1035).
+     * 
+     * Thrown when an operation is locked and cannot be performed at this time.
+     * The operation may become available after a delay or when the lock is released.
+     */
+    export class MerossErrorOperationLocked extends MerossError {
+        constructor(message?: string, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+    }
+
+    /**
+     * Unsupported operation error (error code 20112).
+     * 
+     * Thrown when an operation is not supported by the device, API, or current
+     * configuration. Indicates the requested functionality is not available.
+     */
+    export class MerossErrorUnsupported extends MerossError {
+        /** The operation that is unsupported */
+        operation: string | null
+        /** Reason why the operation is unsupported */
+        reason: string | null
+        constructor(message?: string, operation?: string | null, reason?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            operation?: string
+            reason?: string
+        }
+    }
+
+    /**
+     * Initialization error.
+     * 
+     * Thrown when device or component initialization fails. This may occur due to
+     * network issues, missing dependencies, or configuration problems. May be
+     * retryable in some cases.
+     */
+    export class MerossErrorInitialization extends MerossError {
+        /** The component that failed to initialize */
+        component: string | null
+        /** Reason for initialization failure */
+        reason: string | null
+        constructor(message?: string, component?: string | null, reason?: string | null, options?: {
+            code?: string
+            isOperational?: boolean
+            cause?: Error | null
+        })
+        toJSON(): {
+            name: string
+            code: string
+            message: string
+            errorCode?: number
+            isOperational?: boolean
+            component?: string
+            reason?: string
+        }
     }
 
     /**

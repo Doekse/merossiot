@@ -1,5 +1,7 @@
 'use strict';
 
+const { MerossErrorUnconnected } = require('../model/exception');
+
 /**
  * Manages per-device request queues with batch processing and inter-batch delays.
  *
@@ -138,7 +140,7 @@ class RequestQueue {
         const queue = this._queues.get(deviceUuid);
         if (queue) {
             queue.forEach(entry => {
-                entry.reject(new Error(`Queue cleared for device ${deviceUuid}`));
+                entry.reject(new MerossErrorUnconnected(`Queue cleared for device ${deviceUuid}`, deviceUuid));
             });
             this._queues.delete(deviceUuid);
         }

@@ -3,6 +3,7 @@
 const RollerShutterState = require('../../model/states/roller-shutter-state');
 const { RollerShutterStatus } = require('../../model/enums');
 const { normalizeChannel } = require('../../utilities/options');
+const { MerossErrorValidation } = require('../../model/exception');
 
 /**
  * Roller shutter feature module.
@@ -21,7 +22,7 @@ module.exports = {
      */
     async setRollerShutterPosition(options = {}) {
         if (options.position === undefined) {
-            throw new Error('position is required');
+            throw new MerossErrorValidation('position is required', 'position');
         }
         const channel = normalizeChannel(options);
         const payload = { 'position': { position: options.position, channel } };
@@ -204,7 +205,7 @@ module.exports = {
      */
     async setRollerShutterConfig(options = {}) {
         if (!options.config) {
-            throw new Error('config is required');
+            throw new MerossErrorValidation('config is required', 'config');
         }
         const payload = { config: options.config };
         const response = await this.publishMessage('SET', 'Appliance.RollerShutter.Config', payload);

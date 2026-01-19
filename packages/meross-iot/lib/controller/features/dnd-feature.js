@@ -59,8 +59,8 @@ module.exports = {
      */
     async setDNDMode(options = {}) {
         if (options.mode === undefined) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError('mode is required', { options }, this.uuid);
+            const { MerossErrorCommand } = require('../../model/exception');
+            throw new MerossErrorCommand('mode is required', { options }, this.uuid);
         }
         let modeValue;
         if (typeof options.mode === 'boolean') {
@@ -68,8 +68,8 @@ module.exports = {
         } else if (options.mode === DNDMode.DND_ENABLED || options.mode === DNDMode.DND_DISABLED) {
             modeValue = options.mode;
         } else {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError('Invalid DND mode. Expected boolean or DNDMode enum value.', { mode: options.mode }, this.uuid);
+            const { MerossErrorCommand } = require('../../model/exception');
+            throw new MerossErrorCommand('Invalid DND mode. Expected boolean or DNDMode enum value.', { mode: options.mode }, this.uuid);
         }
 
         const payload = { 'DNDMode': { 'mode': modeValue } };

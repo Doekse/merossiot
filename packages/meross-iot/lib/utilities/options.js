@@ -1,5 +1,7 @@
 'use strict';
 
+const { MerossErrorValidation } = require('../model/exception');
+
 /**
  * Options normalization utilities.
  *
@@ -48,12 +50,12 @@ function normalizeChannel(options = {}, defaultChannel = 0) {
  */
 function validateRequired(options = {}, requiredFields = []) {
     if (!options || typeof options !== 'object') {
-        throw new Error('Options must be an object');
+        throw new MerossErrorValidation('Options must be an object', 'options');
     }
 
     const missing = requiredFields.filter(field => options[field] === undefined);
     if (missing.length > 0) {
-        throw new Error(`Missing required fields: ${missing.join(', ')}`);
+        throw new MerossErrorValidation(`Missing required fields: ${missing.join(', ')}`, missing.length === 1 ? missing[0] : null);
     }
 }
 

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const { MerossHttpClient, TransportMode } = require('meross-iot');
+const { handleError } = require('../utils/error-handler');
 
 async function processOptionsAndCreateHttpClient(opts) {
     const email = opts.email || process.env.MEROSS_EMAIL || null;
@@ -33,16 +34,21 @@ async function processOptionsAndCreateHttpClient(opts) {
             maxStatsSamples: 1000
         });
     } else if (email && password) {
-        httpClient = await MerossHttpClient.fromUserPassword({
-            email,
-            password,
-            mfaCode,
-            logger: verbose ? console.log : null,
-            timeout,
-            autoRetryOnBadDomain: true,
-            enableStats,
-            maxStatsSamples: 1000
-        });
+        try {
+            httpClient = await MerossHttpClient.fromUserPassword({
+                email,
+                password,
+                mfaCode,
+                logger: verbose ? console.log : null,
+                timeout,
+                autoRetryOnBadDomain: true,
+                enableStats,
+                maxStatsSamples: 1000
+            });
+        } catch (error) {
+            // Re-throw with better context for MFA/auth errors
+            throw error;
+        }
     } else {
         throw new Error('Email and password are required (or provide token data).\nUse --email and --password options or set MEROSS_EMAIL and MEROSS_PASSWORD environment variables.');
     }

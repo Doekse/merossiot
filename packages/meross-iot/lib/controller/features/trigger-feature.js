@@ -3,6 +3,7 @@
 const TriggerState = require('../../model/states/trigger-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { createTrigger } = require('../../utilities/trigger');
+const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exception');
 
 /**
  * Trigger feature module.
@@ -86,7 +87,7 @@ module.exports = {
      */
     async deleteTriggerX(options = {}) {
         if (!options.triggerId) {
-            throw new Error('triggerId is required');
+            throw new MerossErrorValidation('triggerId is required', 'triggerId');
         }
         const channel = normalizeChannel(options);
         const payload = {
@@ -191,7 +192,7 @@ module.exports = {
      */
     async findTriggerByAlias(options = {}) {
         if (!options.alias) {
-            throw new Error('alias is required');
+            throw new MerossErrorValidation('alias is required', 'alias');
         }
         const channel = normalizeChannel(options);
         const response = await this.getTriggerX({ channel });
@@ -217,12 +218,12 @@ module.exports = {
      */
     async deleteTriggerByAlias(options = {}) {
         if (!options.alias) {
-            throw new Error('alias is required');
+            throw new MerossErrorValidation('alias is required', 'alias');
         }
         const channel = normalizeChannel(options);
         const trigger = await this.findTriggerByAlias({ alias: options.alias, channel });
         if (!trigger) {
-            throw new Error(`Trigger with alias "${options.alias}" not found on channel ${channel}`);
+            throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
         }
         return await this.deleteTriggerX({ triggerId: trigger.id, channel });
     },
@@ -240,17 +241,17 @@ module.exports = {
      */
     async enableTriggerByAlias(options = {}) {
         if (!options.alias) {
-            throw new Error('alias is required');
+            throw new MerossErrorValidation('alias is required', 'alias');
         }
         const channel = normalizeChannel(options);
         const response = await this.getTriggerX({ channel });
         if (!response || !response.triggerx || !Array.isArray(response.triggerx)) {
-            throw new Error(`Trigger with alias "${options.alias}" not found on channel ${channel}`);
+            throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
         }
 
         const trigger = response.triggerx.find(t => t.alias === options.alias);
         if (!trigger) {
-            throw new Error(`Trigger with alias "${options.alias}" not found on channel ${channel}`);
+            throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
         }
 
         // Update trigger with enabled state
@@ -275,17 +276,17 @@ module.exports = {
      */
     async disableTriggerByAlias(options = {}) {
         if (!options.alias) {
-            throw new Error('alias is required');
+            throw new MerossErrorValidation('alias is required', 'alias');
         }
         const channel = normalizeChannel(options);
         const response = await this.getTriggerX({ channel });
         if (!response || !response.triggerx || !Array.isArray(response.triggerx)) {
-            throw new Error(`Trigger with alias "${options.alias}" not found on channel ${channel}`);
+            throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
         }
 
         const trigger = response.triggerx.find(t => t.alias === options.alias);
         if (!trigger) {
-            throw new Error(`Trigger with alias "${options.alias}" not found on channel ${channel}`);
+            throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
         }
 
         // Update trigger with disabled state

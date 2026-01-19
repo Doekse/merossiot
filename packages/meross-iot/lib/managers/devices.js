@@ -1,5 +1,7 @@
 'use strict';
 
+const { MerossErrorValidation, MerossErrorNotFound, MerossErrorInitialization, MerossErrorCommandTimeout } = require('../model/exception');
+
 /**
  * Manages device discovery, initialization, and lifecycle.
  *
@@ -346,7 +348,7 @@ class ManagerDevices {
             return await this._initializeSubdevice(identifier);
         }
 
-        throw new Error('Invalid identifier: expected UUID string or object with hubUuid and id properties');
+        throw new MerossErrorValidation('Invalid identifier: expected UUID string or object with hubUuid and id properties', 'identifier');
     }
 
     /**
@@ -369,12 +371,13 @@ class ManagerDevices {
 
         const deviceList = await this._getValidatedDeviceList();
         if (deviceList.length === 0) {
-            throw new Error('Device list is empty or invalid');
+            const { MerossErrorValidation } = require('../model/exception');
+            throw new MerossErrorValidation('Device list is empty or invalid', 'deviceList');
         }
 
         const deviceInfo = this._findDeviceByUuid(deviceList, deviceUuid);
         if (!deviceInfo) {
-            throw new Error(`Device with UUID ${deviceUuid} not found`);
+            throw new MerossErrorNotFound(`Device with UUID ${deviceUuid} not found`, 'device', deviceUuid);
         }
 
         const { OnlineStatus } = require('../model/enums');
@@ -440,17 +443,17 @@ class ManagerDevices {
         if (!hubDevice || !(hubDevice instanceof MerossHubDevice)) {
             const deviceList = await this._getValidatedDeviceList();
             if (deviceList.length === 0) {
-                throw new Error('Device list is empty or invalid');
+                throw new MerossErrorValidation('Device list is empty or invalid', 'deviceList');
             }
 
             const hubDeviceInfo = this._findDeviceByUuid(deviceList, hubUuid);
             if (!hubDeviceInfo) {
-                throw new Error(`Hub device with UUID ${hubUuid} not found`);
+                throw new MerossErrorNotFound(`Hub device with UUID ${hubUuid} not found`, 'hubDevice', hubUuid);
             }
 
             hubDevice = await this._initializeAndEnrollDevice(hubDeviceInfo);
             if (!hubDevice || !(hubDevice instanceof MerossHubDevice)) {
-                throw new Error(`Failed to initialize hub device ${hubUuid}`);
+                throw new MerossErrorInitialization(`Failed to initialize hub device ${hubUuid}`, 'hubDevice', 'Initialization returned invalid device type');
             }
         }
 
@@ -488,7 +491,8 @@ class ManagerDevices {
             }
         }
 
-        throw new Error(`Subdevice with ID ${subdeviceId} not found in hub ${hubUuid}`);
+        const { MerossErrorNotFound } = require('../model/exception');
+        throw new MerossErrorNotFound(`Subdevice with ID ${subdeviceId} not found in hub ${hubUuid}`, 'subdevice', subdeviceId);
     }
 
     /**
@@ -985,7 +989,7 @@ class ManagerDevices {
      * @param {string} domain - MQTT domain for the device
      * @param {number} [timeout=5000] - Timeout in milliseconds
      * @returns {Promise<Object|null>} Abilities object or null if query fails or times out
-     * @throws {CommandTimeoutError} If query times out
+     * @throws {MerossErrorCommandTimeout} If query times out
      * @throws {MqttError} If MQTT connection fails
      * @private
      */
@@ -1028,13 +1032,11 @@ class ManagerDevices {
         const message = this.manager.mqtt.encode('GET', 'Appliance.System.Ability', {}, deviceUuid);
         const { messageId } = message.header;
 
-        const { CommandTimeoutError } = require('../model/exception');
-
         return new Promise((resolve, reject) => {
             const timeoutHandle = setTimeout(() => {
                 if (this.manager._pendingMessagesFutures.has(messageId)) {
                     this.manager._pendingMessagesFutures.delete(messageId);
-                    reject(new CommandTimeoutError(
+                    reject(new MerossErrorCommandTimeout(
                         `Ability query timeout after ${timeout}ms`,
                         deviceUuid,
                         timeout,

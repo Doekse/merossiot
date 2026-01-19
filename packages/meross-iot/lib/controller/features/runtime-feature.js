@@ -65,8 +65,8 @@ module.exports = {
         if (typeof this.getSystemAllData === 'function') {
             await this.getSystemAllData();
         } else {
-            const { UnknownDeviceTypeError } = require('../../model/exception');
-            throw new UnknownDeviceTypeError('Device does not support refreshState()', this.deviceType);
+            const { MerossErrorUnknownDeviceType } = require('../../model/exception');
+            throw new MerossErrorUnknownDeviceType('Device does not support refreshState()', this.deviceType);
         }
         await this.updateRuntimeInfo();
     }

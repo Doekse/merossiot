@@ -5,6 +5,7 @@ const { LightMode } = require('../../model/enums');
 const { rgbToInt } = require('../../utilities/conversion');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
+const { MerossErrorValidation } = require('../../model/exception');
 
 /**
  * Light feature module.
@@ -22,7 +23,7 @@ module.exports = {
      */
     async setLight(options = {}) {
         if (!options.light) {
-            throw new Error('light configuration object is required');
+            throw new MerossErrorValidation('light configuration object is required', 'light');
         }
         const payload = { light: options.light };
         const response = await this.publishMessage('SET', 'Appliance.Control.Light', payload, null);

@@ -196,14 +196,14 @@ module.exports = {
      *
      * @param {Object|string|Buffer} messageData - Message data to encrypt
      * @returns {string} Base64-encoded encrypted message
-     * @throws {import('../../model/exception').CommandError} If encryption key is not set
+     * @throws {import('../../model/exception').MerossErrorCommand} If encryption key is not set
      * @see decryptMessage
      * @see isEncryptionKeySet
      */
     encryptMessage(messageData) {
         if (!this.isEncryptionKeySet()) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError('Encryption key is not set! Please invoke setEncryptionKey first.', null, this.uuid);
+            const { MerossErrorCommand } = require('../../model/exception');
+            throw new MerossErrorCommand('Encryption key is not set! Please invoke setEncryptionKey first.', null, this.uuid);
         }
         return _encrypt(messageData, this._encryptionKey);
     },
@@ -213,14 +213,14 @@ module.exports = {
      *
      * @param {string|Buffer} encryptedData - Encrypted message data to decrypt
      * @returns {Buffer} Decrypted message data
-     * @throws {import('../../model/exception').CommandError} If encryption key is not set
+     * @throws {import('../../model/exception').MerossErrorCommand} If encryption key is not set
      * @see encryptMessage
      * @see isEncryptionKeySet
      */
     decryptMessage(encryptedData) {
         if (!this.isEncryptionKeySet()) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError('Encryption key is not set! Please invoke setEncryptionKey first.', null, this.uuid);
+            const { MerossErrorCommand } = require('../../model/exception');
+            throw new MerossErrorCommand('Encryption key is not set! Please invoke setEncryptionKey first.', null, this.uuid);
         }
         return _decrypt(encryptedData, this._encryptionKey);
     },

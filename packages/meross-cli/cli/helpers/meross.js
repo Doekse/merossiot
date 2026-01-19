@@ -3,6 +3,7 @@
 const ManagerMeross = require('meross-iot');
 const { MerossHttpClient, TransportMode } = require('meross-iot');
 const ora = require('ora');
+const { handleError } = require('../utils/error-handler');
 
 async function createMerossInstance(optionsOrEmail, password, mfaCode, transportMode, timeout, enableStats, verbose) {
     let httpClient;
@@ -29,16 +30,21 @@ async function createMerossInstance(optionsOrEmail, password, mfaCode, transport
         finalVerbose = verbose || false;
 
         // Create HTTP client
-        httpClient = await MerossHttpClient.fromUserPassword({
-            email,
-            password,
-            mfaCode,
-            logger: finalVerbose ? console.log : null,
-            timeout: finalTimeout,
-            autoRetryOnBadDomain: true,
-            enableStats: finalEnableStats,
-            maxStatsSamples: 1000
-        });
+        try {
+            httpClient = await MerossHttpClient.fromUserPassword({
+                email,
+                password,
+                mfaCode,
+                logger: finalVerbose ? console.log : null,
+                timeout: finalTimeout,
+                autoRetryOnBadDomain: true,
+                enableStats: finalEnableStats,
+                maxStatsSamples: 1000
+            });
+        } catch (error) {
+            // Re-throw to let caller handle with proper error formatting
+            throw error;
+        }
     }
 
     const instance = new ManagerMeross({
@@ -79,10 +85,8 @@ async function connectMeross(manager) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         return true;
     } catch (error) {
-        spinner.fail(`Connection error: ${error.message}`);
-        if (error.stack && process.env.MEROSS_VERBOSE) {
-            console.error(error.stack);
-        }
+        spinner.stop();
+        handleError(error, { verbose: process.env.MEROSS_VERBOSE === 'true' });
         return false;
     }
 }

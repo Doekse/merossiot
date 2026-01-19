@@ -1,5 +1,7 @@
 'use strict';
 
+const { MerossErrorValidation } = require('../exception');
+
 /**
  * Represents subdevice information from the HTTP API
  *
@@ -41,7 +43,7 @@ class HttpSubdeviceInfo {
      */
     static fromDict(jsonDict) {
         if (!jsonDict || typeof jsonDict !== 'object') {
-            throw new Error('Subdevice info dictionary is required');
+            throw new MerossErrorValidation('Subdevice info dictionary is required', 'jsonDict');
         }
 
         // Map camelCase properties to their possible API key variants, including generic

@@ -11,7 +11,7 @@ const ErrorBudgetManager = require('./error-budget');
 const { MqttStatsCounter } = require('./utilities/stats');
 const RequestQueue = require('./utilities/request-queue');
 const DeviceRegistry = require('./device-registry');
-const { AuthenticationError } = require('./model/exception');
+const { MerossErrorAuthentication, MerossErrorValidation } = require('./model/exception');
 
 /**
  * Manages Meross cloud connections and device communication
@@ -67,7 +67,7 @@ class ManagerMeross extends EventEmitter {
      */
     _validateOptions(options) {
         if (!options || !options.httpClient) {
-            throw new Error('httpClient is required. Use MerossHttpClient.fromUserPassword() to create a client.');
+            throw new MerossErrorValidation('httpClient is required. Use MerossHttpClient.fromUserPassword() to create a client.', 'httpClient');
         }
     }
 
@@ -402,7 +402,7 @@ class ManagerMeross extends EventEmitter {
      */
     async logout() {
         if (!this.authenticated || !this.token) {
-            throw new AuthenticationError('Not authenticated');
+            throw new MerossErrorAuthentication('Not authenticated');
         }
         const response = await this.httpClient.logout();
         this.token = null;

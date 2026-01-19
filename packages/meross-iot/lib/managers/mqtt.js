@@ -10,7 +10,7 @@ const {
     generateClientAndAppId,
     generateMqttPassword
 } = require('../utilities/mqtt');
-const { MqttError, CommandError } = require('../model/exception');
+const { MerossErrorMqtt, MerossErrorCommand, MerossErrorParse } = require('../model/exception');
 
 /**
  * Manages MQTT connections and message publishing.
@@ -184,7 +184,7 @@ class ManagerMqtt {
             }
             return parsed;
         } catch (err) {
-            this.manager.emit('error', new Error(`JSON parse error: ${err}`), null);
+            this.manager.emit('error', new MerossErrorParse(`JSON parse error: ${err.message}`, message.toString(), 'json', { cause: err }), null);
             return null;
         }
     }
@@ -208,7 +208,7 @@ class ManagerMqtt {
         if (messageMethod === 'ERROR') {
             const errorPayload = message.payload || {};
             const deviceUuid = message.header?.from ? deviceUuidFromPushNotification(message.header.from) : null;
-            pendingFuture.reject(new CommandError(
+            pendingFuture.reject(new MerossErrorCommand(
                 `Device returned error: ${JSON.stringify(errorPayload)}`,
                 errorPayload,
                 deviceUuid
@@ -217,7 +217,7 @@ class ManagerMqtt {
             pendingFuture.resolve(message.payload || message);
         } else {
             const topic = message.header?.from || null;
-            pendingFuture.reject(new MqttError(
+            pendingFuture.reject(new MerossErrorMqtt(
                 `Unexpected message method: ${messageMethod}`,
                 topic,
                 message
@@ -483,7 +483,7 @@ class ManagerMqtt {
                         this.manager.mqttConnections[domain]._connectionResolve = null;
                     }
                     this.manager._mqttConnectionPromises.delete(domain);
-                    reject(new MqttError(`MQTT connection timeout for domain ${domain}`, null, null));
+                    reject(new MerossErrorMqtt(`MQTT connection timeout for domain ${domain}`, null, null));
                 }, 30000);
             });
 

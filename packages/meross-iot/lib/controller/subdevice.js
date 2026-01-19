@@ -3,7 +3,7 @@
 const { MerossDevice } = require('./device');
 const { OnlineStatus, SmokeAlarmStatus } = require('../model/enums');
 const DeviceRegistry = require('../device-registry');
-const { UnknownDeviceTypeError, CommandError } = require('../model/exception');
+const { MerossErrorUnknownDeviceType, MerossErrorCommand } = require('../model/exception');
 
 /**
  * Base class for all Meross subdevices.
@@ -42,7 +42,7 @@ class MerossSubDevice extends MerossDevice {
     constructor(hubDeviceUuid, subdeviceId, manager, kwargs = {}) {
         const hubs = manager.devices.find({ deviceUuids: [hubDeviceUuid] });
         if (!hubs || hubs.length < 1) {
-            throw new UnknownDeviceTypeError(`Specified hub device ${hubDeviceUuid} is not present`);
+            throw new MerossErrorUnknownDeviceType(`Specified hub device ${hubDeviceUuid} is not present`);
         }
         const hub = hubs[0];
 
@@ -54,7 +54,7 @@ class MerossSubDevice extends MerossDevice {
         this._name = kwargs.subDeviceName || kwargs.name;
 
         if (!this._subdeviceId) {
-            throw new UnknownDeviceTypeError('Subdevice ID is required');
+            throw new MerossErrorUnknownDeviceType('Subdevice ID is required');
         }
 
         // Subdevices share hub's network configuration since they communicate through the hub
@@ -130,7 +130,7 @@ class MerossSubDevice extends MerossDevice {
 
         const hubUuid = this._hub.uuid || this._hub.dev?.uuid;
         if (!hubUuid) {
-            throw new UnknownDeviceTypeError('Cannot generate internal ID: hub missing UUID');
+            throw new MerossErrorUnknownDeviceType('Cannot generate internal ID: hub missing UUID');
         }
 
         this._internalId = DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, this._subdeviceId);
@@ -968,7 +968,7 @@ class HubThermostatValve extends MerossSubDevice {
      */
     async setPresetTemperature(preset, temperature) {
         if (!this.getSupportedPresets().includes(preset)) {
-            throw new CommandError(`Preset ${preset} is not supported`, { preset }, this.uuid);
+            throw new MerossErrorCommand(`Preset ${preset} is not supported`, { preset }, this.uuid);
         }
         const targetTemp = temperature * 10;
         await this.publishMessage('SET', 'Appliance.Hub.Mts100.Temperature', {

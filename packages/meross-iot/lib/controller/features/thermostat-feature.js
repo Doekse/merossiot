@@ -3,6 +3,7 @@
 const ThermostatState = require('../../model/states/thermostat-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
+const { MerossErrorValidation, MerossErrorCommand } = require('../../model/exception');
 
 /**
  * Thermostat feature module.
@@ -97,8 +98,7 @@ module.exports = {
     async setThermostatModeB(options = {}) {
         const channel = normalizeChannel(options);
         if (!this.abilities || !this.abilities['Appliance.Control.Thermostat.ModeB']) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError(
+            throw new MerossErrorCommand(
                 'Device does not support Appliance.Control.Thermostat.ModeB namespace',
                 { namespace: 'Appliance.Control.Thermostat.ModeB', channel, options },
                 this.uuid
@@ -136,7 +136,7 @@ module.exports = {
     async setThermostatWindowOpened(options = {}) {
         const channel = normalizeChannel(options);
         if (options.windowOpened === undefined) {
-            throw new Error('windowOpened is required');
+            throw new MerossErrorValidation('windowOpened is required', 'windowOpened');
         }
         const payload = { 'windowOpened': [{ channel, 'status': options.windowOpened ? 1 : 0 }] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.WindowOpened', payload);
@@ -180,8 +180,7 @@ module.exports = {
     async getThermostatModeB(options = {}) {
         const channel = normalizeChannel(options);
         if (!this.abilities || !this.abilities['Appliance.Control.Thermostat.ModeB']) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError(
+            throw new MerossErrorCommand(
                 'Device does not support Appliance.Control.Thermostat.ModeB namespace',
                 { namespace: 'Appliance.Control.Thermostat.ModeB', channel },
                 this.uuid
@@ -314,7 +313,7 @@ module.exports = {
      */
     async setThermostatHoldAction(options = {}) {
         if (!options.holdActionData) {
-            throw new Error('holdActionData is required');
+            throw new MerossErrorValidation('holdActionData is required', 'holdActionData');
         }
         const payload = { holdAction: Array.isArray(options.holdActionData) ? options.holdActionData : [options.holdActionData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.HoldAction', payload);
@@ -344,7 +343,7 @@ module.exports = {
      */
     async setThermostatHoldAction(options = {}) {
         if (!options.holdActionData) {
-            throw new Error('holdActionData is required');
+            throw new MerossErrorValidation('holdActionData is required', 'holdActionData');
         }
         const payload = { holdAction: Array.isArray(options.holdActionData) ? options.holdActionData : [options.holdActionData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.HoldAction', payload);
@@ -374,7 +373,7 @@ module.exports = {
      */
     async setThermostatOverheat(options = {}) {
         if (!options.overheatData) {
-            throw new Error('overheatData is required');
+            throw new MerossErrorValidation('overheatData is required', 'overheatData');
         }
         const payload = { overheat: Array.isArray(options.overheatData) ? options.overheatData : [options.overheatData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.Overheat', payload);
@@ -404,7 +403,7 @@ module.exports = {
      */
     async setThermostatDeadZone(options = {}) {
         if (!options.deadZoneData) {
-            throw new Error('deadZoneData is required');
+            throw new MerossErrorValidation('deadZoneData is required', 'deadZoneData');
         }
         const payload = { deadZone: Array.isArray(options.deadZoneData) ? options.deadZoneData : [options.deadZoneData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.DeadZone', payload);
@@ -434,7 +433,7 @@ module.exports = {
      */
     async setThermostatCalibration(options = {}) {
         if (!options.calibrationData) {
-            throw new Error('calibrationData is required');
+            throw new MerossErrorValidation('calibrationData is required', 'calibrationData');
         }
         const payload = { calibration: Array.isArray(options.calibrationData) ? options.calibrationData : [options.calibrationData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.Calibration', payload);
@@ -464,7 +463,7 @@ module.exports = {
      */
     async setThermostatSensor(options = {}) {
         if (!options.sensorData) {
-            throw new Error('sensorData is required');
+            throw new MerossErrorValidation('sensorData is required', 'sensorData');
         }
         const payload = { sensor: Array.isArray(options.sensorData) ? options.sensorData : [options.sensorData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.Sensor', payload);
@@ -494,7 +493,7 @@ module.exports = {
      */
     async setThermostatSummerMode(options = {}) {
         if (!options.summerModeData) {
-            throw new Error('summerModeData is required');
+            throw new MerossErrorValidation('summerModeData is required', 'summerModeData');
         }
         const payload = { summerMode: Array.isArray(options.summerModeData) ? options.summerModeData : [options.summerModeData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.SummerMode', payload);
@@ -524,7 +523,7 @@ module.exports = {
      */
     async setThermostatFrost(options = {}) {
         if (!options.frostData) {
-            throw new Error('frostData is required');
+            throw new MerossErrorValidation('frostData is required', 'frostData');
         }
         const payload = { frost: Array.isArray(options.frostData) ? options.frostData : [options.frostData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.Frost', payload);
@@ -554,7 +553,7 @@ module.exports = {
      */
     async setThermostatAlarmConfig(options = {}) {
         if (!options.alarmConfigData) {
-            throw new Error('alarmConfigData is required');
+            throw new MerossErrorValidation('alarmConfigData is required', 'alarmConfigData');
         }
         const payload = { alarmConfig: Array.isArray(options.alarmConfigData) ? options.alarmConfigData : [options.alarmConfigData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.AlarmConfig', payload);
@@ -584,7 +583,7 @@ module.exports = {
      */
     async setThermostatCompressorDelay(options = {}) {
         if (!options.delayData) {
-            throw new Error('delayData is required');
+            throw new MerossErrorValidation('delayData is required', 'delayData');
         }
         const payload = { delay: Array.isArray(options.delayData) ? options.delayData : [options.delayData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.CompressorDelay', payload);
@@ -614,7 +613,7 @@ module.exports = {
      */
     async setThermostatCtlRange(options = {}) {
         if (!options.ctlRangeData) {
-            throw new Error('ctlRangeData is required');
+            throw new MerossErrorValidation('ctlRangeData is required', 'ctlRangeData');
         }
         const payload = { ctlRange: Array.isArray(options.ctlRangeData) ? options.ctlRangeData : [options.ctlRangeData] };
         return await this.publishMessage('SET', 'Appliance.Control.Thermostat.CtlRange', payload);
@@ -680,8 +679,7 @@ module.exports = {
         }
 
         if (temperature < minSetableTemp || temperature > maxSetableTemp) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError(
+            throw new MerossErrorCommand(
                 `Temperature ${temperature}°C is out of range (${minSetableTemp}-${maxSetableTemp}°C) for this device`,
                 { temperature, minSetableTemp, maxSetableTemp },
                 this.uuid

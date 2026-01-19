@@ -31,8 +31,8 @@ function rgbToInt(rgb) {
         const blue = rgb.b || rgb.blue || 0;
         return (red << 16) | (green << 8) | blue;
     } else {
-        const { CommandError } = require('../model/exception');
-        throw new CommandError('Invalid value for RGB! Must be integer, [r,g,b] tuple, or {r,g,b} object', { rgb });
+        const { MerossErrorCommand } = require('../model/exception');
+        throw new MerossErrorCommand('Invalid value for RGB! Must be integer, [r,g,b] tuple, or {r,g,b} object', { rgb });
     }
 }
 

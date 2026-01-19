@@ -91,8 +91,8 @@ class MerossHubDevice extends MerossDevice {
      */
     registerSubdevice(subdevice) {
         if (!subdevice || !subdevice.subdeviceId) {
-            const { UnknownDeviceTypeError } = require('../model/exception');
-            throw new UnknownDeviceTypeError('Invalid subdevice: must have subdeviceId');
+            const { MerossErrorUnknownDeviceType } = require('../model/exception');
+            throw new MerossErrorUnknownDeviceType('Invalid subdevice: must have subdeviceId');
         }
 
         if (this._subDevices.has(subdevice.subdeviceId)) {

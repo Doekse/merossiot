@@ -2,6 +2,7 @@
 
 const GarageDoorState = require('../../model/states/garage-door-state');
 const { normalizeChannel } = require('../../utilities/options');
+const { MerossErrorValidation } = require('../../model/exception');
 
 /**
  * Garage door feature module.
@@ -22,7 +23,7 @@ module.exports = {
      */
     async setGarageDoor(options = {}) {
         if (options.open === undefined) {
-            throw new Error('open is required');
+            throw new MerossErrorValidation('open is required', 'open');
         }
         const channel = normalizeChannel(options);
         const payload = { 'state': { channel, 'open': options.open ? 1 : 0, 'uuid': this.uuid } };

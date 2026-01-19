@@ -1,5 +1,7 @@
 'use strict';
 
+const { MerossErrorValidation } = require('../../model/exception');
+
 /**
  * Configuration feature module.
  * Provides access to device configuration settings such as over-temperature protection.
@@ -28,8 +30,7 @@ module.exports = {
      */
     async setConfigOverTemp(options = {}) {
         if (options.enable === undefined) {
-            const { CommandError } = require('../../model/exception');
-            throw new CommandError('enable is required', { options }, this.uuid);
+            throw new MerossErrorValidation('enable is required', 'enable');
         }
 
         const enableValue = options.enable ? 1 : 2;

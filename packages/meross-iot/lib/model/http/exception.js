@@ -1,6 +1,6 @@
 'use strict';
 
-const { MerossError, AuthenticationError } = require('../exception');
+const { MerossError, MerossErrorAuthentication } = require('../exception');
 
 /**
  * Base class for HTTP API errors
@@ -12,10 +12,22 @@ const { MerossError, AuthenticationError } = require('../exception');
  * @extends MerossError
  * @property {number|null} httpStatusCode - HTTP status code (e.g., 400, 500)
  */
-class HttpApiError extends MerossError {
-    constructor(message, errorCode = null, httpStatusCode = null) {
-        super(message || 'HTTP API error occurred', errorCode);
+class MerossErrorHttpApi extends MerossError {
+    constructor(message, errorCode = null, httpStatusCode = null, options = {}) {
+        super(message || 'HTTP API error occurred', errorCode, {
+            code: 'HTTP_API_ERROR',
+            isOperational: true,
+            ...options
+        });
         this.httpStatusCode = httpStatusCode;
+    }
+
+    toJSON() {
+        const result = super.toJSON();
+        if (this.httpStatusCode !== null) {
+            result.httpStatusCode = this.httpStatusCode;
+        }
+        return result;
     }
 }
 
@@ -27,12 +39,16 @@ class HttpApiError extends MerossError {
  * cannot be used for authorization.
  *
  * @class
- * @extends HttpApiError
+ * @extends MerossErrorHttpApi
  * @property {number} httpStatusCode - HTTP status code (typically 401)
  */
-class UnauthorizedError extends HttpApiError {
-    constructor(message, errorCode = null, httpStatusCode = 401) {
-        super(message || 'Unauthorized access', errorCode, httpStatusCode);
+class MerossErrorUnauthorized extends MerossErrorHttpApi {
+    constructor(message, errorCode = null, httpStatusCode = 401, options = {}) {
+        super(message || 'Unauthorized access', errorCode, httpStatusCode, {
+            code: 'UNAUTHORIZED',
+            isOperational: true,
+            ...options
+        });
     }
 }
 
@@ -50,11 +66,26 @@ class UnauthorizedError extends HttpApiError {
  * @property {string|null} apiDomain - The correct API domain for this account
  * @property {string|null} mqttDomain - The correct MQTT domain for this account
  */
-class BadDomainError extends MerossError {
-    constructor(message, apiDomain = null, mqttDomain = null) {
-        super(message || 'Redirect app to login other than this region', 1030);
+class MerossErrorBadDomain extends MerossError {
+    constructor(message, apiDomain = null, mqttDomain = null, options = {}) {
+        super(message || 'Redirect app to login other than this region', 1030, {
+            code: 'BAD_DOMAIN',
+            isOperational: true,
+            ...options
+        });
         this.apiDomain = apiDomain;
         this.mqttDomain = mqttDomain;
+    }
+
+    toJSON() {
+        const result = super.toJSON();
+        if (this.apiDomain !== null) {
+            result.apiDomain = this.apiDomain;
+        }
+        if (this.mqttDomain !== null) {
+            result.mqttDomain = this.mqttDomain;
+        }
+        return result;
     }
 }
 
@@ -69,9 +100,13 @@ class BadDomainError extends MerossError {
  * @extends MerossError
  * @property {number} errorCode - API error code (1019, 1022, or 1200)
  */
-class TokenExpiredError extends MerossError {
-    constructor(message, errorCode) {
-        super(message || 'Token has expired or is invalid', errorCode);
+class MerossErrorTokenExpired extends MerossError {
+    constructor(message, errorCode, options = {}) {
+        super(message || 'Token has expired or is invalid', errorCode, {
+            code: 'TOKEN_EXPIRED',
+            isOperational: true,
+            ...options
+        });
     }
 }
 
@@ -86,9 +121,13 @@ class TokenExpiredError extends MerossError {
  * @extends MerossError
  * @property {number} errorCode - Always 1301
  */
-class TooManyTokensError extends MerossError {
-    constructor(message) {
-        super(message || 'You have issued too many tokens without logging out and your account might have been temporarily disabled.', 1301);
+class MerossErrorTooManyTokens extends MerossError {
+    constructor(message, options = {}) {
+        super(message || 'You have issued too many tokens without logging out and your account might have been temporarily disabled.', 1301, {
+            code: 'TOO_MANY_TOKENS',
+            isOperational: true,
+            ...options
+        });
     }
 }
 
@@ -100,25 +139,35 @@ class TooManyTokensError extends MerossError {
  * authentication step that was not completed.
  *
  * @class
- * @extends AuthenticationError
+ * @extends MerossErrorAuthentication
  * @property {number} errorCode - Always 1033
  */
-class MFARequiredError extends AuthenticationError {
-    constructor(message) {
-        super(message || 'MFA is activated for the account but MFA code not provided. Please provide a current MFA code.', 1033);
+class MerossErrorMFARequired extends MerossErrorAuthentication {
+    constructor(message, options = {}) {
+        super(message || 'MFA is activated for the account but MFA code not provided. Please provide a current MFA code.', 1033, {
+            code: 'MFA_REQUIRED',
+            isOperational: true,
+            ...options
+        });
     }
 }
 
 /**
- * Alias for MFARequiredError
+ * Alias for MerossErrorMFARequired
  *
- * Provided for backward compatibility and clearer naming in contexts where
+ * Provided for clearer naming in contexts where
  * the error represents a missing MFA code rather than a general MFA requirement.
  *
  * @class
- * @extends MFARequiredError
+ * @extends MerossErrorMFARequired
  */
-class MissingMFAError extends MFARequiredError {
+class MerossErrorMissingMFA extends MerossErrorMFARequired {
+    constructor(message, options = {}) {
+        super(message, {
+            code: 'MFA_MISSING',
+            ...options
+        });
+    }
 }
 
 /**
@@ -129,23 +178,27 @@ class MissingMFAError extends MFARequiredError {
  * authenticator application.
  *
  * @class
- * @extends AuthenticationError
+ * @extends MerossErrorAuthentication
  * @property {number} errorCode - Always 1032
  */
-class WrongMFAError extends AuthenticationError {
-    constructor(message) {
-        super(message || 'Invalid MFA code. Please use a current MFA code.', 1032);
+class MerossErrorWrongMFA extends MerossErrorAuthentication {
+    constructor(message, options = {}) {
+        super(message || 'Invalid MFA code. Please use a current MFA code.', 1032, {
+            code: 'MFA_WRONG',
+            isOperational: true,
+            ...options
+        });
     }
 }
 
 module.exports = {
-    HttpApiError,
-    UnauthorizedError,
-    BadDomainError,
-    TokenExpiredError,
-    TooManyTokensError,
-    MFARequiredError,
-    MissingMFAError,
-    WrongMFAError
+    MerossErrorHttpApi,
+    MerossErrorUnauthorized,
+    MerossErrorBadDomain,
+    MerossErrorTokenExpired,
+    MerossErrorTooManyTokens,
+    MerossErrorMFARequired,
+    MerossErrorMissingMFA,
+    MerossErrorWrongMFA
 };
 

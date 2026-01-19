@@ -170,10 +170,8 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
             }
 
         } catch (error) {
-            console.log(chalk.red(`\n✗ Error: ${error.message}`));
-            if (error.stack && process.env.MEROSS_VERBOSE) {
-                console.error(error.stack);
-            }
+            const { handleError } = require('../../utils/error-handler');
+            handleError(error, { verbose: process.env.MEROSS_VERBOSE === 'true' });
         }
 
         const { continueControl } = await inquirer.prompt([{

@@ -3,6 +3,7 @@
 const SprayState = require('../../model/states/spray-state');
 const { SprayMode } = require('../../model/enums');
 const { normalizeChannel } = require('../../utilities/options');
+const { MerossErrorValidation } = require('../../model/exception');
 
 /**
  * Spray feature module.
@@ -24,7 +25,7 @@ module.exports = {
      */
     async setSpray(options = {}) {
         if (options.mode === undefined) {
-            throw new Error('mode is required');
+            throw new MerossErrorValidation('mode is required', 'mode');
         }
         const channel = normalizeChannel(options);
         const modeValue = options.mode || 0;

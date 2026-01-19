@@ -2,6 +2,7 @@
 
 const TriggerType = require('../model/enums').TriggerType;
 const { normalizeWeekBitmask, generateTimerId } = require('./timer');
+const { MerossErrorValidation } = require('../model/exception');
 
 /**
  * Trigger utility functions.
@@ -26,7 +27,7 @@ const { normalizeWeekBitmask, generateTimerId } = require('./timer');
  */
 function parseNumericDuration(value) {
     if (value < 0) {
-        throw new Error(`Invalid duration: ${value}. Duration must be non-negative`);
+        throw new MerossErrorValidation(`Invalid duration: ${value}. Duration must be non-negative`, 'duration');
     }
     return value;
 }
@@ -77,7 +78,8 @@ function parseUnitSuffixDuration(str) {
  */
 function validateMMSS(minutes, seconds, originalDuration) {
     if (isNaN(minutes) || isNaN(seconds) || minutes < 0 || seconds < 0 || seconds >= 60) {
-        throw new Error(`Invalid time format: "${originalDuration}". Expected MM:SS`);
+        const { MerossErrorValidation } = require('../model/exception');
+        throw new MerossErrorValidation(`Invalid time format: "${originalDuration}". Expected MM:SS`, 'duration');
     }
 }
 
@@ -97,7 +99,8 @@ function validateMMSS(minutes, seconds, originalDuration) {
 function validateHHMMSS(hours, minutes, seconds, originalDuration) {
     if (isNaN(hours) || isNaN(minutes) || isNaN(seconds) ||
         hours < 0 || minutes < 0 || minutes >= 60 || seconds < 0 || seconds >= 60) {
-        throw new Error(`Invalid time format: "${originalDuration}". Expected HH:MM:SS`);
+        const { MerossErrorValidation } = require('../model/exception');
+        throw new MerossErrorValidation(`Invalid time format: "${originalDuration}". Expected HH:MM:SS`, 'duration');
     }
 }
 
@@ -173,10 +176,10 @@ function durationToSeconds(duration) {
             return timeStringResult;
         }
 
-        throw new Error(`Invalid duration format: "${duration}". Expected seconds (number), "Xm"/"Xh", or "HH:MM:SS"/"MM:SS" format`);
+        throw new MerossErrorValidation(`Invalid duration format: "${duration}". Expected seconds (number), "Xm"/"Xh", or "HH:MM:SS"/"MM:SS" format`, 'duration');
     }
 
-    throw new Error(`Invalid duration type: ${typeof duration}. Expected string or number`);
+    throw new MerossErrorValidation(`Invalid duration type: ${typeof duration}. Expected string or number`, 'duration');
 }
 
 /**
@@ -196,7 +199,7 @@ function durationToSeconds(duration) {
  */
 function secondsToDuration(seconds) {
     if (typeof seconds !== 'number' || seconds < 0) {
-        throw new Error(`Invalid seconds value: ${seconds}. Must be non-negative number`);
+        throw new MerossErrorValidation(`Invalid seconds value: ${seconds}. Must be non-negative number`, 'seconds');
     }
 
     if (seconds === 0) {

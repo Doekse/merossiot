@@ -1,6 +1,7 @@
 'use strict';
 
 const TimerType = require('../model/enums').TimerType;
+const { MerossErrorValidation } = require('../model/exception');
 
 /**
  * Timer utility functions.
@@ -32,7 +33,7 @@ function timeToMinutes(time) {
         if (time >= 0 && time < 1440) {
             return time;
         }
-        throw new Error(`Invalid time value: ${time}. Must be 0-1439 minutes`);
+        throw new MerossErrorValidation(`Invalid time value: ${time}. Must be 0-1439 minutes`, 'time');
     }
 
     if (time instanceof Date) {
@@ -43,13 +44,15 @@ function timeToMinutes(time) {
         const trimmed = time.trim();
         const timePattern = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
         if (!timePattern.test(trimmed)) {
-            throw new Error(`Invalid time format: "${time}". Expected HH:MM (24-hour format)`);
+            const { MerossErrorValidation } = require('../model/exception');
+            throw new MerossErrorValidation(`Invalid time format: "${time}". Expected HH:MM (24-hour format)`, 'time');
         }
         const [hours, minutes] = trimmed.split(':').map(Number);
         return hours * 60 + minutes;
     }
 
-    throw new Error(`Invalid time type: ${typeof time}. Expected string (HH:MM), Date, or number`);
+    const { MerossErrorValidation } = require('../model/exception');
+    throw new MerossErrorValidation(`Invalid time type: ${typeof time}. Expected string (HH:MM), Date, or number`, 'time');
 }
 
 /**
@@ -67,7 +70,7 @@ function timeToMinutes(time) {
  */
 function minutesToTime(minutes) {
     if (typeof minutes !== 'number' || minutes < 0 || minutes >= 1440) {
-        throw new Error(`Invalid minutes value: ${minutes}. Must be 0-1439`);
+        throw new MerossErrorValidation(`Invalid minutes value: ${minutes}. Must be 0-1439`, 'minutes');
     }
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -127,7 +130,8 @@ function parseDayToNumber(day) {
 
     if (typeof day === 'number') {
         if (day < 0 || day > 6) {
-            throw new Error(`Invalid day number: ${day}. Must be 0-6 (0=Monday)`);
+            const { MerossErrorValidation } = require('../model/exception');
+            throw new MerossErrorValidation(`Invalid day number: ${day}. Must be 0-6 (0=Monday)`, 'day');
         }
         return day;
     }
@@ -137,10 +141,11 @@ function parseDayToNumber(day) {
         if (dayMap[normalized] !== undefined) {
             return dayMap[normalized];
         }
-        throw new Error(`Invalid day name: "${day}". Use 'monday', 'tuesday', etc.`);
+        throw new MerossErrorValidation(`Invalid day name: "${day}". Use 'monday', 'tuesday', etc.`, 'day');
     }
 
-    throw new Error(`Invalid day type: ${typeof day}. Expected string or number`);
+    const { MerossErrorValidation } = require('../model/exception');
+    throw new MerossErrorValidation(`Invalid day type: ${typeof day}. Expected string or number`, 'day');
 }
 
 /**
@@ -162,7 +167,7 @@ function parseDayToNumber(day) {
  */
 function daysToWeekMask(days, repeat = true) {
     if (!Array.isArray(days) || days.length === 0) {
-        throw new Error('Days must be a non-empty array');
+        throw new MerossErrorValidation('Days must be a non-empty array', 'days');
     }
 
     let bitmask = 0;

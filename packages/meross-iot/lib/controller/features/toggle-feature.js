@@ -144,8 +144,8 @@ module.exports = {
                 return await this.setToggle({ onoff: true });
             }
         }
-        const { UnknownDeviceTypeError } = require('../../model/exception');
-        throw new UnknownDeviceTypeError('Device does not support Toggle or ToggleX', this.deviceType);
+        const { MerossErrorUnknownDeviceType } = require('../../model/exception');
+        throw new MerossErrorUnknownDeviceType('Device does not support Toggle or ToggleX', this.deviceType);
     },
 
     /**
@@ -172,8 +172,8 @@ module.exports = {
                 return await this.setToggle({ onoff: false });
             }
         }
-        const { UnknownDeviceTypeError } = require('../../model/exception');
-        throw new UnknownDeviceTypeError('Device does not support Toggle or ToggleX', this.deviceType);
+        const { MerossErrorUnknownDeviceType } = require('../../model/exception');
+        throw new MerossErrorUnknownDeviceType('Device does not support Toggle or ToggleX', this.deviceType);
     },
 
     /**

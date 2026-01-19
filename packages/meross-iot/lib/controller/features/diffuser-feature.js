@@ -4,6 +4,7 @@ const DiffuserLightState = require('../../model/states/diffuser-light-state');
 const DiffuserSprayState = require('../../model/states/diffuser-spray-state');
 const { DiffuserLightMode, DiffuserSprayMode } = require('../../model/enums');
 const { buildStateChanges } = require('../../utilities/state-changes');
+const { MerossErrorValidation } = require('../../model/exception');
 
 /**
  * Diffuser feature module.
@@ -28,7 +29,7 @@ module.exports = {
      */
     async setDiffuserLight(options = {}) {
         if (!options.light) {
-            throw new Error('light is required');
+            throw new MerossErrorValidation('light is required', 'light');
         }
         const light = { ...options.light };
         light.uuid = this.uuid;
@@ -61,7 +62,7 @@ module.exports = {
     async setDiffuserSpray(options = {}) {
         const { normalizeChannel } = require('../../utilities/options');
         if (options.mode === undefined) {
-            throw new Error('mode is required');
+            throw new MerossErrorValidation('mode is required', 'mode');
         }
         const channel = normalizeChannel(options);
         const payload = { 'spray': [{ channel, 'mode': options.mode || 0, 'uuid': this.uuid }] };
@@ -401,7 +402,7 @@ module.exports = {
      */
     async setDiffuserSensor(options = {}) {
         if (!options.sensorData) {
-            throw new Error('sensorData is required');
+            throw new MerossErrorValidation('sensorData is required', 'sensorData');
         }
         const sensorData = options.sensorData;
         const payload = sensorData;

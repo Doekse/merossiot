@@ -1,6 +1,7 @@
 'use strict';
 
 const EventEmitter = require('events');
+const { MerossErrorValidation } = require('../model/exception');
 
 /**
  * Manages automatic polling and unified update streams for Meross devices.
@@ -30,7 +31,7 @@ class ManagerSubscription extends EventEmitter {
         super();
 
         if (!manager) {
-            throw new Error('Manager instance is required');
+            throw new MerossErrorValidation('Manager instance is required', 'manager');
         }
 
         this.manager = manager;

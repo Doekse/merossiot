@@ -315,17 +315,15 @@ async function _selectDevicesToInitialize(manager) {
 
             return true;
         } catch (error) {
-            spinner.fail(`Initialization error: ${error.message}`);
-            if (error.stack && process.env.MEROSS_VERBOSE) {
-                console.error(error.stack);
-            }
+            spinner.stop();
+            const { handleError } = require('../utils/error-handler');
+            handleError(error, { verbose: process.env.MEROSS_VERBOSE === 'true' });
             return false;
         }
     } catch (error) {
-        spinner.fail(`Discovery error: ${error.message}`);
-        if (error.stack && process.env.MEROSS_VERBOSE) {
-            console.error(error.stack);
-        }
+        spinner.stop();
+        const { handleError } = require('../utils/error-handler');
+        handleError(error, { verbose: process.env.MEROSS_VERBOSE === 'true' });
         return false;
     }
 }
@@ -783,10 +781,8 @@ async function menuMode() {
                 }
             }
         } catch (error) {
-            console.error(`\nError: ${error.message}`);
-            if (error.stack && process.env.MEROSS_VERBOSE) {
-                console.error(error.stack);
-            }
+            const { handleError } = require('../utils/error-handler');
+            handleError(error, { verbose: process.env.MEROSS_VERBOSE === 'true' });
             await question(rl, '\nPress Enter to return to menu...');
         }
     }

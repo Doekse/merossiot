@@ -16,6 +16,7 @@ const packageJson = require('../package.json');
 // Import from new modules
 const { processOptionsAndCreateHttpClient } = require('./helpers/client');
 const { printLogo, printVersion } = require('./utils/display');
+const { handleError } = require('./utils/error-handler');
 const { listDevices, dumpRegistry, listMqttConnections, getDeviceStatus, showDeviceInfo, executeControlCommand, collectControlParameters, runTestCommand } = require('./commands');
 const { menuMode } = require('./menu');
 
@@ -112,7 +113,8 @@ Examples:
             const deviceCount = await manager.connect();
             spinner.succeed(chalk.green(`Connected to ${deviceCount} device(s)`));
         } catch (error) {
-            spinner.fail(chalk.red(`Connection failed: ${error.message}`));
+            spinner.stop();
+            handleError(error, { verbose: config.verbose });
             throw error;
         }
 
@@ -136,11 +138,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -164,11 +162,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -186,11 +180,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -221,11 +211,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -248,11 +234,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -443,11 +425,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -476,11 +454,7 @@ Examples:
                     console.log('\nLogout response:', JSON.stringify(logoutResponse, null, 2));
                 }
             } catch (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
-                if (opts.verbose) {
-                    console.error(error.stack);
-                }
-                process.exit(1);
+                handleError(error, { verbose: opts.verbose, exit: true });
             }
         });
 
@@ -520,11 +494,7 @@ Examples:
             await menuMode();
             return;
         } catch (error) {
-            console.error(chalk.red(`Error: ${error.message}`));
-            if (error.stack) {
-                console.error(error.stack);
-            }
-            process.exit(1);
+            handleError(error, { verbose: true, exit: true });
         }
     }
 
@@ -535,11 +505,7 @@ Examples:
 // Run if called directly
 if (require.main === module) {
     main().catch(error => {
-        console.error(chalk.red(`Fatal error: ${error.message}`));
-        if (error.stack) {
-            console.error(error.stack);
-        }
-        process.exit(1);
+        handleError(error, { verbose: true, exit: true });
     });
 }
 
