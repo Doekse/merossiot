@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-19
+
+### Changed
+- **BREAKING**: Updated to use new manager module structure from `meross-iot` v0.5.0
+  - Updated to use manager properties (`manager.devices`, `manager.mqtt`, `manager.http`, etc.) instead of direct methods
+  - Updated all commands and helpers to use new property-based access patterns
+- **BREAKING**: Updated to use standardized error handling from `meross-iot` v0.5.0
+  - Updated to use new `MerossError*` error class names
+  - Replaced inline error handling with centralized `handleError()` function
+  - All error handling now uses the new error handler utility for consistent, user-friendly formatted messages
+
+### Added
+- Centralized error handler utility (`cli/utils/error-handler.js`) with formatted error messages
+- Enhanced error display with better context and user-friendly formatting
+
 ## [0.3.0] - 2026-01-16
 
 ### Changed

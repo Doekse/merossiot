@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.4.0
+npm install meross-iot@0.5.0
 ```
 
 ## Usage & Documentation
@@ -177,6 +177,45 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.5.0] - 2026-01-19
+
+#### Changed
+- **BREAKING**: Standardized error handling with MerossError* naming convention
+  - Renamed all error classes to use `MerossError*` prefix for consistency
+    - `AuthenticationError` → `MerossErrorAuthentication`
+    - `ConnectionError` → `MerossErrorConnection`
+    - `DeviceError` → `MerossErrorDevice`
+    - `HttpError` → `MerossErrorHttp`
+    - `MqttError` → `MerossErrorMqtt`
+    - `NetworkError` → `MerossErrorNetwork`
+    - `ProtocolError` → `MerossErrorProtocol`
+    - `TimeoutError` → `MerossErrorTimeout`
+    - `TokenError` → `MerossErrorToken`
+    - `ValidationError` → `MerossErrorValidation`
+  - All error classes now include `code`, `isOperational`, and `cause` properties
+  - Added `toJSON()` method to all error classes for serialization
+  - Updated TypeScript definitions to match new error structure
+  - Updated error-handling example to use new error class names
+- **BREAKING**: Split ManagerMeross into separate lazy-loaded manager modules
+  - Manager methods are now accessed via manager properties instead of direct methods:
+    - `manager.devices` - device discovery and initialization (ManagerDevices)
+    - `manager.mqtt` - MQTT connection management (ManagerMqtt)
+    - `manager.http` - LAN HTTP communication (ManagerHttp)
+    - `manager.transport` - transport mode selection and routing (ManagerTransport)
+    - `manager.statistics` - statistics tracking (ManagerStatistics)
+    - `manager.subscription` - device update subscriptions (ManagerSubscription)
+  - Extracted DeviceRegistry to standalone module
+  - Moved subscription manager to `managers/` directory
+  - Updated all examples and TypeScript definitions for new API
+
+#### Added
+- Enhanced error context through error chaining via `cause` property
+- Error serialization support via `toJSON()` method on all error classes
+- Lazy-loaded manager modules for better code organization and performance
+
+<details>
+<summary>Older</summary>
+
 ### [0.4.0] - 2026-01-16
 
 #### Changed
@@ -201,9 +240,6 @@ Please create an issue on GitHub and include:
 #### Updated
 - Updated all examples to use camelCase consistently
 - Updated all examples to use `initializeDevices()` instead of `getDevices()`
-
-<details>
-<summary>Older</summary>
 
 ### [0.3.1] - 2026-01-15
 
