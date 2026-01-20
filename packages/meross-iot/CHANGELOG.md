@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-01-20
+
+### Changed
+- **BREAKING**: Migrated to feature-based API architecture
+  - Converted all device methods to feature-based API (`device.feature.method()`)
+  - Replaced direct feature imports with factory functions
+  - Standardized `get()`/`set()` methods across all 27 features
+  - Updated all test files to use new API
+  - Updated TypeScript definitions for new API structure
+  - Added system device tests (`test-system.js`)
+  - Breaking changes include:
+    - `device.setLightColor()` → `device.light.set()`
+    - `device.getLightState()` → `device.light.get()`
+    - Similar changes for all features (toggle, thermostat, etc.)
+- Standardized error naming in JSDoc comments to use MerossError* convention
+  - Replace shortened error names (HttpApiError, TokenExpiredError, etc.) with full MerossError* names
+  - Replace generic {Error} references with specific MerossError* classes where appropriate
+  - Fix incorrect import paths in feature files to use MerossError* naming
+  - Update all @throws annotations to consistently use MerossError* naming convention
+
+### Added
+- System device tests (`test-system.js`)
+
 ## [0.5.0] - 2026-01-19
 
 ### Changed

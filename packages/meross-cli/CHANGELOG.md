@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-01-20
+
+### Changed
+- **BREAKING**: Updated to use feature-based API architecture from `meross-iot` v0.6.0
+  - Updated all commands and helpers to use new feature-based API (`device.feature.method()`)
+  - Updated all test files to use new API structure
+  - Breaking changes include:
+    - `device.setLightColor()` → `device.light.set()`
+    - `device.getLightState()` → `device.light.get()`
+    - Similar changes for all features (toggle, thermostat, etc.)
+
 ## [0.4.0] - 2026-01-19
 
 ### Changed
