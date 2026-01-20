@@ -1,6 +1,8 @@
 'use strict';
 
 const { MerossDevice } = require('./device');
+const createHubFeature = require('./features/hub-feature');
+const { handlePushNotification } = require('./features/hub-feature');
 
 /**
  * Hub device class that manages subdevices connected through a Meross hub.
@@ -33,15 +35,23 @@ class MerossHubDevice extends MerossDevice {
      *
      * @param {MerossCloud} cloudInstance - The MerossCloud manager instance
      * @param {Object} dev - Device information object from the API (contains deviceType, uuid, etc.)
-     * @param {Array<Object>} [subDeviceList] - Initial list of subdevices (for backward compatibility).
+     * @param {Array<Object>} [subDeviceList] - Initial list of subdevices.
      *                                         Subdevices should be registered using {@link MerossHubDevice#registerSubdevice} instead.
      */
     constructor(cloudInstance, dev, subDeviceList) {
         super(cloudInstance, dev);
         // Map provides O(1) lookup by subdevice ID
         this._subDevices = new Map();
-        // Legacy array format maintained for backward compatibility with discovery code
+        // Array format for discovery code compatibility
         this.subDeviceList = subDeviceList || [];
+
+        // Initialize hub feature
+        this.hub = createHubFeature(this);
+
+        // Assign handlePushNotification to instance so device.js can call it
+        this.handlePushNotification = (namespace, data) => {
+            return handlePushNotification(this, namespace, data);
+        };
     }
 
     /**
@@ -107,8 +117,8 @@ class MerossHubDevice extends MerossDevice {
     /**
      * Refreshes the hub device state and all registered subdevices.
      *
-     * Calls the parent implementation to refresh the hub's own state. Feature modules
-     * may override this method to also refresh subdevice states in a single operation.
+     * Calls the parent implementation to refresh the hub's own state, then updates
+     * all hub subdevices automatically.
      *
      * @returns {Promise<void>} Promise that resolves when state refresh is complete
      * @example
@@ -117,6 +127,9 @@ class MerossHubDevice extends MerossDevice {
      */
     async refreshState() {
         await super.refreshState();
+        if (this.hub && typeof this.hub.refreshState === 'function') {
+            await this.hub.refreshState();
+        }
     }
 
     /**
@@ -141,7 +154,7 @@ class MerossHubDevice extends MerossDevice {
     connect() {
         super.connect();
 
-        this.on('pushNotification', (notification) => {
+        this.on('pushNotificationReceived', (notification) => {
             if (notification && typeof notification.routeToSubdevices === 'function') {
                 notification.routeToSubdevices(this);
             }
@@ -177,6 +190,9 @@ class MerossHubDevice extends MerossDevice {
      * }
      */
     async getHubException() {
+        if (this.hub && typeof this.hub.getException === 'function') {
+            return await this.hub.getException();
+        }
         return await this.publishMessage('GET', 'Appliance.Hub.Exception', {}, null);
     }
 }

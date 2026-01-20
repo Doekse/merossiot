@@ -63,12 +63,12 @@ async function runTests(context) {
     
     // Test 1: Control Multiple
     try {
-        if (typeof device.setMultiple !== 'function') {
+        if (!device.control || typeof device.control.setMultiple !== 'function') {
             results.push({
                 name: 'should execute multiple commands',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support setMultiple',
+                error: 'Device does not support control.setMultiple',
                 device: deviceName
             });
         } else {
@@ -85,14 +85,14 @@ async function runTests(context) {
                 }
             ];
             
-            const response = await device.setMultiple(commands);
+            const response = await device.control.setMultiple({ commands });
             
             if (!response) {
                 results.push({
                     name: 'should execute multiple commands',
                     passed: false,
                     skipped: false,
-                    error: 'setMultiple returned null or undefined',
+                    error: 'control.setMultiple returned null or undefined',
                     device: deviceName
                 });
             } else {
@@ -117,12 +117,12 @@ async function runTests(context) {
     
     // Test 2: Control Over Temp
     try {
-        if (typeof device.acknowledgeControlOverTemp !== 'function') {
+        if (!device.control || typeof device.control.acknowledgeOverTemp !== 'function') {
             results.push({
                 name: 'should acknowledge over temp event',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support acknowledgeControlOverTemp',
+                error: 'Device does not support control.acknowledgeOverTemp',
                 device: deviceName
             });
         } else {
@@ -149,12 +149,12 @@ async function runTests(context) {
     
     // Test 3: Control Upgrade
     try {
-        if (typeof device.setUpgrade !== 'function') {
+        if (!device.control || typeof device.control.setUpgrade !== 'function') {
             results.push({
                 name: 'should have upgrade method available',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support setUpgrade',
+                error: 'Device does not support control.setUpgrade',
                 device: deviceName
             });
         } else {

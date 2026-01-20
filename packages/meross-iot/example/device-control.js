@@ -35,36 +35,37 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
         try {
             // Example 1: Toggle Control (Switches/Plugs)
-            // Check device abilities before attempting control to avoid errors
-            if (device.abilities && device.abilities['Appliance.Control.ToggleX']) {
-                console.log('  Supports ToggleX control');
+            if (device.toggle) {
+                console.log('  Supports Toggle control');
 
-                await device.setToggleX({ channel: 1, onoff: true });
+                await device.toggle.set({ channel: 1, on: true });
                 console.log('  ✓ Turned on channel 1');
 
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
-                await device.setToggleX({ channel: 1, onoff: false });
+                await device.toggle.set({ channel: 1, on: false });
                 console.log('  ✓ Turned off channel 1');
 
-                // Alternative: Use simpler methods for single-channel devices
-                // await device.turnOn({ channel: 1 });
-                // await device.turnOff({ channel: 1 });
+                // Check state
+                const isOn = device.toggle.isOn({ channel: 1 });
+                console.log(`  Channel 1 is ${isOn ? 'on' : 'off'}`);
             }
 
             // Example 2: Light Control
-            if (device.abilities && device.abilities['Appliance.Control.Light']) {
+            if (device.light) {
                 console.log('  Supports Light control');
 
-                const lightState = await device.getLightState({ channel: 0 });
-                console.log(`  Current brightness: ${lightState.luminance || 'N/A'}%`);
+                const lightState = await device.light.get({ channel: 0 });
+                if (lightState) {
+                    console.log(`  Current brightness: ${lightState.luminance || 'N/A'}%`);
+                }
 
-                await device.setLightColor({ channel: 0, luminance: 50 });
+                await device.light.set({ channel: 0, luminance: 50 });
                 console.log('  ✓ Set brightness to 50%');
 
                 // RGB support must be checked separately as not all light devices support it
-                if (device.getSupportsRgb && device.getSupportsRgb()) {
-                    await device.setLightColor({ channel: 0, rgb: [255, 0, 0] });
+                if (device.light.supportsRgb({ channel: 0 })) {
+                    await device.light.set({ channel: 0, rgb: [255, 0, 0] });
                     console.log('  ✓ Set color to red');
                 }
             }
@@ -82,7 +83,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             }
 
             // Example 4: Get all device data
-            const allData = await device.getSystemAllData();
+            const allData = await device.system.getAllData();
             console.log('  System data retrieved');
             
         } catch (error) {

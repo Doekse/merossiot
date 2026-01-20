@@ -385,16 +385,16 @@ async function runTests(context) {
     
     // Test 6: Get hub battery status
     try {
-        if (typeof testHub.getHubBattery !== 'function') {
+        if (!testHub.hub || typeof testHub.hub.getBattery !== 'function') {
             results.push({
                 name: 'should get hub battery status',
                 passed: false,
                 skipped: true,
-                error: 'Hub does not support getHubBattery',
+                error: 'Hub does not support getBattery',
                 device: deviceName
             });
         } else {
-            const response = await testHub.getHubBattery();
+            const response = await testHub.hub.getBattery();
             
             if (!response || !Array.isArray(response.battery)) {
                 results.push({

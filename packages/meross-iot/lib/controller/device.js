@@ -15,17 +15,50 @@ const {
     MerossErrorNotFound
 } = require('../model/exception');
 
-const systemFeature = require('./features/system-feature');
-const toggleFeature = require('./features/toggle-feature');
-const lightFeature = require('./features/light-feature');
-const thermostatFeature = require('./features/thermostat-feature');
-const rollerShutterFeature = require('./features/roller-shutter-feature');
-const garageFeature = require('./features/garage-feature');
-const diffuserFeature = require('./features/diffuser-feature');
-const sprayFeature = require('./features/spray-feature');
-const consumptionFeature = require('./features/consumption-feature');
-const electricityFeature = require('./features/electricity-feature');
-const encryptionFeature = require('./features/encryption-feature');
+// Import feature factories
+const createSystemFeature = require('./features/system-feature');
+const createEncryptionFeature = require('./features/encryption-feature');
+const createToggleFeature = require('./features/toggle-feature');
+const createLightFeature = require('./features/light-feature');
+const createThermostatFeature = require('./features/thermostat-feature');
+const createRollerShutterFeature = require('./features/roller-shutter-feature');
+const createGarageFeature = require('./features/garage-feature');
+const createDiffuserFeature = require('./features/diffuser-feature');
+const createSprayFeature = require('./features/spray-feature');
+const createConsumptionFeature = require('./features/consumption-feature');
+const createElectricityFeature = require('./features/electricity-feature');
+const createTimerFeature = require('./features/timer-feature');
+const createTriggerFeature = require('./features/trigger-feature');
+const createPresenceSensorFeature = require('./features/presence-sensor-feature');
+const createAlarmFeature = require('./features/alarm-feature');
+const createChildLockFeature = require('./features/child-lock-feature');
+const createScreenFeature = require('./features/screen-feature');
+const createRuntimeFeature = require('./features/runtime-feature');
+const createConfigFeature = require('./features/config-feature');
+const createDNDFeature = require('./features/dnd-feature');
+const createTempUnitFeature = require('./features/temp-unit-feature');
+const createSmokeConfigFeature = require('./features/smoke-config-feature');
+const createSensorHistoryFeature = require('./features/sensor-history-feature');
+const createDigestTimerFeature = require('./features/digest-timer-feature');
+const createDigestTriggerFeature = require('./features/digest-trigger-feature');
+const createControlFeature = require('./features/control-feature');
+
+// Import update functions
+const updateToggleState = require('./features/toggle-feature')._updateToggleState;
+const updateLightState = require('./features/light-feature')._updateLightState;
+const updateThermostatMode = require('./features/thermostat-feature')._updateThermostatMode;
+const updateThermostatModeB = require('./features/thermostat-feature')._updateThermostatModeB;
+const updateRollerShutterState = require('./features/roller-shutter-feature')._updateRollerShutterState;
+const updateRollerShutterPosition = require('./features/roller-shutter-feature')._updateRollerShutterPosition;
+const updateGarageDoorState = require('./features/garage-feature')._updateGarageDoorState;
+const updateGarageDoorConfig = require('./features/garage-feature').updateGarageDoorConfig;
+const updateDiffuserLightState = require('./features/diffuser-feature')._updateDiffuserLightState;
+const updateDiffuserSprayState = require('./features/diffuser-feature')._updateDiffuserSprayState;
+const updateSprayState = require('./features/spray-feature')._updateSprayState;
+const updateTimerXState = require('./features/timer-feature')._updateTimerXState;
+const updateTriggerXState = require('./features/trigger-feature')._updateTriggerXState;
+const updatePresenceState = require('./features/presence-sensor-feature')._updatePresenceState;
+const updateAlarmEvents = require('./features/alarm-feature')._updateAlarmEvents;
 
 /**
  * Base class for all Meross cloud devices.
@@ -66,6 +99,34 @@ class MerossDevice extends EventEmitter {
         this._initializeStateCaches();
         this._initializeConnectionState(cloudInstance);
         this._initializeHttpInfo(dev);
+
+        // Initialize feature objects
+        this.system = createSystemFeature(this);
+        this.encryption = createEncryptionFeature(this);
+        this.toggle = createToggleFeature(this);
+        this.light = createLightFeature(this);
+        this.thermostat = createThermostatFeature(this);
+        this.rollerShutter = createRollerShutterFeature(this);
+        this.garage = createGarageFeature(this);
+        this.diffuser = createDiffuserFeature(this);
+        this.spray = createSprayFeature(this);
+        this.consumption = createConsumptionFeature(this);
+        this.electricity = createElectricityFeature(this);
+        this.timer = createTimerFeature(this);
+        this.trigger = createTriggerFeature(this);
+        this.presence = createPresenceSensorFeature(this);
+        this.alarm = createAlarmFeature(this);
+        this.childLock = createChildLockFeature(this);
+        this.screen = createScreenFeature(this);
+        this.runtime = createRuntimeFeature(this);
+        this.config = createConfigFeature(this);
+        this.dnd = createDNDFeature(this);
+        this.tempUnit = createTempUnitFeature(this);
+        this.smokeConfig = createSmokeConfigFeature(this);
+        this.sensorHistory = createSensorHistoryFeature(this);
+        this.digestTimer = createDigestTimerFeature(this);
+        this.digestTrigger = createDigestTriggerFeature(this);
+        this.control = createControlFeature(this);
     }
 
     /**
@@ -240,8 +301,8 @@ class MerossDevice extends EventEmitter {
      */
     updateAbilities(abilities) {
         this.abilities = abilities;
-        if (typeof this._updateAbilitiesWithEncryption === 'function') {
-            this._updateAbilitiesWithEncryption(abilities);
+        if (this.encryption && typeof this.encryption._updateAbilitiesWithEncryption === 'function') {
+            this.encryption._updateAbilitiesWithEncryption(abilities);
         }
     }
 
@@ -254,8 +315,8 @@ class MerossDevice extends EventEmitter {
      */
     updateMacAddress(mac) {
         this.macAddress = mac;
-        if (typeof this._updateMacAddressWithEncryption === 'function') {
-            this._updateMacAddressWithEncryption(mac);
+        if (this.encryption && typeof this.encryption._updateMacAddressWithEncryption === 'function') {
+            this.encryption._updateMacAddressWithEncryption(mac);
         }
     }
 
@@ -282,25 +343,6 @@ class MerossDevice extends EventEmitter {
         return this._internalId;
     }
 
-
-    /**
-     * Validates that the device state has been refreshed.
-     *
-     * Logs a warning if state has not been refreshed to help developers catch cases
-     * where cached state may be stale or missing.
-     *
-     * @returns {boolean} True if state has been refreshed, false otherwise
-     */
-    validateState() {
-        const updateDone = this.lastFullUpdateTimestamp !== null;
-        if (!updateDone) {
-            const deviceName = this.name || this.uuid || 'unknown device';
-            const logger = this.cloudInst?.options?.logger || console.error;
-            logger(`Please invoke refreshState() for this device (${deviceName}) before accessing its state. Failure to do so may result in inconsistent state.`);
-        }
-        return updateDone;
-    }
-
     /**
      * Refreshes the device state by fetching System.All data.
      *
@@ -311,12 +353,13 @@ class MerossDevice extends EventEmitter {
      * @throws {Error} If device does not support refreshState()
      */
     async refreshState() {
-        if (typeof this.getSystemAllData === 'function') {
-            await this.getSystemAllData();
+        if (this.system && typeof this.system.getAllData === 'function') {
+            await this.system.getAllData();
 
-            this.emit('stateRefreshed', {
+            this.emit('state', {
+                type: 'refresh',
                 timestamp: this.lastFullUpdateTimestamp || Date.now(),
-                state: this.getUnifiedState()
+                value: this.getUnifiedState()
             });
         } else {
             throw new MerossErrorUnknownDeviceType('Device does not support refreshState()', this.deviceType);
@@ -354,21 +397,26 @@ class MerossDevice extends EventEmitter {
     _collectFeatureStates(state) {
         const channels = this.channels || [{ index: 0 }];
 
-        // Toggle uses Map-based storage (getAllCachedToggleStates), handled separately
+        // Toggle uses Map-based storage, handled separately
         this._collectToggleState(state);
 
+        // Collect state from feature objects (toggle, light) or state maps (others)
+        if (this.light) {
+            this._collectLightState(state, channels);
+        }
+
+        // Collect state from state maps for features not yet refactored
         const channelFeatures = [
-            { key: 'electricity', getter: 'getCachedElectricity' },
-            { key: 'consumption', getter: 'getCachedConsumption' },
-            { key: 'light', getter: 'getCachedLightState' },
-            { key: 'thermostat', getter: 'getCachedThermostatState' },
-            { key: 'rollerShutter', getter: 'getCachedRollerShutterState' },
-            { key: 'garageDoor', getter: 'getCachedGarageDoorState' },
-            { key: 'spray', getter: 'getCachedSprayState' }
+            { key: 'electricity', map: '_channelCachedSamples' },
+            { key: 'consumption', map: '_channelCachedConsumption' },
+            { key: 'thermostat', map: '_thermostatStateByChannel' },
+            { key: 'rollerShutter', map: '_rollerShutterStateByChannel' },
+            { key: 'garageDoor', map: '_garageDoorStateByChannel' },
+            { key: 'spray', map: '_sprayStateByChannel' }
         ];
 
         for (const feature of channelFeatures) {
-            this._collectChannelFeature(state, feature.key, feature.getter, channels);
+            this._collectChannelFeatureFromMap(state, feature.key, feature.map, channels);
         }
 
         // Features requiring custom transforms to map internal state to unified format
@@ -380,46 +428,69 @@ class MerossDevice extends EventEmitter {
     /**
      * Collects toggle state.
      *
-     * Toggle state uses Map-based storage (getAllCachedToggleStates) rather than
+     * Toggle state uses Map-based storage (_toggleStateByChannel) rather than
      * per-channel getters, so it's handled separately.
      *
      * @private
      * @param {Object} state - State object to populate
      */
     _collectToggleState(state) {
-        if (typeof this.getAllCachedToggleStates !== 'function') {
+        if (!this._toggleStateByChannel || this._toggleStateByChannel.size === 0) {
             return;
         }
 
-        const toggleStates = this.getAllCachedToggleStates();
-        if (toggleStates && toggleStates.size > 0) {
-            state.toggle = {};
-            toggleStates.forEach((toggleState, channel) => {
-                state.toggle[channel] = toggleState.isOn;
-            });
+        state.toggle = {};
+        this._toggleStateByChannel.forEach((toggleState, channel) => {
+            state.toggle[channel] = toggleState.isOn;
+        });
+    }
+
+    /**
+     * Collects light state from feature object.
+     *
+     * @private
+     * @param {Object} state - State object to populate
+     * @param {Array} channels - Array of channel objects
+     */
+    _collectLightState(state, channels) {
+        const featureState = {};
+        for (const ch of channels) {
+            const cached = this._lightStateByChannel.get(ch.index);
+            if (cached) {
+                featureState[ch.index] = {
+                    isOn: cached.isOn,
+                    rgb: cached.rgbInt,
+                    rgbTuple: cached.rgbTuple,
+                    luminance: cached.luminance,
+                    temperature: cached.temperature,
+                    capacity: cached.capacity
+                };
+            }
+        }
+
+        if (Object.keys(featureState).length > 0) {
+            state.light = featureState;
         }
     }
 
     /**
-     * Collects a channel-based feature state.
-     *
-     * Iterates over channels and calls the feature's cached getter method for each,
-     * aggregating results into the unified state object.
+     * Collects a channel-based feature state from state map.
      *
      * @private
      * @param {Object} state - State object to populate
      * @param {string} key - Feature key in state object
-     * @param {string} getterMethod - Name of getter method to call
+     * @param {string} mapName - Name of state map property
      * @param {Array} channels - Array of channel objects
      */
-    _collectChannelFeature(state, key, getterMethod, channels) {
-        if (typeof this[getterMethod] !== 'function') {
+    _collectChannelFeatureFromMap(state, key, mapName, channels) {
+        const stateMap = this[mapName];
+        if (!stateMap || stateMap.size === 0) {
             return;
         }
 
         const featureState = {};
         for (const ch of channels) {
-            const cached = this[getterMethod](ch.index);
+            const cached = stateMap.get(ch.index);
             if (cached) {
                 featureState[ch.index] = cached;
             }
@@ -441,13 +512,13 @@ class MerossDevice extends EventEmitter {
      * @param {Array} channels - Array of channel objects
      */
     _collectPresenceSensorState(state, channels) {
-        if (typeof this.getCachedPresenceSensorState !== 'function') {
+        if (!this._presenceSensorStateByChannel || this._presenceSensorStateByChannel.size === 0) {
             return;
         }
 
         const featureState = {};
         for (const ch of channels) {
-            const cached = this.getCachedPresenceSensorState(ch.index);
+            const cached = this._presenceSensorStateByChannel.get(ch.index);
             if (cached) {
                 featureState[ch.index] = {
                     isPresent: cached.isPresent,
@@ -479,13 +550,13 @@ class MerossDevice extends EventEmitter {
      * @param {Array} channels - Array of channel objects
      */
     _collectDiffuserLightState(state, channels) {
-        if (typeof this.getCachedDiffuserLightState !== 'function') {
+        if (!this._diffuserLightStateByChannel || this._diffuserLightStateByChannel.size === 0) {
             return;
         }
 
         const featureState = {};
         for (const ch of channels) {
-            const cached = this.getCachedDiffuserLightState(ch.index);
+            const cached = this._diffuserLightStateByChannel.get(ch.index);
             if (cached) {
                 featureState[ch.index] = {
                     isOn: cached.isOn,
@@ -513,13 +584,13 @@ class MerossDevice extends EventEmitter {
      * @param {Array} channels - Array of channel objects
      */
     _collectDiffuserSprayState(state, channels) {
-        if (typeof this.getCachedDiffuserSprayState !== 'function') {
+        if (!this._diffuserSprayStateByChannel || this._diffuserSprayStateByChannel.size === 0) {
             return;
         }
 
         const featureState = {};
         for (const ch of channels) {
-            const cached = this.getCachedDiffuserSprayState(ch.index);
+            const cached = this._diffuserSprayStateByChannel.get(ch.index);
             if (cached) {
                 featureState[ch.index] = {
                     mode: cached.mode
@@ -603,7 +674,7 @@ class MerossDevice extends EventEmitter {
             this._handlePushNotification(message);
         }
 
-        this.emit('rawData', message);
+        // Raw message events removed - use 'state' event instead
     }
 
     /**
@@ -648,19 +719,43 @@ class MerossDevice extends EventEmitter {
             return;
         }
 
-        if (system.hardware?.macAddress) {
-            this.updateMacAddress(system.hardware.macAddress);
+        // Track if any properties changed by comparing key properties
+        let hasUpdates = false;
+
+        // Check hardware changes
+        const hardware = system.hardware;
+        if (hardware) {
+            if (hardware.type && hardware.type !== this.deviceType) {
+                hasUpdates = true;
+                this.deviceType = hardware.type;
+            }
+            if (hardware.version && hardware.version !== this.hardwareVersion) {
+                hasUpdates = true;
+                this.hardwareVersion = hardware.version;
+            }
+            if (hardware.macAddress && hardware.macAddress !== this.macAddress) {
+                hasUpdates = true;
+                this.updateMacAddress(hardware.macAddress);
+            }
         }
 
+        // Check firmware changes
         const firmware = system.firmware;
         if (firmware) {
-            if (firmware.innerIp) {
+            if (firmware.version && firmware.version !== this.firmwareVersion) {
+                hasUpdates = true;
+                this.firmwareVersion = firmware.version;
+            }
+            if (firmware.innerIp && firmware.innerIp !== this.lanIp) {
+                hasUpdates = true;
                 this.lanIp = firmware.innerIp;
             }
-            if (firmware.server) {
+            if (firmware.server && firmware.server !== this.mqttHost) {
+                hasUpdates = true;
                 this.mqttHost = firmware.server;
             }
-            if (firmware.port) {
+            if (firmware.port && firmware.port !== this.mqttPort) {
+                hasUpdates = true;
                 this.mqttPort = firmware.port;
             }
             this.lastFullUpdateTimestamp = Date.now();
@@ -672,6 +767,25 @@ class MerossDevice extends EventEmitter {
 
         if (payload.all.digest) {
             this._routeDigestToFeatures(payload.all.digest);
+        }
+
+        // Emit state event if any properties changed
+        if (hasUpdates) {
+            this.emit('state', {
+                type: 'properties',
+                channel: 0,
+                value: {
+                    macAddress: this.macAddress,
+                    lanIp: this.lanIp,
+                    mqttHost: this.mqttHost,
+                    mqttPort: this.mqttPort,
+                    deviceType: this.deviceType,
+                    hardwareVersion: this.hardwareVersion,
+                    firmwareVersion: this.firmwareVersion
+                },
+                source: 'poll',
+                timestamp: Date.now()
+            });
         }
     }
 
@@ -700,17 +814,17 @@ class MerossDevice extends EventEmitter {
      * @param {Object} digest - Digest object
      */
     _routeSimpleDigestFeatures(digest) {
-        const simpleRoutes = [
-            { key: 'togglex', handler: '_updateToggleState' },
-            { key: 'light', handler: '_updateLightState' },
-            { key: 'spray', handler: '_updateSprayState' },
-            { key: 'timerx', handler: '_updateTimerXState' }
-        ];
-
-        for (const route of simpleRoutes) {
-            if (digest[route.key] && typeof this[route.handler] === 'function') {
-                this[route.handler](digest[route.key], 'poll');
-            }
+        if (digest.togglex) {
+            updateToggleState(this, digest.togglex, 'poll');
+        }
+        if (digest.light) {
+            updateLightState(this, digest.light, 'poll');
+        }
+        if (digest.spray) {
+            updateSprayState(this, digest.spray, 'poll');
+        }
+        if (digest.timerx) {
+            updateTimerXState(this, digest.timerx, 'poll');
         }
     }
 
@@ -745,11 +859,11 @@ class MerossDevice extends EventEmitter {
      * @param {Object} thermostat - Thermostat digest data
      */
     _routeThermostatDigest(thermostat) {
-        if (thermostat.mode && typeof this._updateThermostatMode === 'function') {
-            this._updateThermostatMode(thermostat.mode, 'poll');
+        if (thermostat.mode) {
+            updateThermostatMode(this, thermostat.mode, 'poll');
         }
-        if (thermostat.modeB && typeof this._updateThermostatModeB === 'function') {
-            this._updateThermostatModeB(thermostat.modeB, 'poll');
+        if (thermostat.modeB) {
+            updateThermostatModeB(this, thermostat.modeB, 'poll');
         }
     }
 
@@ -775,11 +889,11 @@ class MerossDevice extends EventEmitter {
      * @param {Object} rollerShutter - Roller shutter digest data
      */
     _routeRollerShutterDigest(rollerShutter) {
-        if (rollerShutter.state && typeof this._updateRollerShutterState === 'function') {
-            this._updateRollerShutterState(rollerShutter.state, 'poll');
+        if (rollerShutter.state) {
+            updateRollerShutterState(this, rollerShutter.state, 'poll');
         }
-        if (rollerShutter.position && typeof this._updateRollerShutterPosition === 'function') {
-            this._updateRollerShutterPosition(rollerShutter.position, 'poll');
+        if (rollerShutter.position) {
+            updateRollerShutterPosition(this, rollerShutter.position, 'poll');
         }
     }
 
@@ -833,7 +947,7 @@ class MerossDevice extends EventEmitter {
      * Handles push notification messages.
      *
      * Tracks notification activity, parses into typed notification objects, routes to
-     * feature modules, and emits events for both new and legacy consumers.
+     * feature modules, and emits unified state events.
      *
      * @private
      * @param {Object} message - The push notification message object
@@ -844,10 +958,7 @@ class MerossDevice extends EventEmitter {
         const namespace = message.header?.namespace || '';
         const payload = message.payload || message;
 
-        const notification = parsePushNotification(namespace, payload, this.uuid);
-        if (notification) {
-            this.emit('pushNotification', notification);
-        }
+        parsePushNotification(namespace, payload, this.uuid);
 
         this._routePushNotificationToFeatures(namespace, payload);
 
@@ -856,8 +967,6 @@ class MerossDevice extends EventEmitter {
         if (typeof this.handlePushNotification === 'function') {
             this.handlePushNotification(namespace, payload);
         }
-
-        this.emit('data', namespace, payload);
     }
 
     /**
@@ -871,159 +980,94 @@ class MerossDevice extends EventEmitter {
      * @param {Object} payload - Message payload
      */
     _routePushNotificationToFeatures(namespace, payload) {
-        const namespaceRoutes = [
-            {
-                namespace: 'Appliance.Control.ToggleX',
-                check: (p) => p?.togglex,
-                handler: '_updateToggleState',
-                getData: (p) => p.togglex,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Toggle',
-                check: (p) => p?.toggle,
-                handler: '_updateToggleState',
-                getData: (p) => {
-                    // Legacy namespace lacks channel field; default to 0 for compatibility
-                    // with older devices that don't specify channel
-                    const toggleData = p.toggle;
-                    if (toggleData.channel === undefined) {
-                        toggleData.channel = 0;
-                    }
-                    return toggleData;
-                },
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Thermostat.Mode',
-                check: (p) => p?.mode,
-                handler: '_updateThermostatMode',
-                getData: (p) => p.mode,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Thermostat.ModeB',
-                check: (p) => p?.modeB,
-                handler: '_updateThermostatModeB',
-                getData: (p) => p.modeB,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Light',
-                check: (p) => p?.light,
-                handler: '_updateLightState',
-                getData: (p) => p.light,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Diffuser.Light',
-                check: (p) => p?.light,
-                handler: '_updateDiffuserLightState',
-                getData: (p) => p.light,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Diffuser.Spray',
-                check: (p) => p?.spray,
-                handler: '_updateDiffuserSprayState',
-                getData: (p) => p.spray,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Spray',
-                check: (p) => p?.spray,
-                handler: '_updateSprayState',
-                getData: (p) => p.spray,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.RollerShutter.State',
-                check: (p) => p?.state,
-                handler: '_updateRollerShutterState',
-                getData: (p) => p.state,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.RollerShutter.Position',
-                check: (p) => p?.position,
-                handler: '_updateRollerShutterPosition',
-                getData: (p) => p.position,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.GarageDoor.State',
-                check: (p) => p?.state,
-                handler: '_updateGarageDoorState',
-                getData: (p) => p.state,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.GarageDoor.MultipleConfig',
-                check: (p) => p?.config,
-                handler: '_updateGarageDoorConfig',
-                getData: (p) => p.config,
-                source: null
-            },
-            {
-                namespace: 'Appliance.System.Online',
-                check: (p) => p?.online,
-                handler: null,
-                getData: (p) => p.online.status,
-                source: null
-            },
-            {
-                namespace: 'Appliance.Control.Alarm',
-                check: (p) => p?.alarm,
-                handler: '_updateAlarmEvents',
-                getData: (p) => p.alarm,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.TimerX',
-                check: (p) => p?.timerx,
-                handler: '_updateTimerXState',
-                getData: (p) => p.timerx,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.TriggerX',
-                check: (p) => p?.triggerx,
-                handler: '_updateTriggerXState',
-                getData: (p) => p.triggerx,
-                source: 'push'
-            },
-            {
-                namespace: 'Appliance.Control.Sensor.LatestX',
-                check: (p) => p?.latest,
-                handler: '_updatePresenceState',
-                getData: (p) => p.latest,
-                source: 'push'
+        // System.Online updates online status directly
+        if (namespace === 'Appliance.System.Online' && payload?.online) {
+            this._updateOnlineStatus(payload.online.status);
+            return;
+        }
+
+        // Route to appropriate update function based on namespace
+        if (namespace === 'Appliance.Control.ToggleX' && payload?.togglex) {
+            updateToggleState(this, payload.togglex, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.Toggle' && payload?.toggle) {
+            const toggleData = payload.toggle;
+            if (toggleData.channel === undefined) {
+                toggleData.channel = 0;
             }
-        ];
-
-        const route = namespaceRoutes.find(r => r.namespace === namespace);
-        if (!route) {
+            updateToggleState(this, toggleData, 'push');
             return;
         }
 
-        if (!route.check(payload)) {
+        if (namespace === 'Appliance.Control.Thermostat.Mode' && payload?.mode) {
+            updateThermostatMode(this, payload.mode, 'push');
             return;
         }
 
-        // System.Online updates online status directly without feature handler routing
-        if (namespace === 'Appliance.System.Online') {
-            const onlineStatus = route.getData(payload);
-            this._updateOnlineStatus(onlineStatus);
+        if (namespace === 'Appliance.Control.Thermostat.ModeB' && payload?.modeB) {
+            updateThermostatModeB(this, payload.modeB, 'push');
             return;
         }
 
-        if (route.handler && typeof this[route.handler] === 'function') {
-            const data = route.getData(payload);
-            if (route.source === 'push') {
-                this[route.handler](data, 'push');
-            } else {
-                this[route.handler](data);
-            }
+        if (namespace === 'Appliance.Control.Light' && payload?.light) {
+            updateLightState(this, payload.light, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.Diffuser.Light' && payload?.light) {
+            updateDiffuserLightState(this, payload.light, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.Diffuser.Spray' && payload?.spray) {
+            updateDiffuserSprayState(this, payload.spray, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.Spray' && payload?.spray) {
+            updateSprayState(this, payload.spray, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.RollerShutter.State' && payload?.state) {
+            updateRollerShutterState(this, payload.state, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.RollerShutter.Position' && payload?.position) {
+            updateRollerShutterPosition(this, payload.position, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.GarageDoor.State' && payload?.state) {
+            updateGarageDoorState(this, payload.state, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.GarageDoor.MultipleConfig' && payload?.config) {
+            updateGarageDoorConfig(this, payload.config);
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.Alarm' && payload?.alarm) {
+            updateAlarmEvents(this, payload.alarm, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.TimerX' && payload?.timerx) {
+            updateTimerXState(this, payload.timerx, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.TriggerX' && payload?.triggerx) {
+            updateTriggerXState(this, payload.triggerx, 'push');
+            return;
+        }
+
+        if (namespace === 'Appliance.Control.Sensor.LatestX' && payload?.latest) {
+            updatePresenceState(this, payload.latest, 'push');
         }
     }
 
@@ -1040,8 +1084,8 @@ class MerossDevice extends EventEmitter {
             this.emit('connected');
         });
         setTimeout(() => {
-            if (typeof this.getSystemAllData === 'function') {
-                this.getSystemAllData().catch(_err => {
+            if (this.system && typeof this.system.getAllData === 'function') {
+                this.system.getAllData().catch(_err => {
                     // Ignore initial fetch failures as device may still be initializing
                     // and will retry on subsequent operations
                 });
@@ -1124,7 +1168,7 @@ class MerossDevice extends EventEmitter {
                     }, timeoutDuration)
                 };
 
-                this.emit('rawSendData', data);
+                // Raw message events removed - use 'state' event instead
             } catch (error) {
                 reject(error);
             }
@@ -1134,24 +1178,19 @@ class MerossDevice extends EventEmitter {
     /**
      * Updates the device's online status and emits events if changed.
      *
-     * Emits both legacy 'data' events and new 'stateChange' events for unified state
-     * handling by subscription managers.
+     * Emits unified state events for state handling by subscription managers.
      *
      * @private
-     * @param {number} newStatus - New online status from OnlineStatus enum
+     * @param {number} status - Online status from OnlineStatus enum
      */
-    _updateOnlineStatus(newStatus) {
+    _updateOnlineStatus(status) {
         const oldStatus = this.onlineStatus;
-        if (oldStatus !== newStatus) {
-            this.onlineStatus = newStatus;
-            this.emit('onlineStatusChange', newStatus, oldStatus);
-            this.emit('data', 'Appliance.System.Online', { online: { status: newStatus } });
-
-            this.emit('stateChange', {
+        if (oldStatus !== status) {
+            this.onlineStatus = status;
+            this.emit('state', {
                 type: 'online',
                 channel: 0,
-                value: newStatus,
-                oldValue: oldStatus,
+                value: status,
                 source: 'push',
                 timestamp: Date.now()
             });
@@ -1270,27 +1309,12 @@ class MerossDevice extends EventEmitter {
 
 /**
  * @typedef {Object} MerossDeviceEvents
- * @property {Function} pushNotification - Emitted when a push notification is received
- * @property {Function} data - Emitted with namespace and payload for backward compatibility
- * @property {Function} rawData - Emitted with raw message data
- * @property {Function} rawSendData - Emitted when raw data is sent
- * @property {Function} onlineStatusChange - Emitted when online status changes (newStatus, oldStatus)
+ * @property {Function} state - Emitted when device state changes (unified event for all state changes)
+ * @property {Function} error - Emitted when an error occurs
+ * @property {Function} connected - Emitted when device connects
+ * @property {Function} disconnected - Emitted when device disconnects
  */
 
-// Mix feature modules into device prototype to enable device-specific capabilities.
-// Encryption is included for all devices since firmware may enable it dynamically
-// based on device configuration or firmware version.
-Object.assign(MerossDevice.prototype, encryptionFeature);
-Object.assign(MerossDevice.prototype, systemFeature);
-Object.assign(MerossDevice.prototype, toggleFeature);
-Object.assign(MerossDevice.prototype, lightFeature);
-Object.assign(MerossDevice.prototype, thermostatFeature);
-Object.assign(MerossDevice.prototype, rollerShutterFeature);
-Object.assign(MerossDevice.prototype, garageFeature);
-Object.assign(MerossDevice.prototype, diffuserFeature);
-Object.assign(MerossDevice.prototype, sprayFeature);
-Object.assign(MerossDevice.prototype, consumptionFeature);
-Object.assign(MerossDevice.prototype, electricityFeature);
 
 module.exports = { MerossDevice };
 

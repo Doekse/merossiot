@@ -12,7 +12,7 @@
  * @example
  * const { parsePushNotification, ToggleXPushNotification } = require('./lib/model/push');
  *
- * device.on('pushNotification', (notification) => {
+ * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof ToggleXPushNotification) {
  *         console.log('Toggle state changed');
  *     }

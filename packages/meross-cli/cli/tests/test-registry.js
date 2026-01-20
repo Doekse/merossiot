@@ -78,7 +78,7 @@ const TEST_METADATA = {
     'electricity': {
         file: 'test-electricity.js',
         description: 'Tests power consumption metrics and daily consumption data',
-        requiredAbilities: ['Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption', 'Appliance.Control.Electricity'],
+        requiredAbilities: ['Appliance.Control.ConsumptionH', 'Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption', 'Appliance.Control.Electricity'],
         minDevices: 1
     },
     'dnd': {
@@ -177,6 +177,12 @@ const TEST_METADATA = {
         file: 'test-presence.js',
         description: 'Tests presence detection, light readings, and configuration for presence sensor devices',
         requiredAbilities: ['Appliance.Control.Sensor.LatestX'],
+        minDevices: 1
+    },
+    'system': {
+        file: 'test-system.js',
+        description: 'Tests system information, hardware, firmware, abilities, and configuration',
+        requiredAbilities: ['Appliance.System.All', 'Appliance.System.Ability'],
         minDevices: 1
     }
 };

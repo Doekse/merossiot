@@ -13,7 +13,7 @@ const { HardwareInfo, FirmwareInfo, TimeInfo } = require('./common');
  * @class
  * @extends GenericPushNotification
  * @example
- * device.on('pushNotification', (notification) => {
+ * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof BindPushNotification) {
  *         const timeInfo = notification.time;
  *         if (timeInfo) {

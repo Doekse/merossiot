@@ -64,8 +64,8 @@ const { ManagerMeross, MerossHttpClient } = require('meross-iot');
     const device = devices[0];
     
     // Example: Toggle a switch
-    if (device.abilities && device.abilities['Appliance.Control.ToggleX']) {
-      await device.setToggleX({ channel: 0, onoff: true }); // Turn on channel 0
+    if (device.toggle) {
+      await device.toggle.set({ channel: 0, on: true }); // Turn on channel 0
     }
   }
 })();

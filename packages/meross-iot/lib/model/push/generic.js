@@ -8,10 +8,11 @@
  *
  * @class
  * @example
- * device.on('pushNotification', (notification) => {
- *     if (notification instanceof GenericPushNotification) {
- *         console.log('Notification from:', notification.originatingDeviceUuid);
- *         console.log('Namespace:', notification.namespace);
+ * device.on('state', (event) => {
+ *     if (event.type === 'toggle' || event.type === 'light') {
+ *         console.log('State change from:', device.uuid);
+ *         console.log('Type:', event.type);
+ *         console.log('Value:', event.value);
  *     }
  * });
  */

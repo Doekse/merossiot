@@ -69,44 +69,51 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
                 console.log(`\n[Device] ${device.name} connected`);
             });
 
-            device.on('close', (error) => {
-                console.log(`\n[Device] ${device.name} closed${error ? `: ${error}` : ''}`);
+            device.on('disconnected', (error) => {
+                console.log(`\n[Device] ${device.name} disconnected${error ? `: ${error}` : ''}`);
             });
 
             device.on('error', (error) => {
                 console.error(`\n[Device] ${device.name} error: ${error.message}`);
             });
 
-            device.on('reconnect', () => {
+            device.on('reconnected', () => {
                 console.log(`\n[Device] ${device.name} reconnected`);
             });
 
-            device.on('pushNotification', (notification) => {
-                console.log(`\n[Device] ${device.name} push notification:`);
-                console.log(`  Namespace: ${notification.namespace}`);
-                console.log(`  Data: ${JSON.stringify(notification.rawData, null, 2)}`);
-            });
-
-            device.on('data', (namespace, payload) => {
-                console.log(`\n[Device] ${device.name} data (${namespace}):`);
-                console.log(`  Payload: ${JSON.stringify(payload, null, 2)}`);
-            });
-
-            device.on('onlineStatusChange', (newStatus, oldStatus) => {
-                const statusNames = {
-                    0: 'Not Online',
-                    1: 'Online',
-                    2: 'Offline',
-                    3: 'Upgrading'
-                };
-                console.log(`\n[Device] ${device.name} status changed:`);
-                console.log(`  ${statusNames[oldStatus] || oldStatus} → ${statusNames[newStatus] || newStatus}`);
-            });
-
-            device.on('rawSendData', (message) => {
-                console.log(`\n[Device] ${device.name} sending:`);
-                // Uncomment to see outgoing messages:
-                // console.log(`  Message: ${JSON.stringify(message, null, 2)}`);
+            // Track previous status to show changes
+            let previousStatus = device.onlineStatus;
+            
+            // Unified state event handles all state changes
+            device.on('state', (event) => {
+                if (event.type === 'notification') {
+                    const notification = event.value;
+                    console.log(`\n[Device] ${device.name} push notification:`);
+                    console.log(`  Namespace: ${notification.namespace}`);
+                    console.log(`  Data: ${JSON.stringify(notification.rawData, null, 2)}`);
+                } else if (event.type === 'online') {
+                    const statusNames = {
+                        0: 'Not Online',
+                        1: 'Online',
+                        2: 'Offline',
+                        3: 'Upgrading'
+                    };
+                    const newStatus = event.value;
+                    console.log(`\n[Device] ${device.name} status changed:`);
+                    console.log(`  ${statusNames[previousStatus] || previousStatus} → ${statusNames[newStatus] || newStatus}`);
+                    previousStatus = newStatus;
+                } else if (event.type === 'properties') {
+                    const properties = event.value;
+                    console.log(`\n[Device] ${device.name} properties changed:`);
+                    if (properties.macAddress) console.log(`  MAC: ${properties.macAddress}`);
+                    if (properties.lanIp) console.log(`  LAN IP: ${properties.lanIp}`);
+                    if (properties.mqttHost) console.log(`  MQTT Host: ${properties.mqttHost}`);
+                    if (properties.deviceType) console.log(`  Device Type: ${properties.deviceType}`);
+                } else {
+                    // Other state changes (toggle, light, thermostat, etc.)
+                    console.log(`\n[Device] ${device.name} state change (${event.type}, channel ${event.channel}):`);
+                    console.log(`  Value: ${JSON.stringify(event.value, null, 2)}`);
+                }
             });
         });
 

@@ -9,7 +9,7 @@
  *
  * @class
  * @example
- * const toggleState = device.getCachedToggleState(0);
+ * const toggleState = await device.toggle.get({ channel: 0 });
  * if (toggleState && toggleState.isOn) {
  *     console.log('Device is on');
  * }

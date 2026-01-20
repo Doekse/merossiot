@@ -29,7 +29,9 @@ async function runTests(context) {
     // Wait for devices to be connected
     for (const device of testDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.getThermostatMode();
+        if (device.thermostat) {
+            await device.thermostat.get({ channel: 0 });
+        }
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
@@ -49,8 +51,17 @@ async function runTests(context) {
     
     // Test 1: Turn thermostat on and off
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state) {
             results.push({
@@ -64,7 +75,7 @@ async function runTests(context) {
             const toggledState = !state.isOn;
             
             // Set the new state
-            await testDevice.setThermostatMode({
+            await testDevice.thermostat.set({
                 channel: 0,
                 onoff: toggledState ? 1 : 0,
                 partialUpdate: true
@@ -73,10 +84,7 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Refresh state to get updated on/off status
-            await testDevice.getThermostatMode();
-            
-            // Verify the state
-            const newState = testDevice.getCachedThermostatState(0);
+            const newState = await testDevice.thermostat.get({ channel: 0 });
             
             if (!newState || newState.isOn !== toggledState) {
                 results.push({
@@ -108,8 +116,17 @@ async function runTests(context) {
     
     // Test 2: Read ambient temperature
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state) {
             results.push({
@@ -153,8 +170,17 @@ async function runTests(context) {
     
     // Test 3: Change thermostat mode
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state || state.mode === undefined) {
             results.push({
@@ -186,7 +212,7 @@ async function runTests(context) {
             } else {
                 const targetMode = modes[Math.floor(Math.random() * modes.length)];
                 
-                await testDevice.setThermostatMode({
+                await testDevice.thermostat.set({
                     channel: 0,
                     mode: targetMode
                 });
@@ -194,9 +220,7 @@ async function runTests(context) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 // Refresh state to get updated mode
-                await testDevice.getThermostatMode();
-                
-                const newState = testDevice.getCachedThermostatState(0);
+                const newState = await testDevice.thermostat.get({ channel: 0 });
                 
                 if (!newState || newState.mode !== targetMode) {
                     results.push({
@@ -229,8 +253,17 @@ async function runTests(context) {
     
     // Test 4: Set heat temperature
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state) {
             results.push({
@@ -255,7 +288,7 @@ async function runTests(context) {
             const alignedTemp = Math.round(targetTemp * 2) / 2; // Round to 0.5
             
             // Set heat temperature
-            await testDevice.setThermostatMode({
+            await testDevice.thermostat.set({
                 channel: 0,
                 heatTemperature: alignedTemp,
                 partialUpdate: true
@@ -264,10 +297,7 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Refresh state to get updated temperature
-            await testDevice.getThermostatMode();
-            
-            // Verify heat temperature was set
-            const stateAfterTemp = testDevice.getCachedThermostatState(0);
+            const stateAfterTemp = await testDevice.thermostat.get({ channel: 0 });
             
             if (!stateAfterTemp || stateAfterTemp.heatTemperatureCelsius !== alignedTemp) {
                 results.push({
@@ -279,7 +309,7 @@ async function runTests(context) {
                 });
             } else {
                 // Set heat mode
-                await testDevice.setThermostatMode({
+                await testDevice.thermostat.set({
                     channel: 0,
                     mode: ThermostatMode.HEAT
                 });
@@ -287,9 +317,7 @@ async function runTests(context) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 // Refresh state to get updated mode
-                await testDevice.getThermostatMode();
-                
-                const newState = testDevice.getCachedThermostatState(0);
+                const newState = await testDevice.thermostat.get({ channel: 0 });
                 
                 if (!newState || newState.mode !== ThermostatMode.HEAT) {
                     results.push({
@@ -322,8 +350,17 @@ async function runTests(context) {
     
     // Test 5: Set eco temperature
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state || state.minTemperatureCelsius === undefined || state.maxTemperatureCelsius === undefined) {
             results.push({
@@ -340,7 +377,7 @@ async function runTests(context) {
             const alignedTemp = Math.round(targetTemp * 2) / 2;
             
             // Set eco temperature
-            await testDevice.setThermostatMode({
+            await testDevice.thermostat.set({
                 channel: 0,
                 ecoTemperature: alignedTemp,
                 partialUpdate: true
@@ -348,9 +385,7 @@ async function runTests(context) {
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await testDevice.getThermostatMode();
-            
-            const stateAfterTemp = testDevice.getCachedThermostatState(0);
+            const stateAfterTemp = await testDevice.thermostat.get({ channel: 0 });
             
             if (!stateAfterTemp || stateAfterTemp.ecoTemperatureCelsius !== alignedTemp) {
                 results.push({
@@ -362,16 +397,14 @@ async function runTests(context) {
                 });
             } else {
                 // Set eco mode
-                await testDevice.setThermostatMode({
+                await testDevice.thermostat.set({
                     channel: 0,
                     mode: ThermostatMode.ECONOMY
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                await testDevice.getThermostatMode();
-                
-                const newState = testDevice.getCachedThermostatState(0);
+                const newState = await testDevice.thermostat.get({ channel: 0 });
                 
                 if (!newState || newState.mode !== ThermostatMode.ECONOMY) {
                     results.push({
@@ -404,8 +437,17 @@ async function runTests(context) {
     
     // Test 6: Set cool temperature
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state || state.minTemperatureCelsius === undefined || state.maxTemperatureCelsius === undefined) {
             results.push({
@@ -421,7 +463,7 @@ async function runTests(context) {
             const targetTemp = minTemp + Math.random() * (maxTemp - minTemp);
             const alignedTemp = Math.round(targetTemp * 2) / 2;
             
-            await testDevice.setThermostatMode({
+            await testDevice.thermostat.set({
                 channel: 0,
                 coolTemperature: alignedTemp,
                 partialUpdate: true
@@ -429,9 +471,7 @@ async function runTests(context) {
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await testDevice.getThermostatMode();
-            
-            const stateAfterTemp = testDevice.getCachedThermostatState(0);
+            const stateAfterTemp = await testDevice.thermostat.get({ channel: 0 });
             
             if (!stateAfterTemp || stateAfterTemp.coolTemperatureCelsius !== alignedTemp) {
                 results.push({
@@ -442,16 +482,14 @@ async function runTests(context) {
                     device: deviceName
                 });
             } else {
-                await testDevice.setThermostatMode({
+                await testDevice.thermostat.set({
                     channel: 0,
                     mode: ThermostatMode.COOL
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                await testDevice.getThermostatMode();
-                
-                const newState = testDevice.getCachedThermostatState(0);
+                const newState = await testDevice.thermostat.get({ channel: 0 });
                 
                 if (!newState || newState.mode !== ThermostatMode.COOL) {
                     results.push({
@@ -484,8 +522,17 @@ async function runTests(context) {
     
     // Test 7: Set manual temperature
     try {
-        await testDevice.getThermostatMode();
-        const state = testDevice.getCachedThermostatState(0);
+        if (!testDevice.thermostat) {
+            results.push({
+                name: 'should toggle thermostat on/off',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support thermostat feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const state = await testDevice.thermostat.get({ channel: 0 });
         
         if (!state || state.minTemperatureCelsius === undefined || state.maxTemperatureCelsius === undefined) {
             results.push({
@@ -501,7 +548,7 @@ async function runTests(context) {
             const targetTemp = minTemp + Math.random() * (maxTemp - minTemp);
             const alignedTemp = Math.round(targetTemp * 2) / 2;
             
-            await testDevice.setThermostatMode({
+            await testDevice.thermostat.set({
                 channel: 0,
                 manualTemperature: alignedTemp,
                 partialUpdate: true
@@ -509,9 +556,7 @@ async function runTests(context) {
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await testDevice.getThermostatMode();
-            
-            const stateAfterTemp = testDevice.getCachedThermostatState(0);
+            const stateAfterTemp = await testDevice.thermostat.get({ channel: 0 });
             
             if (!stateAfterTemp || stateAfterTemp.manualTemperatureCelsius !== alignedTemp) {
                 results.push({
@@ -522,16 +567,14 @@ async function runTests(context) {
                     device: deviceName
                 });
             } else {
-                await testDevice.setThermostatMode({
+                await testDevice.thermostat.set({
                     channel: 0,
                     mode: ThermostatMode.MANUAL
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                await testDevice.getThermostatMode();
-                
-                const newState = testDevice.getCachedThermostatState(0);
+                const newState = await testDevice.thermostat.get({ channel: 0 });
                 
                 if (!newState || newState.mode !== ThermostatMode.MANUAL) {
                     results.push({
@@ -564,18 +607,16 @@ async function runTests(context) {
     
     // Test 8: Turn thermostat on and off multiple times
     try {
-        await testDevice.getThermostatMode();
+        await testDevice.thermostat.get({ channel: 0 });
         
         // Turn off
-        await testDevice.setThermostatMode({
+        await testDevice.thermostat.set({
             channel: 0,
             onoff: 0,
             partialUpdate: true
         });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await testDevice.getThermostatMode();
-        
-        const state1 = testDevice.getCachedThermostatState(0);
+        const state1 = await testDevice.thermostat.get({ channel: 0 });
         if (!state1 || state1.isOn !== false) {
             results.push({
                 name: 'should turn thermostat on and off multiple times',
@@ -588,15 +629,13 @@ async function runTests(context) {
         }
         
         // Turn on
-        await testDevice.setThermostatMode({
+        await testDevice.thermostat.set({
             channel: 0,
             onoff: 1,
             partialUpdate: true
         });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await testDevice.getThermostatMode();
-        
-        const state2 = testDevice.getCachedThermostatState(0);
+        const state2 = await testDevice.thermostat.get({ channel: 0 });
         if (!state2 || state2.isOn !== true) {
             results.push({
                 name: 'should turn thermostat on and off multiple times',
@@ -609,15 +648,13 @@ async function runTests(context) {
         }
         
         // Turn off again
-        await testDevice.setThermostatMode({
+        await testDevice.thermostat.set({
             channel: 0,
             onoff: 0,
             partialUpdate: true
         });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await testDevice.getThermostatMode();
-        
-        const state3 = testDevice.getCachedThermostatState(0);
+        const state3 = await testDevice.thermostat.get({ channel: 0 });
         if (!state3 || state3.isOn !== false) {
             results.push({
                 name: 'should turn thermostat on and off multiple times',
@@ -647,8 +684,7 @@ async function runTests(context) {
     
     // Test 9: Get thermostat window opened status
     try {
-        if (typeof testDevice.getThermostatWindowOpened !== 'function' || 
-            typeof testDevice.setThermostatWindowOpened !== 'function') {
+        if (!testDevice.thermostat || typeof testDevice.thermostat.getWindowOpened !== 'function') {
             results.push({
                 name: 'should get and set thermostat window opened status',
                 passed: false,
@@ -657,7 +693,8 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            const windowStatus = await testDevice.getThermostatWindowOpened();
+            const response = await testDevice.thermostat.getWindowOpened({ channel: 0 });
+            const windowStatus = response?.windowOpened?.[0]?.status;
             
             if (!windowStatus) {
                 results.push({
@@ -692,23 +729,23 @@ async function runTests(context) {
     
     // Test 10: Get thermostat mode B
     try {
-        if (typeof testDevice.getThermostatModeB !== 'function') {
+        if (!testDevice.thermostat || typeof testDevice.thermostat.getModeB !== 'function') {
             results.push({
                 name: 'should get thermostat mode B',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getThermostatModeB',
+                error: 'Device does not support getModeB',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getThermostatModeB({ channel: 0 });
+            const response = await testDevice.thermostat.getModeB({ channel: 0 });
             
             if (!response) {
                 results.push({
                     name: 'should get thermostat mode B',
                     passed: false,
                     skipped: false,
-                    error: 'getThermostatModeB returned null or undefined',
+                    error: 'getModeB returned null or undefined',
                     device: deviceName
                 });
             } else {
@@ -744,16 +781,16 @@ async function runTests(context) {
     
     // Test 11: Get thermostat schedule
     try {
-        if (typeof testDevice.getThermostatSchedule !== 'function') {
+        if (!testDevice.thermostat || typeof testDevice.thermostat.getSchedule !== 'function') {
             results.push({
                 name: 'should get thermostat schedule',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getThermostatSchedule',
+                error: 'Device does not support getSchedule',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getThermostatSchedule({ channel: 0 });
+            const response = await testDevice.thermostat.getSchedule({ channel: 0 });
             
             if (!response) {
                 results.push({
@@ -786,16 +823,16 @@ async function runTests(context) {
     
     // Test 12: Get thermostat hold action
     try {
-        if (typeof testDevice.getThermostatHoldAction !== 'function') {
+        if (!testDevice.thermostat || typeof testDevice.thermostat.getHoldAction !== 'function') {
             results.push({
                 name: 'should get thermostat hold action',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getThermostatHoldAction',
+                error: 'Device does not support getHoldAction',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getThermostatHoldAction({ channel: 0 });
+            const response = await testDevice.thermostat.getHoldAction({ channel: 0 });
             
             if (!response) {
                 results.push({
@@ -828,16 +865,16 @@ async function runTests(context) {
     
     // Test 13: Get thermostat calibration
     try {
-        if (typeof testDevice.getThermostatCalibration !== 'function') {
+        if (!testDevice.thermostat || typeof testDevice.thermostat.getCalibration !== 'function') {
             results.push({
                 name: 'should get thermostat calibration',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getThermostatCalibration',
+                error: 'Device does not support getCalibration',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getThermostatCalibration({ channel: 0 });
+            const response = await testDevice.thermostat.getCalibration({ channel: 0 });
             
             if (!response) {
                 results.push({
@@ -870,16 +907,16 @@ async function runTests(context) {
     
     // Test 14: Get thermostat sensor
     try {
-        if (typeof testDevice.getThermostatSensor !== 'function') {
+        if (!testDevice.thermostat || typeof testDevice.thermostat.getSensor !== 'function') {
             results.push({
                 name: 'should get thermostat sensor',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getThermostatSensor',
+                error: 'Device does not support getSensor',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getThermostatSensor({ channel: 0 });
+            const response = await testDevice.thermostat.getSensor({ channel: 0 });
             
             if (!response) {
                 results.push({

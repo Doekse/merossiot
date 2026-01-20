@@ -47,7 +47,7 @@ async function runTests(context) {
     
     // Test 1: Get screen brightness
     try {
-        const response = await testDevice.getScreenBrightness(0);
+        const response = await testDevice.screen.get({ channel: 0 });
         
         if (!response) {
             results.push({

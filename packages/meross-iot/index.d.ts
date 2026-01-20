@@ -21,11 +21,10 @@ declare module 'meross-iot' {
      * Devices can have multiple channels (e.g., master channel at index 0, sub-channels at 1-n).
      */
     export interface ChannelData {
-        /** Channel index (0 for master channel, 1-n for sub-channels) */
+        /** Channel index. 0 is master channel, 1-n are sub-channels. */
         channel?: number
-        /** Channel name */
         deviceName?: string
-        /** Whether this is the master channel */
+        /** Non-zero if this is the master channel. */
         master?: number
         [key: string]: any
     }
@@ -43,37 +42,23 @@ declare module 'meross-iot' {
      * ```
      */
     export interface DeviceDefinition {
-        /** Unique device identifier */
         uuid: string
-        /** Online status (0=connecting, 1=online, 2=offline, -1=unknown, 3=upgrading) */
+        /** Online status: 0=connecting, 1=online, 2=offline, -1=unknown, 3=upgrading */
         onlineStatus: number
-        /** Device name */
         devName: string
-        /** Device icon ID */
         devIconId: string
-        /** Device bind time (Unix timestamp) */
+        /** Unix timestamp when device was bound to account */
         bindTime: number
-        /** Device type identifier */
         deviceType: string
-        /** Device subtype */
         subType: string
-        /** Array of channel information */
         channels: ChannelData[]
-        /** Device region */
         region: string
-        /** Firmware version */
         fmwareVersion: string
-        /** Hardware version */
         hdwareVersion: string
-        /** User-defined device icon */
         userDevIcon: string
-        /** Icon type */
         iconType: number
-        /** Skill number */
         skillNumber: string
-        /** API domain */
         domain: string
-        /** Reserved domain */
         reservedDomain: string
     }
 
@@ -91,29 +76,18 @@ declare module 'meross-iot' {
      * ```
      */
     export interface SubdeviceInfo {
-        /** Hub UUID that the subdevice belongs to */
         hubUuid: string
-        /** Hub device name */
         hubName: string
-        /** Hub device type */
         hubDeviceType: string
-        /** Subdevice ID */
         subdeviceId: string
-        /** Subdevice type */
         subdeviceType: string
-        /** Subdevice name */
         subdeviceName: string
-        /** Subdevice icon ID */
         subdeviceIconId?: string
-        /** Subdevice subtype */
         subdeviceSubType?: string
-        /** Subdevice vendor */
         subdeviceVendor?: string
-        /** True ID */
         trueId?: string
-        /** Bind time (Unix timestamp) */
+        /** Unix timestamp when subdevice was bound */
         bindTime?: number
-        /** Icon type */
         iconType?: number
         /** Additional properties from HTTP API */
         [key: string]: any
@@ -135,13 +109,10 @@ declare module 'meross-iot' {
      * ```
      */
     export class ChannelInfo {
-        /** Channel index (0 for master channel, 1-n for sub-channels) */
+        /** Channel index. 0 is master channel, 1-n are sub-channels. */
         readonly index: number
-        /** Channel name or null if not set */
         readonly name: string | null
-        /** Whether this channel is a USB channel */
         readonly isUsb: boolean
-        /** Whether this is the master channel */
         readonly isMasterChannel: boolean
         
         /**
@@ -170,33 +141,19 @@ declare module 'meross-iot' {
      * ```
      */
     export class HttpDeviceInfo {
-        /** Unique device identifier */
         readonly uuid: string
-        /** Device name */
         readonly devName: string
-        /** Device type identifier */
         readonly deviceType: string
-        /** Array of channel information */
         readonly channels: ChannelData[]
-        /** Firmware version */
         readonly fmwareVersion: string
-        /** Hardware version */
         readonly hdwareVersion: string
-        /** API domain */
         readonly domain: string
-        /** Reserved domain or null */
         readonly reservedDomain: string | null
-        /** Device subtype or null */
         readonly subType: string | null
-        /** Device bind time as Date or null */
         readonly bindTime: Date | null
-        /** Skill number or null */
         readonly skillNumber: string | null
-        /** User-defined device icon or null */
         readonly userDevIcon: string | null
-        /** Icon type or null */
         readonly iconType: number | null
-        /** Device region or null */
         readonly region: string | null
         /** Device icon ID or null */
         readonly devIconId: string | null
@@ -632,20 +589,20 @@ declare module 'meross-iot' {
     /**
      * Options for setting light color and properties.
      * 
-     * Used with MerossDevice.setLightColor() to control RGB lights.
+     * Used with MerossDevice.light.set() to control RGB lights.
      * 
      * @example
      * ```typescript
      * // Set RGB color
-     * await device.setLightColor({
+     * await device.light.set({
      *   channel: 0,
      *   rgb: [255, 0, 0], // Red
      *   luminance: 50,
-     *   onoff: true
+     *   on: true
      * });
      * 
      * // Set color temperature
-     * await device.setLightColor({
+     * await device.light.set({
      *   channel: 0,
      *   temperature: 50,
      *   luminance: 75
@@ -1736,13 +1693,9 @@ declare module 'meross-iot' {
      */
     export class ManagerTransport {
         /**
-         * Gets the default transport mode for device communication.
+         * Gets or sets the default transport mode for device communication.
          */
-        defaultMode: number
-        
-        /**
-         * Sets the default transport mode for device communication.
-         */
+        get defaultMode(): number
         set defaultMode(value: number)
         
         /**
@@ -2022,11 +1975,524 @@ declare module 'meross-iot' {
     }
 
     /**
+     * Toggle feature interface.
+     * 
+     * Provides control over device on/off state.
+     */
+    export interface ToggleFeature {
+        /**
+         * Sets the toggle state (on/off) for a channel.
+         * 
+         * Automatically detects whether device uses Toggle or ToggleX protocol.
+         * 
+         * @param options - Toggle options
+         * @param options.on - True to turn on, false to turn off
+         * @param options.channel - Channel to control (default: 0)
+         * @returns Promise that resolves when state is set
+         */
+        set(options: { on: boolean; channel?: number }): Promise<void>
+        
+        /**
+         * Gets the current toggle state for a channel.
+         * 
+         * Uses cached state if fresh (<5 seconds), otherwise fetches from device.
+         * This transparent caching reduces unnecessary network requests.
+         * 
+         * @param options - Get options
+         * @param options.channel - Channel to get state for (default: 0)
+         * @returns Promise that resolves with toggle state or undefined
+         */
+        get(options?: { channel?: number }): Promise<ToggleState | undefined>
+        
+        /**
+         * Checks if the device is on for the specified channel.
+         * 
+         * Convenience method that reads from cached state. Returns undefined if state not available.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to check (default: 0)
+         * @returns True if on, false if off, undefined if not available
+         */
+        isOn(options?: { channel?: number }): boolean | undefined
+    }
+
+    /**
+     * Light feature interface.
+     * 
+     * Provides control over light settings including color, brightness, temperature.
+     */
+    export interface LightFeature {
+        /**
+         * Sets the light color, brightness, temperature, and on/off state.
+         * 
+         * Automatically detects device capabilities (RGB, temperature, luminance support).
+         * Only sends parameters that the device supports to avoid errors.
+         * 
+         * @param options - Light control options
+         * @param options.channel - Channel to control (default: 0)
+         * @param options.on - Turn on/off (only used if device doesn't support Toggle/ToggleX)
+         * @param options.rgb - RGB color [r, g, b], integer, or {r,g,b} object
+         * @param options.luminance - Brightness value (0-100)
+         * @param options.temperature - Temperature value (0-100)
+         * @param options.gradual - Enable gradual transition (default: true for RGB, false otherwise)
+         * @returns Promise that resolves with response or null if no changes needed
+         */
+        set(options?: {
+            channel?: number;
+            on?: boolean;
+            rgb?: [number, number, number] | { r: number; g: number; b: number } | { red: number; green: number; blue: number } | number;
+            luminance?: number;
+            temperature?: number;
+            gradual?: boolean | number;
+        }): Promise<any | null>
+        
+        /**
+         * Gets the current light state for a channel.
+         * 
+         * Uses cached state if fresh (<5 seconds), otherwise fetches from device.
+         * 
+         * @param options - Get options
+         * @param options.channel - Channel to get state for (default: 0)
+         * @returns Promise that resolves with light state or undefined
+         */
+        get(options?: { channel?: number }): Promise<LightState | undefined>
+        
+        /**
+         * Checks if the light is on for the specified channel.
+         * 
+         * Convenience method that reads from cached state.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to check (default: 0)
+         * @returns True if on, false if off, undefined if not available
+         */
+        isOn(options?: { channel?: number }): boolean | undefined
+        
+        /**
+         * Gets the light RGB color for the specified channel.
+         * 
+         * Reads from cached state. Returns undefined if device doesn't support RGB or state unavailable.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to get color for (default: 0)
+         * @returns RGB tuple [r, g, b] or undefined if not available
+         */
+        getRgbColor(options?: { channel?: number }): [number, number, number] | undefined
+        
+        /**
+         * Gets the light brightness for the specified channel.
+         * 
+         * Reads from cached state. Returns undefined if device doesn't support brightness control.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to get brightness for (default: 0)
+         * @returns Brightness value or undefined if not available
+         */
+        getBrightness(options?: { channel?: number }): number | undefined
+        
+        /**
+         * Gets the light temperature for the specified channel.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to get temperature for (default: 0)
+         * @returns Temperature value or undefined if not available
+         */
+        getTemperature(options?: { channel?: number }): number | undefined
+        
+        /**
+         * Checks if the light supports RGB mode for the specified channel.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to check (default: 0)
+         * @returns True if RGB is supported
+         */
+        supportsRgb(options?: { channel?: number }): boolean
+        
+        /**
+         * Checks if the light supports luminance mode for the specified channel.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to check (default: 0)
+         * @returns True if luminance is supported
+         */
+        supportsLuminance(options?: { channel?: number }): boolean
+        
+        /**
+         * Checks if the light supports temperature mode for the specified channel.
+         * 
+         * @param options - Options
+         * @param options.channel - Channel to check (default: 0)
+         * @returns True if temperature is supported
+         */
+        supportsTemperature(options?: { channel?: number }): boolean
+    }
+
+    /**
+     * System feature interface.
+     *
+     * Provides access to device system information.
+     */
+    export interface SystemFeature {
+        getAllData(): Promise<any>
+        getDebug(): Promise<any>
+        getAbilities(): Promise<any>
+        getEncryptSuite(): Promise<any>
+        getEncryptECDHE(): Promise<any>
+        getOnlineStatus(): Promise<any>
+        getConfigWifiList(): Promise<any>
+        getConfigTrace(): Promise<any>
+        getRuntime(): Promise<any>
+    }
+
+    /**
+     * Encryption feature interface.
+     *
+     * Provides encryption-related functionality.
+     */
+    export interface EncryptionFeature {
+        supportEncryption(): boolean
+        isEncryptionKeySet(): boolean
+        setEncryptionKey(uuid: string, mrskey: string, mac: string): void
+        encryptMessage(messageData: string | Buffer): string
+        decryptMessage(encryptedData: string | Buffer): Buffer
+    }
+
+    /**
+     * Thermostat feature interface.
+     *
+     * Provides control over thermostat mode, temperature settings, and schedules.
+     */
+    export interface ThermostatFeature {
+        set(options?: {
+            channel?: number;
+            mode?: number;
+            onoff?: number;
+            heatTemperature?: number;
+            coolTemperature?: number;
+            ecoTemperature?: number;
+            manualTemperature?: number;
+            partialUpdate?: boolean;
+            state?: number;
+            windowOpened?: boolean;
+        }): Promise<any>
+        get(options?: { channel?: number }): Promise<any>
+        getSchedule(options?: { channel?: number }): Promise<any>
+        getTimer(options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * Roller shutter feature interface.
+     *
+     * Provides control over roller shutter/blind position and movement.
+     */
+    export interface RollerShutterFeature {
+        set(options: { channel?: number; position: number }): Promise<any>
+        get(options?: { channel?: number }): Promise<RollerShutterState | undefined>
+        open(options?: { channel?: number }): Promise<any>
+        close(options?: { channel?: number }): Promise<any>
+        stop(options?: { channel?: number }): Promise<any>
+        getPosition(options?: { channel?: number }): Promise<any>
+        getConfig(options?: { channel?: number }): Promise<any>
+        setConfig(options: { config: any }): Promise<any>
+    }
+
+    /**
+     * Garage door feature interface.
+     *
+     * Provides control over garage door open/close state and configuration.
+     */
+    export interface GarageFeature {
+        set(options: { channel?: number; open: boolean }): Promise<any>
+        get(options?: { channel?: number }): Promise<GarageDoorState | undefined>
+        isOpen(options?: { channel?: number }): boolean | undefined
+        isClosed(options?: { channel?: number }): boolean | undefined
+        open(options?: { channel?: number }): Promise<any>
+        close(options?: { channel?: number }): Promise<any>
+        toggle(options?: { channel?: number }): Promise<any>
+        getMultipleConfig(options?: { channel?: number }): Promise<any>
+        getConfig(options?: { channel?: number }): Promise<any>
+        setConfig(options: {
+            configData?: any;
+            signalDuration?: number;
+            buzzerEnable?: boolean;
+            doorOpenDuration?: number;
+            doorCloseDuration?: number;
+        }): Promise<any>
+    }
+
+    /**
+     * Diffuser feature interface.
+     *
+     * Provides control over diffuser light and spray settings.
+     */
+    export interface DiffuserFeature {
+        set(options?: {
+            channel?: number;
+            type?: 'light' | 'spray';
+            on?: boolean;
+            rgb?: [number, number, number] | { r: number; g: number; b: number } | number;
+            luminance?: number;
+            temperature?: number;
+            mode?: number;
+            gradual?: boolean | number;
+        }): Promise<any>
+        get(options?: { channel?: number; type?: 'light' | 'spray' }): Promise<any>
+        getSensor(options?: { channel?: number }): Promise<any>
+        setSensor(options: { channel?: number; sensorData: any }): Promise<any>
+    }
+
+    /**
+     * Spray feature interface.
+     *
+     * Provides control over spray mode.
+     */
+    export interface SprayFeature {
+        set(options: { channel?: number; mode: SprayMode | number }): Promise<any>
+        get(options?: { channel?: number }): Promise<any>
+        getMode(options?: { channel?: number }): number | undefined
+        getRawMode(options?: { channel?: number }): number | undefined
+    }
+
+    /**
+     * Consumption feature interface.
+     *
+     * Provides access to power consumption data.
+     */
+    export interface ConsumptionFeature {
+        get(options?: { channel?: number }): Promise<Array<{date: Date, totalConsumptionKwh: number}>>
+        getRaw(options?: { channel?: number }): Promise<any>
+        getX(options?: { channel?: number }): Promise<Array<{date: Date, totalConsumptionKwh: number}>>
+        getRawX(options?: { channel?: number }): Promise<any>
+        getConfig(options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * Electricity feature interface.
+     *
+     * Provides access to real-time electricity metrics.
+     */
+    export interface ElectricityFeature {
+        get(options?: { channel?: number }): Promise<{amperage: number, voltage: number, wattage: number, sampleTimestamp: Date}>
+        getRaw(options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * Timer feature interface.
+     *
+     * Provides control over device timers.
+     */
+    export interface TimerFeature {
+        set(options: {
+            channel?: number;
+            timerId?: string;
+            alias?: string;
+            time?: string;
+            days?: string[];
+            on?: boolean;
+            enabled?: boolean;
+            type?: number;
+            timerx?: any;
+        }): Promise<any>
+        get(options?: { channel?: number; timerId?: string }): Promise<any>
+        delete(options: { timerId: string; channel?: number }): Promise<any>
+        findByAlias(options: { alias: string; channel?: number }): Promise<any>
+        deleteByAlias(options: { alias: string; channel?: number }): Promise<any>
+        enableByAlias(options: { alias: string; channel?: number }): Promise<any>
+        disableByAlias(options: { alias: string; channel?: number }): Promise<any>
+        deleteAll(options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * Trigger feature interface.
+     *
+     * Provides control over device triggers.
+     */
+    export interface TriggerFeature {
+        set(options: {
+            channel?: number;
+            triggerId?: string;
+            alias?: string;
+            duration?: string;
+            days?: string[];
+            type?: number;
+            enabled?: boolean;
+            triggerx?: any;
+        }): Promise<any>
+        get(options?: { channel?: number }): Promise<any>
+        delete(options: { triggerId: string; channel?: number }): Promise<any>
+        findByAlias(options: { alias: string; channel?: number }): Promise<any>
+        deleteByAlias(options: { alias: string; channel?: number }): Promise<any>
+        enableByAlias(options: { alias: string; channel?: number }): Promise<any>
+        disableByAlias(options: { alias: string; channel?: number }): Promise<any>
+        deleteAll(options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * Presence sensor feature interface.
+     *
+     * Provides access to presence detection and light sensor data.
+     */
+    export interface PresenceSensorFeature {
+        get(options?: { channel?: number; dataTypes?: string[] }): Promise<PresenceSensorState | undefined>
+        getPresence(options?: { channel?: number }): { value: number; isPresent: boolean; state: number; distance: number; distanceRaw: number; timestamp: number; times: number } | null
+        isPresent(options?: { channel?: number }): boolean | null
+        getLight(options?: { channel?: number }): { value: number; timestamp: number } | null
+        getAllSensorReadings(options?: { channel?: number }): { presence: Record<string, any> | null; light: Record<string, any> | null }
+        getConfig(options?: { channel?: number }): Promise<any>
+        setConfig(options: { configData: any }): Promise<any>
+        getStudy(options?: { channel?: number }): Promise<any>
+        setStudy(options: { studyData: any }): Promise<any>
+    }
+
+    /**
+     * Alarm feature interface.
+     *
+     * Provides access to alarm events and status.
+     */
+    export interface AlarmFeature {
+        get(options?: { channel?: number }): Promise<any>
+        getLastEvents(options?: { channel?: number }): Array<{timestamp: number, type: string, data: any}>
+    }
+
+    /**
+     * Child lock feature interface.
+     *
+     * Provides control over child lock settings.
+     */
+    export interface ChildLockFeature {
+        set(options: { lockData: any }): Promise<any>
+        get(): Promise<any>
+    }
+
+    /**
+     * Screen feature interface.
+     *
+     * Provides control over device screen settings.
+     */
+    export interface ScreenFeature {
+        set(options: { screenData: any }): Promise<any>
+        get(): Promise<any>
+    }
+
+    /**
+     * Runtime feature interface.
+     *
+     * Provides access to device runtime information.
+     */
+    export interface RuntimeFeature {
+        get(): Promise<any>
+        refreshState(): Promise<void>
+    }
+
+    /**
+     * Config feature interface.
+     *
+     * Provides access to device configuration.
+     */
+    export interface ConfigFeature {
+        set(options: { configData: any }): Promise<any>
+        get(_options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * DND (Do Not Disturb) feature interface.
+     *
+     * Provides control over DND mode.
+     */
+    export interface DNDFeature {
+        set(options: { mode: boolean | number }): Promise<any>
+        get(_options?: { channel?: number }): Promise<any>
+        getRaw(_options?: { channel?: number }): Promise<any>
+    }
+
+    /**
+     * Temperature unit feature interface.
+     *
+     * Provides control over temperature unit settings.
+     */
+    export interface TempUnitFeature {
+        set(options: { unit: number }): Promise<any>
+        get(): Promise<any>
+    }
+
+    /**
+     * Smoke config feature interface.
+     *
+     * Provides access to smoke sensor configuration.
+     */
+    export interface SmokeConfigFeature {
+        set(options: { channel?: number; subId?: string; configData: any }): Promise<any>
+        get(options?: { channel?: number; subId?: string }): Promise<any>
+    }
+
+    /**
+     * Sensor history feature interface.
+     *
+     * Provides access to sensor history data.
+     */
+    export interface SensorHistoryFeature {
+        get(options: { channel?: number; capacity: number }): Promise<any>
+        delete(options: { channel?: number; capacity: number }): Promise<any>
+    }
+
+    /**
+     * Digest timer feature interface.
+     *
+     * Provides access to timer digest information.
+     */
+    export interface DigestTimerFeature {
+        get(): Promise<any>
+    }
+
+    /**
+     * Digest trigger feature interface.
+     *
+     * Provides access to trigger digest information.
+     */
+    export interface DigestTriggerFeature {
+        get(): Promise<any>
+    }
+
+    /**
+     * Control feature interface.
+     *
+     * Provides various control functions.
+     */
+    export interface ControlFeature {
+        setMultiple(options: { channel?: number; payload: any }): Promise<any>
+        acknowledgeOverTemp(options: { channel?: number }): Promise<any>
+        setUpgrade(options: { channel?: number; upgradeData: any }): Promise<any>
+    }
+
+
+    /**
+     * Hub feature interface.
+     *
+     * Provides functionality for hub devices including sensor management and MTS100 thermostat control.
+     */
+    export interface HubFeature {
+        refreshState(): Promise<void>
+        getBattery(): Promise<any>
+        /**
+         * Controls a hub toggleX subdevice (on/off).
+         * 
+         * @param options - Toggle options
+         * @param options.subId - Subdevice ID
+         * @param options.on - True to turn on, false to turn off
+         */
+        setToggle(options: { subId: string; on: boolean }): Promise<any>
+        getAllSensors(sensorIds?: string[]): Promise<any>
+        getMts100All(options?: { ids?: string[] }): Promise<any>
+        getException(): Promise<any>
+        getLatestSensorReadings(options?: { sensorIds?: string[]; dataTypes?: string[] }): Promise<any>
+    }
+
+    /**
      * Represents a Meross device.
      * 
      * Provides methods to control and query Meross devices. Devices are automatically
      * initialized when the manager connects. This class extends EventEmitter and emits
-     * events for device state changes, push notifications, and connection status.
+     * events for device state changes and connection status.
      * 
      * @example
      * ```typescript
@@ -2036,45 +2502,38 @@ declare module 'meross-iot' {
      *   console.log('Device connected');
      * });
      * 
-     * device.on('pushNotification', (notification) => {
-     *   if (notification instanceof ToggleXPushNotification) {
-     *     console.log('Toggle state changed');
+     * device.on('state', (event) => {
+     *   if (event.type === 'toggle') {
+     *     console.log('Toggle state changed:', event.value);
      *   }
      * });
      * 
-     * await device.turnOn();
+     * await device.toggle.set({ on: true });
      * ```
      */
     export class MerossDevice extends EventEmitter {
         /**
-         * Registers a handler for push notification events.
+         * Registers a handler for state events.
          * 
-         * @param event - Event name ('pushNotification')
-         * @param listener - Callback function receiving the notification
+         * Unified event emitted for all device state changes (toggle, light, thermostat, etc.).
+         * Use this instead of feature-specific events for consistent state handling.
+         * 
+         * @param event - Event name ('state')
+         * @param listener - Callback function receiving state change event
          * @returns This instance for method chaining
          */
-        on(event: 'pushNotification', listener: (notification: GenericPushNotification) => void): this;
-        
-        /**
-         * Registers a handler for data events.
-         * 
-         * @param event - Event name ('data')
-         * @param listener - Callback function receiving namespace and payload
-         * @returns This instance for method chaining
-         */
-        on(event: 'data', listener: (namespace: string, payload: Record<string, any>) => void): this;
-        
-        /**
-         * Registers a handler for raw data events.
-         * 
-         * @param event - Event name ('rawData')
-         * @param listener - Callback function receiving raw message
-         * @returns This instance for method chaining
-         */
-        on(event: 'rawData', listener: (message: Record<string, any>) => void): this;
+        on(event: 'state', listener: (event: {
+            type: string;
+            channel: number;
+            value: any;
+            source: string;
+            timestamp: number;
+        }) => void): this;
         
         /**
          * Registers a handler for connected events.
+         * 
+         * Emitted when the device successfully connects to MQTT.
          * 
          * @param event - Event name ('connected')
          * @param listener - Callback function
@@ -2083,16 +2542,31 @@ declare module 'meross-iot' {
         on(event: 'connected', listener: () => void): this;
         
         /**
-         * Registers a handler for close events.
+         * Registers a handler for disconnected events.
          * 
-         * @param event - Event name ('close')
+         * Emitted when the device disconnects from MQTT, either intentionally or due to error.
+         * 
+         * @param event - Event name ('disconnected')
+         * @param listener - Callback function receiving optional error message
+         * @returns This instance for method chaining
+         */
+        on(event: 'disconnected', listener: (error?: string) => void): this;
+        
+        /**
+         * Registers a handler for reconnected events.
+         * 
+         * Emitted when the MQTT connection is re-established after a disconnection.
+         * 
+         * @param event - Event name ('reconnected')
          * @param listener - Callback function
          * @returns This instance for method chaining
          */
-        on(event: 'close', listener: () => void): this;
+        on(event: 'reconnected', listener: () => void): this;
         
         /**
          * Registers a handler for error events.
+         * 
+         * Emitted when device operations fail or communication errors occur.
          * 
          * @param event - Event name ('error')
          * @param listener - Callback function receiving the error
@@ -2100,14 +2574,6 @@ declare module 'meross-iot' {
          */
         on(event: 'error', listener: (error: Error) => void): this;
         
-        /**
-         * Registers a handler for online status change events.
-         * 
-         * @param event - Event name ('onlineStatusChange')
-         * @param listener - Callback function receiving new and old status
-         * @returns This instance for method chaining
-         */
-        on(event: 'onlineStatusChange', listener: (newStatus: number, oldStatus: number) => void): this;
         /**
          * Connects the device to MQTT.
          * 
@@ -2134,11 +2600,15 @@ declare module 'meross-iot' {
         
         /**
          * Removes the known local IP address.
+         * 
+         * After removal, library will attempt to discover IP via mDNS or use MQTT only.
          */
         removeKnownLocalIp(): void
 
         /**
          * Checks if the device supports encryption.
+         * 
+         * Some newer devices require encryption for local communication.
          * 
          * @returns True if encryption is supported
          */
@@ -2147,6 +2617,8 @@ declare module 'meross-iot' {
         /**
          * Checks if an encryption key is set for this device.
          * 
+         * Encryption key must be set before communicating with encrypted devices.
+         * 
          * @returns True if encryption key is set
          */
         isEncryptionKeySet(): boolean
@@ -2154,7 +2626,8 @@ declare module 'meross-iot' {
         /**
          * Sets the encryption key for this device.
          * 
-         * Required for devices that support encryption.
+         * Required for devices that support encryption. Key is typically obtained from
+         * device discovery or Meross app. Without this key, encrypted devices cannot communicate.
          * 
          * @param uuid - Device UUID
          * @param mrskey - Encryption key
@@ -2198,39 +2671,30 @@ declare module 'meross-iot' {
         readonly lanIp: string | null
         readonly mqttHost: string | null
         readonly mqttPort: number | null
-        /** Device abilities object containing supported features and namespaces */
+        /** Device capabilities object containing supported features and namespaces */
         readonly abilities: Record<string, any> | null
+        /** Unix timestamp of last full state refresh */
         readonly lastFullUpdateTimestamp: number | null
+        /** Online status: 0=connecting, 1=online, 2=offline, -1=unknown, 3=upgrading */
         readonly onlineStatus: number
         readonly isOnline: boolean
         readonly internalId: string
         readonly channels: ChannelInfo[]
-        /** Reserved MQTT domain (fallback domain) */
+        /** Fallback MQTT domain used if primary domain fails */
         readonly reservedDomain: string | null
-        /** Device sub-type */
         readonly subType: string | null
-        /** When the device was bound to the account */
         readonly bindTime: Date | null
-        /** Skill number */
         readonly skillNumber: string | null
-        /** User-defined device icon */
         readonly userDevIcon: string | null
-        /** Icon type */
         readonly iconType: number | null
-        /** Device region */
         readonly region: string | null
-        /** Device icon ID */
         readonly devIconId: string | null
-
-        /**
-         * Validates the current device state.
-         * 
-         * @returns True if state is valid
-         */
-        validateState(): boolean
         
         /**
          * Refreshes device state by querying the device.
+         * 
+         * Forces a fresh state fetch from the device, bypassing cache. Useful when
+         * you need to ensure you have the latest state.
          * 
          * @param timeout - Optional timeout in milliseconds
          * @returns Promise that resolves when state is refreshed
@@ -2238,7 +2702,42 @@ declare module 'meross-iot' {
         refreshState(timeout?: number): Promise<void>
         
         /**
+         * Feature objects for device control.
+         * 
+         * Each feature provides methods to control specific device capabilities.
+         * Features are only available if the device supports them.
+         */
+        readonly system: SystemFeature
+        readonly encryption: EncryptionFeature
+        readonly toggle: ToggleFeature
+        readonly light: LightFeature
+        readonly thermostat: ThermostatFeature
+        readonly rollerShutter: RollerShutterFeature
+        readonly garage: GarageFeature
+        readonly diffuser: DiffuserFeature
+        readonly spray: SprayFeature
+        readonly consumption: ConsumptionFeature
+        readonly electricity: ElectricityFeature
+        readonly timer: TimerFeature
+        readonly trigger: TriggerFeature
+        readonly presence: PresenceSensorFeature
+        readonly alarm: AlarmFeature
+        readonly childLock: ChildLockFeature
+        readonly screen: ScreenFeature
+        readonly runtime: RuntimeFeature
+        readonly config: ConfigFeature
+        readonly dnd: DNDFeature
+        readonly tempUnit: TempUnitFeature
+        readonly smokeConfig: SmokeConfigFeature
+        readonly sensorHistory: SensorHistoryFeature
+        readonly digestTimer: DigestTimerFeature
+        readonly digestTrigger: DigestTriggerFeature
+        readonly control: ControlFeature
+        
+        /**
          * Looks up channel information by ID or name.
+         * 
+         * Useful for finding channel details when you only have an index or name.
          * 
          * @param channelIdOrName - Channel index or name
          * @returns ChannelInfo instance
@@ -2249,6 +2748,9 @@ declare module 'meross-iot' {
         /**
          * Updates device state from HTTP device info.
          * 
+         * Called internally when device information is refreshed from the HTTP API.
+         * Updates device metadata and connection information.
+         * 
          * @param deviceInfo - HTTP device information
          * @returns Promise resolving to this device instance
          */
@@ -2257,182 +2759,79 @@ declare module 'meross-iot' {
         /**
          * Publishes a message to the device.
          * 
+         * Low-level method for sending raw messages. Typically not needed by users;
+         * use feature methods (e.g., `toggle.set()`) instead.
+         * 
          * @param method - Message method ('GET' or 'SET')
          * @param namespace - Namespace for the message
          * @param payload - Message payload
          * @returns Promise resolving to device response
          */
         publishMessage(method: 'GET' | 'SET', namespace: string, payload: any): Promise<any>
-
-        getSystemAllData(): Promise<any>
-        getSystemDebug(): Promise<any>
-        getSystemAbilities(): Promise<any>
-        getSystemRuntime(): Promise<any>
-        getSystemDNDMode(): Promise<any>
-        getEncryptSuite(): Promise<any>
-        getEncryptECDHE(): Promise<any>
-        getOnlineStatus(): Promise<any>
-        getConfigWifiList(): Promise<any>
-        getConfigTrace(): Promise<any>
-        getControlPowerConsumption(options?: { channel?: number }): Promise<any>
-        getControlPowerConsumptionX(options?: { channel?: number }): Promise<GetControlPowerConsumptionXResponse>
-        getControlElectricity(options?: { channel?: number }): Promise<GetControlElectricityResponse>
-        getPowerConsumption(options?: { channel?: number }): Promise<Array<{date: Date, totalConsumptionKwh: number}>>
-        getPowerConsumptionX(options?: { channel?: number }): Promise<Array<{date: Date, totalConsumptionKwh: number}>>
-        getRawPowerConsumption(options?: { channel?: number }): Promise<any>
-        getRawPowerConsumptionX(options?: { channel?: number }): Promise<any>
-        getElectricity(options?: { channel?: number }): Promise<{amperage: number, voltage: number, wattage: number, sampleTimestamp: Date}>
-        getRawElectricity(options?: { channel?: number }): Promise<any>
-        getTimerX(options?: { channel?: number; timerId?: string }): Promise<any>
-        setTimerX(options: { channel?: number; alias?: string; time?: string; days?: string[]; on?: boolean; enabled?: boolean; type?: number; timerx?: any }): Promise<any>
-        deleteTimerX(options: { timerId: string; channel?: number }): Promise<any>
-        findTimerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        deleteTimerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        enableTimerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        disableTimerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        deleteAllTimers(options?: { channel?: number }): Promise<any>
-        getTriggerX(options?: { channel?: number }): Promise<any>
-        deleteTriggerX(options: { triggerId: string; channel?: number }): Promise<any>
-        findTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        deleteTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        enableTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        disableTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>
-        deleteAllTriggers(options?: { channel?: number }): Promise<any>
-        getSmokeConfig(options?: { channel?: number; subId?: string }): Promise<any>
-        getSensorHistory(options: { channel?: number; capacity: number }): Promise<any>
-        getThermostatSchedule(options?: { channel?: number }): Promise<any>
-        getThermostatTimer(options?: { channel?: number }): Promise<any>
-        getAlarmStatus(options?: { channel?: number }): Promise<any>
-        getRollerShutterState(): Promise<any>
-        getRollerShutterPosition(): Promise<any>
-        getRollerShutterConfig(): Promise<any>
-        getFilterMaintenance(): Promise<any>
-        getPhysicalLockState(): Promise<any>
-        getFanState(): Promise<any>
-
-        setToggle(onoff: boolean): Promise<any>
-        setToggleX(options: { channel?: number; onoff: boolean }): Promise<any>
-        controlBind(payload: any): Promise<any>
-        controlUnbind(payload: any): Promise<any>
-        controlTrigger(channel: number, payload: any): Promise<any>
-        setTriggerX(options: { channel?: number; alias?: string; duration?: string; days?: string[]; type?: number; enabled?: boolean; triggerx?: any }): Promise<any>
-        setSpray(options: { channel?: number; mode: SprayMode | number }): Promise<any>
-        getSprayState(): Promise<any>
-        getCachedSprayState(channel?: number): SprayState | undefined
-        getCurrentSprayMode(channel?: number): number | undefined
-        setRollerShutterPosition(options: { channel?: number; position: number }): Promise<any>
-        setRollerShutterUp(options?: { channel?: number }): Promise<any>
-        setRollerShutterDown(options?: { channel?: number }): Promise<any>
-        setRollerShutterStop(options?: { channel?: number }): Promise<any>
-        openRollerShutter(options?: { channel?: number }): Promise<any>
-        closeRollerShutter(options?: { channel?: number }): Promise<any>
-        stopRollerShutter(options?: { channel?: number }): Promise<any>
-        getCachedRollerShutterState(channel?: number): RollerShutterState | undefined
-        getRollerShutterState(options?: { channel?: number }): Promise<any>
-        getRollerShutterPosition(options?: { channel?: number }): Promise<any>
-        getRollerShutterConfig(options?: { channel?: number }): Promise<any>
-        setGarageDoor(options: { channel?: number; open: boolean }): Promise<any>
-        getGarageDoorState(options?: { channel?: number }): Promise<any>
-        getGarageDoorMultipleState(): Promise<any>
-        getCachedGarageDoorState(channel?: number): GarageDoorState | undefined
-        isGarageDoorOpened(channel?: number): boolean | undefined
-        isGarageDoorClosed(channel?: number): boolean | undefined
-        getGarageDoorConfig(options?: { channel?: number }): Promise<any>
-        openGarageDoor(options?: { channel?: number }): Promise<any>
-        closeGarageDoor(options?: { channel?: number }): Promise<any>
-        toggleGarageDoor(options?: { channel?: number }): Promise<any>
-        setLight(light: LightData): Promise<any>
-        getLightState(options?: { channel?: number }): Promise<any>
-        getCachedLightState(channel?: number): LightState | undefined
-        getLightIsOn(channel?: number): boolean | undefined
-        getLightRgbColor(channel?: number): [number, number, number] | undefined
-        getLightBrightness(channel?: number): number | undefined
-        getLightTemperature(channel?: number): number | undefined
-        getLightMode(channel?: number): number | undefined
-        getSupportsRgb(channel?: number): boolean
-        getSupportsLuminance(channel?: number): boolean
-        getSupportsTemperature(channel?: number): boolean
-        /**
-         * Turns the device on.
-         * 
-         * @param options - Optional channel specification
-         * @returns Promise resolving to device response
-         * 
-         * @example
-         * ```typescript
-         * await device.turnOn();
-         * await device.turnOn({ channel: 1 });
-         * ```
-         */
-        turnOn(options?: { channel?: number }): Promise<any>
-        
-        /**
-         * Turns the device off.
-         * 
-         * @param options - Optional channel specification
-         * @returns Promise resolving to device response
-         * 
-         * @example
-         * ```typescript
-         * await device.turnOff();
-         * await device.turnOff({ channel: 1 });
-         * ```
-         */
-        turnOff(options?: { channel?: number }): Promise<any>
-        
-        /**
-         * Sets the light color, brightness, and/or temperature.
-         * 
-         * @param options - Light color options
-         * @returns Promise resolving to device response
-         * 
-         * @example
-         * ```typescript
-         * await device.setLightColor({
-         *   channel: 0,
-         *   rgb: [255, 0, 0], // Red
-         *   luminance: 50,
-         *   onoff: true
-         * });
-         * ```
-         */
-        setLightColor(options?: LightColorOptions): Promise<any>
-        setDiffuserSpray(options: { channel?: number; mode: number }): Promise<any>
-        setDiffuserLight(light: LightData): Promise<any>
-        getDiffuserLightState(options?: { channel?: number }): Promise<any>
-        getDiffuserSprayState(options?: { channel?: number }): Promise<any>
-        getCachedDiffuserLightState(channel?: number): DiffuserLightState | undefined
-        getDiffuserLightMode(channel?: number): number | undefined
-        getDiffuserLightBrightness(channel?: number): number | undefined
-        getDiffuserLightRgbColor(channel?: number): [number, number, number] | undefined
-        getDiffuserLightIsOn(channel?: number): boolean | undefined
-        getCachedDiffuserSprayState(channel?: number): DiffuserSprayState | undefined
-        getDiffuserSprayMode(channel?: number): number | undefined
-        getCurrentSprayMode(channel?: number): number | undefined
-        setThermostatMode(options: { channel?: number; partialUpdate?: boolean; mode?: number; onoff?: number; heatTemperature?: number; coolTemperature?: number; ecoTemperature?: number; manualTemperature?: number }): Promise<any>
-        setThermostatModeB(options: { channel?: number; state?: number }): Promise<any>
-        setThermostatWindowOpened(options: { channel?: number; windowOpened: boolean }): Promise<any>
-        getThermostatMode(options?: { channel?: number }): Promise<any>
-        getThermostatModeB(options?: { channel?: number }): Promise<any>
-        getThermostatWindowOpened(options?: { channel?: number }): Promise<any>
-        getCachedThermostatState(channel?: number): ThermostatState | undefined
-        getCachedThermostatModeBState(channel?: number): ThermostatState | undefined
-        setChildLock(options: { lockData: any }): Promise<any>
-        controlFan(channel: number, speed: number, maxSpeed: number): Promise<any>
-        setDNDMode(options: { mode: boolean | number }): Promise<any>
-        getCachedPresenceSensorState(channel?: number): PresenceSensorState | undefined
-        getCachedToggleState(channel?: number): ToggleState | undefined
-        getPresence(channel?: number): { value: number; isPresent: boolean; state: number; distance: number; distanceRaw: number; timestamp: number; times: number } | null
-        getLight(channel?: number): { value: number; timestamp: number } | null
-        getAllSensorReadings(channel?: number): { presence: Record<string, any> | null; light: Record<string, any> | null }
-        getPresenceConfig(options?: { channel?: number }): Promise<any>
-        setPresenceConfig(options: { channel?: number; partialUpdate?: boolean; configData?: any; mode?: any; sensitivity?: any; distance?: any; noBodyTime?: any; mthx?: any }): Promise<any>
-        getPresenceStudy(options?: { channel?: number }): Promise<any>
-        setPresenceStudy(options: { channel?: number; partialUpdate?: boolean; studyData?: any }): Promise<any>
-        getLatestSensorReadings(options?: { dataTypes?: string[] }): Promise<any>
     }
 
     export class MerossSubDevice extends MerossDevice {
+        /**
+         * Registers a handler for subdevice notification events.
+         * 
+         * Emitted when the hub receives a notification specifically for this subdevice.
+         * 
+         * @param event - Event name ('subdeviceNotification')
+         * @param listener - Callback function receiving namespace and data
+         * @returns This instance for method chaining
+         */
+        on(event: 'subdeviceNotification', listener: (namespace: string, data: any) => void): this;
+        /**
+         * Registers a handler for state events.
+         * 
+         * Unified event for all device state changes (toggle, light, thermostat, etc.).
+         * 
+         * @param event - Event name ('state')
+         * @param listener - Callback function receiving state change event
+         * @returns This instance for method chaining
+         */
+        on(event: 'state', listener: (event: {
+            type: string;
+            channel: number;
+            value: any;
+            source: string;
+            timestamp: number;
+        }) => void): this;
+        /**
+         * Registers a handler for connected events.
+         * 
+         * @param event - Event name ('connected')
+         * @param listener - Callback function
+         * @returns This instance for method chaining
+         */
+        on(event: 'connected', listener: () => void): this;
+        /**
+         * Registers a handler for disconnected events.
+         * 
+         * @param event - Event name ('disconnected')
+         * @param listener - Callback function receiving optional error
+         * @returns This instance for method chaining
+         */
+        on(event: 'disconnected', listener: (error?: string) => void): this;
+        /**
+         * Registers a handler for reconnected events.
+         * 
+         * Emitted when the MQTT connection is re-established after a disconnection.
+         * 
+         * @param event - Event name ('reconnected')
+         * @param listener - Callback function
+         * @returns This instance for method chaining
+         */
+        on(event: 'reconnected', listener: () => void): this;
+        /**
+         * Registers a handler for error events.
+         * 
+         * @param event - Event name ('error')
+         * @param listener - Callback function receiving the error
+         * @returns This instance for method chaining
+         */
+        on(event: 'error', listener: (error: Error) => void): this;
+        
         readonly subdeviceId: string
         readonly hub: MerossHubDevice
         readonly type: string
@@ -2450,10 +2849,12 @@ declare module 'meross-iot' {
     }
 
     export class HubThermostatValve extends MerossSubDevice {
+        /**
+         * Note: This class inherits a `toggle` property (ToggleFeature) from MerossDevice.
+         * The runtime implementation also has a `toggle()` convenience method, but it's not
+         * available in TypeScript due to the property/method conflict. Use `toggle.set()` instead.
+         */
         isOn(): boolean
-        turnOn(): Promise<void>
-        turnOff(): Promise<void>
-        toggle(): Promise<void>
         getMode(): number | undefined
         setMode(mode: number): Promise<void>
         getTargetTemperature(): number | null
@@ -2487,6 +2888,11 @@ declare module 'meross-iot' {
     }
 
     export class MerossHubDevice extends MerossDevice {
+        /**
+         * Hub feature for hub-specific functionality.
+         */
+        readonly hub: HubFeature
+        
         getSubdevices(): MerossSubDevice[]
         getSubdevice(subdeviceId: string): MerossSubDevice | null
         registerSubdevice(subdevice: MerossSubDevice): void

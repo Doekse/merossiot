@@ -391,7 +391,7 @@ class ManagerMqtt {
             this.manager.mqttConnections[domain].deviceList.forEach(devId => {
                 const device = this.manager._deviceRegistry._devicesByUuid.get(devId) || null;
                 if (device) {
-                    device.emit('close', error ? error.toString() : null);
+                    device.emit('disconnected', error ? error.toString() : null);
                 }
             });
         });
@@ -400,7 +400,7 @@ class ManagerMqtt {
             this.manager.mqttConnections[domain].deviceList.forEach(devId => {
                 const device = this.manager._deviceRegistry._devicesByUuid.get(devId) || null;
                 if (device) {
-                    device.emit('reconnect');
+                    device.emit('reconnected');
                 }
             });
         });

@@ -5,7 +5,10 @@ const { OnlineStatus } = require('meross-iot');
 const { getTransportModeName } = require('../helpers/client');
 
 /**
- * Displays formatted info rows with proper alignment.
+ * Displays formatted info rows with aligned labels.
+ *
+ * @param {Array<Array<string>>} infoData - Array of [label, value] pairs
+ * @param {number} maxLabelLength - Maximum label length for alignment
  */
 function _displayInfoRows(infoData, maxLabelLength) {
     infoData.forEach(([label, value]) => {
@@ -16,7 +19,11 @@ function _displayInfoRows(infoData, maxLabelLength) {
 }
 
 /**
- * Builds basic device information array.
+ * Builds basic device information array for display.
+ *
+ * @param {Object} device - Device instance
+ * @param {Object} manager - ManagerMeross instance
+ * @returns {Array<Array<string>>} Array of [label, value] pairs
  */
 function _buildBasicDeviceInfo(device, manager) {
     const info = [
@@ -40,23 +47,26 @@ function _buildBasicDeviceInfo(device, manager) {
 }
 
 /**
- * Fetches network info if needed and displays it.
+ * Fetches and displays network information.
+ *
+ * Attempts to populate network info via System.All if not already cached, since
+ * network properties may not be available immediately after device initialization.
+ *
+ * @param {Object} device - Device instance
+ * @param {number} maxLabelLength - Maximum label length for alignment
  */
 async function _displayNetworkInfo(device, maxLabelLength) {
-    // Use device getters for network info (already populated from System.All)
     const lanIp = device.lanIp;
     const macAddress = device.macAddress;
 
-    // If not available and device is connected, try to fetch System.All to populate it
     if (device.deviceConnected && (!lanIp || !macAddress)) {
         try {
-            await device.getSystemAllData();
+            await device.system.getAllData();
         } catch (error) {
-            // Silently fail - network info is not critical
+            // Network info is optional, continue without it
         }
     }
 
-    // Always show network info (use getters again after potential fetch)
     const networkInfo = [
         ['IP', device.lanIp || 'Not available'],
         ['MAC', device.macAddress || 'Not available']
@@ -67,7 +77,9 @@ async function _displayNetworkInfo(device, maxLabelLength) {
 }
 
 /**
- * Displays channel information.
+ * Displays device channel information.
+ *
+ * @param {Object} device - Device instance
  */
 function _displayChannels(device) {
     if (!device.channels || device.channels.length === 0) {
@@ -144,7 +156,10 @@ function _displayHttpInfo(device) {
 }
 
 /**
- * Builds ability categories grouped by namespace type.
+ * Groups device abilities by namespace category for organized display.
+ *
+ * @param {Array<string>} abilityNames - Array of ability namespace strings
+ * @returns {Object} Object with category keys and arrays of ability names
  */
 function _buildAbilityCategories(abilityNames) {
     return {
@@ -162,7 +177,9 @@ function _buildAbilityCategories(abilityNames) {
 }
 
 /**
- * Displays device capabilities.
+ * Displays device capabilities grouped by category.
+ *
+ * @param {Object} device - Device instance
  */
 function _displayCapabilities(device) {
     if (!device.deviceConnected) {
@@ -184,7 +201,6 @@ function _displayCapabilities(device) {
         console.log(`\n${chalk.bold.underline('Capabilities')}`);
         console.log(`  Total: ${chalk.cyan(abilityCount)} abilities\n`);
 
-        // Show abilities grouped by category
         Object.entries(categories).forEach(([category, items]) => {
             if (items.length > 0) {
                 console.log(`  ${chalk.white.bold(category)}:`);
@@ -195,10 +211,19 @@ function _displayCapabilities(device) {
             }
         });
     } catch (error) {
-        // Silently fail - abilities are not critical
+        // Abilities display is optional, continue without it
     }
 }
 
+/**
+ * Displays comprehensive device information.
+ *
+ * Shows device properties, network info, channels, HTTP metadata, and capabilities
+ * in a formatted, human-readable output.
+ *
+ * @param {Object} manager - ManagerMeross instance
+ * @param {string} uuid - Device UUID
+ */
 async function showDeviceInfo(manager, uuid) {
     const device = manager.devices.get(uuid);
 
@@ -207,7 +232,6 @@ async function showDeviceInfo(manager, uuid) {
         process.exit(1);
     }
 
-    // Format device information nicely
     console.log(`\n${chalk.bold.underline('Device Information')}\n`);
 
     const info = _buildBasicDeviceInfo(device, manager);

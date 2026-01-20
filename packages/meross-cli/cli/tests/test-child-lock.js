@@ -49,14 +49,24 @@ async function runTests(context) {
     
     // Test 1: Get child lock status
     try {
-        const lockStatus = await testDevice.getChildLock({ channel: 0 });
+        if (!testDevice.childLock) {
+            results.push({
+                name: 'should get child lock status',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support child lock feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const lockStatus = await testDevice.childLock.get({ channel: 0 });
         
         if (!lockStatus) {
             results.push({
                 name: 'should get child lock status',
                 passed: false,
                 skipped: false,
-                error: 'getChildLock returned null or undefined',
+                error: 'childLock.get() returned null or undefined',
                 device: deviceName
             });
         } else if (!lockStatus.lock) {
@@ -89,8 +99,18 @@ async function runTests(context) {
     
     // Test 2: Control child lock status
     try {
+        if (!testDevice.childLock) {
+            results.push({
+                name: 'should control child lock status',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support child lock feature',
+                device: deviceName
+            });
+            return results;
+        }
         // Get initial lock status
-        const initialStatus = await testDevice.getChildLock({ channel: 0 });
+        const initialStatus = await testDevice.childLock.get({ channel: 0 });
         
         if (!initialStatus || !initialStatus.lock || !Array.isArray(initialStatus.lock) || initialStatus.lock.length === 0) {
             results.push({
@@ -110,11 +130,11 @@ async function runTests(context) {
                 onoff: newLockState
             };
             
-            await testDevice.setChildLock(lockData);
+            await testDevice.childLock.set({ channel: 0, onoff: newLockState });
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Verify the change
-            const updatedStatus = await testDevice.getChildLock({ channel: 0 });
+            const updatedStatus = await testDevice.childLock.get({ channel: 0 });
             
             if (!updatedStatus || !updatedStatus.lock || !updatedStatus.lock[0]) {
                 results.push({
@@ -138,10 +158,10 @@ async function runTests(context) {
                     channel: 0,
                     onoff: initialLockState
                 };
-                await testDevice.setChildLock(restoreLockData);
+                await testDevice.childLock.set({ channel: 0, onoff: initialLockState });
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                const restoredStatus = await testDevice.getChildLock({ channel: 0 });
+                const restoredStatus = await testDevice.childLock.get({ channel: 0 });
                 
                 if (!restoredStatus || !restoredStatus.lock || !restoredStatus.lock[0] || 
                     restoredStatus.lock[0].onoff !== initialLockState) {
@@ -175,8 +195,18 @@ async function runTests(context) {
     
     // Test 3: Handle multiple channel lock control
     try {
+        if (!testDevice.childLock) {
+            results.push({
+                name: 'should handle multiple channel lock control',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support child lock feature',
+                device: deviceName
+            });
+            return results;
+        }
         // Get initial status for all channels
-        const initialStatus = await testDevice.getChildLock({ channel: 0 });
+        const initialStatus = await testDevice.childLock.get({ channel: 0 });
         
         if (!initialStatus || !initialStatus.lock) {
             results.push({
@@ -205,11 +235,11 @@ async function runTests(context) {
                 }
             }
             
-            await testDevice.setChildLock({ lockData: lockDataArray });
+            await testDevice.childLock.set({ lockData: lockDataArray });
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Verify all channels were set
-            const updatedStatus = await testDevice.getChildLock({ channel: 0 });
+            const updatedStatus = await testDevice.childLock.get({ channel: 0 });
             
             if (!updatedStatus) {
                 results.push({

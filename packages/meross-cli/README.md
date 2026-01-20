@@ -55,7 +55,7 @@ meross-cli info <uuid> --email user@example.com --password mypass
 meross-cli status --email user@example.com --password mypass
 
 # Control a device
-meross-cli control <uuid> setToggleX --channel 0 --on
+meross-cli control <uuid> toggle.set --channel 0 --on true
 
 # Start interactive menu mode
 meross-cli

@@ -247,7 +247,7 @@ async function handleDeviceCommands(meross) {
     meross.on('deviceInitialized', (deviceId, device) => {
         device.on('connected', async () => {
             try {
-                await device.setToggleX({ channel: 1, onoff: true });
+                await device.toggle.set({ channel: 1, on: true });
                 console.log('✓ Command succeeded');
             } catch (error) {
                 if (error instanceof ManagerMeross.MerossErrorCommand) {

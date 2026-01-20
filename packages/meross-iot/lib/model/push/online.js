@@ -11,7 +11,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * device.on('pushNotification', (notification) => {
+ * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof OnlinePushNotification) {
  *         console.log('Device status changed:', notification.status);
  *         // status: 0=not online, 1=online, 2=offline, 3=upgrading

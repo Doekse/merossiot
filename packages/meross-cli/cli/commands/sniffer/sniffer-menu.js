@@ -43,12 +43,12 @@ async function _collectDeviceInfo(device) {
         }
 
         // Get system data (populates MAC address, MQTT host/port)
-        const systemData = await device.getSystemAllData();
+        const systemData = await device.system.getAllData();
 
         // Get abilities
         let abilitiesData = null;
         try {
-            abilitiesData = await device.getSystemAbilities();
+            abilitiesData = await device.system.getAbilities();
         } catch (err) {
             spinner.warn('Could not collect device abilities');
         }

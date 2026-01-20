@@ -5,21 +5,26 @@ const inquirer = require('inquirer');
 const { ThermostatMode } = require('meross-iot');
 
 /**
- * Collects parameters for setThermostatMode with interactive prompts.
+ * Collects parameters for thermostat.set interactively.
+ *
+ * Displays current thermostat state to provide context, then prompts for which
+ * fields to update. Supports partial updates to avoid overwriting unchanged values.
+ *
+ * @param {Object} methodMetadata - Method metadata from control registry
+ * @param {Object} device - Device instance
+ * @returns {Promise<Object>} Collected parameters object
  */
 async function collectThermostatModeParams(methodMetadata, device) {
     const params = {};
     const channel = methodMetadata.params.find(p => p.name === 'channel')?.default || 0;
 
-    // Display current state
     try {
-        if (typeof device.getThermostatMode === 'function') {
+        if (device.thermostat) {
             console.log(chalk.dim('Fetching current thermostat state...'));
-            const response = await device.getThermostatMode({ channel });
-            if (response && response.mode && Array.isArray(response.mode) && response.mode.length > 0) {
-                const currentState = response.mode[0];
+            const thermostatState = await device.thermostat.get({ channel });
+            if (thermostatState) {
                 console.log(chalk.cyan('\nCurrent Thermostat State:'));
-                if (currentState.mode !== undefined) {
+                if (thermostatState.mode !== undefined) {
                     const modeNames = {
                         [ThermostatMode.HEAT]: 'Heat',
                         [ThermostatMode.COOL]: 'Cool',
@@ -27,36 +32,34 @@ async function collectThermostatModeParams(methodMetadata, device) {
                         [ThermostatMode.AUTO]: 'Auto',
                         [ThermostatMode.MANUAL]: 'Manual'
                     };
-                    const modeName = modeNames[currentState.mode] || `Mode ${currentState.mode}`;
+                    const modeName = modeNames[thermostatState.mode] || `Mode ${thermostatState.mode}`;
                     console.log(chalk.dim(`  Mode: ${modeName}`));
                 }
-                if (currentState.onoff !== undefined) {
-                    console.log(chalk.dim(`  Power: ${currentState.onoff ? 'On' : 'Off'}`));
+                if (thermostatState.isOn !== undefined) {
+                    console.log(chalk.dim(`  Power: ${thermostatState.isOn ? 'On' : 'Off'}`));
                 }
-                if (currentState.heatTemp !== undefined) {
-                    console.log(chalk.dim(`  Heat Temp: ${currentState.heatTemp / 10}°C`));
+                if (thermostatState.heatTemperatureCelsius !== undefined) {
+                    console.log(chalk.dim(`  Heat Temp: ${thermostatState.heatTemperatureCelsius.toFixed(1)}°C`));
                 }
-                if (currentState.coolTemp !== undefined) {
-                    console.log(chalk.dim(`  Cool Temp: ${currentState.coolTemp / 10}°C`));
+                if (thermostatState.coolTemperatureCelsius !== undefined) {
+                    console.log(chalk.dim(`  Cool Temp: ${thermostatState.coolTemperatureCelsius.toFixed(1)}°C`));
                 }
-                if (currentState.ecoTemp !== undefined) {
-                    console.log(chalk.dim(`  Eco Temp: ${currentState.ecoTemp / 10}°C`));
+                if (thermostatState.ecoTemperatureCelsius !== undefined) {
+                    console.log(chalk.dim(`  Eco Temp: ${thermostatState.ecoTemperatureCelsius.toFixed(1)}°C`));
                 }
-                if (currentState.manualTemp !== undefined) {
-                    console.log(chalk.dim(`  Manual Temp: ${currentState.manualTemp / 10}°C`));
+                if (thermostatState.manualTemperatureCelsius !== undefined) {
+                    console.log(chalk.dim(`  Manual Temp: ${thermostatState.manualTemperatureCelsius.toFixed(1)}°C`));
                 }
                 console.log();
             }
         }
     } catch (e) {
-        // Failed to fetch, continue without current state
+        // Continue without current state if fetch fails
     }
 
-    // Collect parameters interactively
     params.channel = channel;
     params.partialUpdate = true;
 
-    // Ask which fields to update
     const fieldsToUpdate = await inquirer.prompt([{
         type: 'checkbox',
         name: 'fields',
@@ -77,7 +80,6 @@ async function collectThermostatModeParams(methodMetadata, device) {
         }
     }]);
 
-    // Prompt for each selected field
     for (const field of fieldsToUpdate.fields) {
         if (field === 'mode') {
             const answer = await inquirer.prompt([{

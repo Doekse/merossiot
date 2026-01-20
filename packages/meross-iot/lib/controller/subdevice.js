@@ -200,10 +200,10 @@ class MerossSubDevice extends MerossDevice {
      */
     async getBattery() {
         try {
-            if (typeof this._hub.getHubBattery !== 'function') {
+            if (!this._hub.hub || typeof this._hub.hub.getBattery !== 'function') {
                 return null;
             }
-            const response = await this._hub.getHubBattery();
+            const response = await this._hub.hub.getBattery();
             if (response && response.battery && Array.isArray(response.battery)) {
                 const batteryData = response.battery.find(b => b.id === this._subdeviceId);
                 if (batteryData && batteryData.value !== undefined && batteryData.value !== null) {
@@ -617,8 +617,9 @@ class HubTempHumSensor extends MerossSubDevice {
  * @example
  * const valve = hub.getSubdevice('valve123');
  * if (valve instanceof HubThermostatValve) {
- *     // Turn valve on
- *     await valve.turnOn();
+ *     // Turn valve on (using hub-specific method)
+ *     await valve.setToggle({ on: true });
+ *     // Or use feature-based API if available: await valve.toggle.set({ channel: 0, on: true });
  *
  *     // Set target temperature
  *     await valve.setTargetTemperature(22); // 22°C
@@ -798,37 +799,28 @@ class HubThermostatValve extends MerossSubDevice {
     }
 
     /**
-     * Turns the valve on
+     * Sets the valve state (on/off).
+     *
+     * @param {Object} options - Toggle options
+     * @param {boolean} options.on - True to turn on, false to turn off
      * @returns {Promise<void>} Promise that resolves when command is sent
      */
-    async turnOn() {
+    async setToggle(options) {
+        const { on } = options;
         await this.publishMessage('SET', 'Appliance.Hub.ToggleX', {
-            togglex: [{ id: this._subdeviceId, onoff: 1, channel: 0 }]
+            togglex: [{ id: this._subdeviceId, onoff: on ? 1 : 0, channel: 0 }]
         }, null);
-        this._togglex.onoff = 1;
+        this._togglex.onoff = on ? 1 : 0;
     }
 
     /**
-     * Turns the valve off
-     * @returns {Promise<void>} Promise that resolves when command is sent
-     */
-    async turnOff() {
-        await this.publishMessage('SET', 'Appliance.Hub.ToggleX', {
-            togglex: [{ id: this._subdeviceId, onoff: 0, channel: 0 }]
-        }, null);
-        this._togglex.onoff = 0;
-    }
-
-    /**
-     * Toggles the valve state (on/off)
+     * Toggles the valve state (on/off).
+     *
      * @returns {Promise<void>} Promise that resolves when command is sent
      */
     async toggle() {
-        if (this.isOn()) {
-            await this.turnOff();
-        } else {
-            await this.turnOn();
-        }
+        const isOn = this.isOn();
+        await this.setToggle({ on: !isOn });
     }
 
     /**

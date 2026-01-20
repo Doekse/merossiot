@@ -33,7 +33,7 @@ async function runTests(context) {
     // Wait for devices to be connected
     for (const device of garageDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.getGarageDoorState();
+        await device.garage.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
@@ -53,13 +53,10 @@ async function runTests(context) {
     
     // Test 1: Open and close garage door
     try {
-        // Without a full update, the status will be undefined
-        let currentStatus = garage.getCachedGarageDoorState(0);
-        
         // Trigger the full update
-        await garage.getGarageDoorState();
+        await garage.garage.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        currentStatus = garage.getCachedGarageDoorState(0);
+        const currentStatus = await garage.garage.get({ channel: 0 });
         
         if (!currentStatus) {
             results.push({
@@ -95,7 +92,7 @@ async function runTests(context) {
         // Wait for door operation (garage doors take time)
         await new Promise(resolve => setTimeout(resolve, 40000));
         
-        await garage.getGarageDoorState();
+        await garage.garage.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const newIsOpen = garage.isGarageDoorOpened(0);
@@ -132,7 +129,7 @@ async function runTests(context) {
         
         await new Promise(resolve => setTimeout(resolve, 40000));
         
-        await garage.getGarageDoorState();
+        await garage.garage.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const finalIsOpen = garage.isGarageDoorOpened(0);
@@ -166,16 +163,17 @@ async function runTests(context) {
     
     // Test 2: Get garage door multiple config
     try {
-        if (typeof garage.getGarageDoorMultipleState !== 'function') {
+        if (!garage.garage || typeof garage.garage.getMultipleConfig !== 'function') {
             results.push({
                 name: 'should get garage door multiple config',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getGarageDoorMultipleState',
+                error: 'Device does not support getMultipleConfig',
                 device: deviceName
             });
         } else {
-            const config = await garage.getGarageDoorMultipleState();
+            const response = await garage.garage.getMultipleConfig();
+            const config = response?.config;
             
             if (!config) {
                 results.push({
@@ -208,16 +206,16 @@ async function runTests(context) {
     
     // Test 3: Get garage door config
     try {
-        if (typeof garage.getGarageDoorConfig !== 'function') {
+        if (!garage.garage || typeof garage.garage.getConfig !== 'function') {
             results.push({
                 name: 'should get garage door config',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getGarageDoorConfig',
+                error: 'Device does not support getConfig',
                 device: deviceName
             });
         } else {
-            const config = await garage.getGarageDoorConfig();
+            const config = await garage.garage.getConfig();
             
             if (!config) {
                 results.push({

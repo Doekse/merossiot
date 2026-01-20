@@ -12,7 +12,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * device.on('pushNotification', (notification) => {
+ * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof AlarmPushNotification) {
  *         console.log('Alarm triggered on channel:', notification.channel);
  *         console.log('Alarm value:', notification.value);

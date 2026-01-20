@@ -269,7 +269,7 @@ function waitForPushNotification(device, namespace, timeout = 10000) {
             }
         };
         
-        device.on('data', onData);
+        device.on('state', onData);
     });
 }
 

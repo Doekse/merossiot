@@ -1,90 +1,56 @@
 'use strict';
 
 /**
- * Control method registry for device control testing.
- * Maps control method names to metadata including parameter schemas and categories.
+ * Control method registry for device control.
+ * Uses feature-based API structure: "feature.action" (e.g., "toggle.set", "light.set")
  */
 
 /**
  * Mapping from control method names to required ability namespaces.
- * This is used to filter methods based on what the device actually supports.
+ * Method names are in format: "feature.action"
  */
 const METHOD_TO_NAMESPACE_MAP = {
     // Power Control
-    setToggle: ['Appliance.Control.Toggle'],
-    setToggleX: ['Appliance.Control.ToggleX'],
+    'toggle.set': ['Appliance.Control.ToggleX', 'Appliance.Control.Toggle'],
 
     // Light Control
-    setLight: ['Appliance.Control.Light'],
-    setLightColor: ['Appliance.Control.Light'],
-    setDiffuserLight: ['Appliance.Control.Diffuser.Light'],
+    'light.set': ['Appliance.Control.Light'],
+    'diffuser.setLight': ['Appliance.Control.Diffuser.Light'],
 
     // Climate Control
-    setThermostatMode: ['Appliance.Control.Thermostat.Mode'],
-    setThermostatModeB: ['Appliance.Control.Thermostat.ModeB'],
-    setSpray: ['Appliance.Control.Spray'],
-    setDiffuserSpray: ['Appliance.Control.Diffuser.Spray'],
+    'thermostat.set': ['Appliance.Control.Thermostat.Mode', 'Appliance.Control.Thermostat.ModeB'],
+    'spray.set': ['Appliance.Control.Spray'],
+    'diffuser.setSpray': ['Appliance.Control.Diffuser.Spray'],
 
     // Cover Control
-    setGarageDoor: ['Appliance.GarageDoor.State'],
-    openGarageDoor: ['Appliance.GarageDoor.State'],
-    closeGarageDoor: ['Appliance.GarageDoor.State'],
-    setGarageDoorConfig: ['Appliance.GarageDoor.Config', 'Appliance.GarageDoor.MultipleConfig'],
-    setRollerShutterPosition: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    setRollerShutterUp: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    setRollerShutterDown: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    setRollerShutterStop: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    openRollerShutter: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    closeRollerShutter: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    stopRollerShutter: ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
-    setRollerShutterConfig: ['Appliance.RollerShutter.Config'],
-
-    // Configuration
-    setChildLock: ['Appliance.Control.PhysicalLock'],
-    setSystemLedMode: ['Appliance.System.LedMode'],
-    setScreenBrightness: ['Appliance.Control.Screen.Brightness'],
-    setTempUnit: ['Appliance.Control.TempUnit'],
-    setDNDMode: ['Appliance.System.DNDMode'],
-    setConfigOverTemp: ['Appliance.Config.OverTemp'],
-    setPresenceConfig: ['Appliance.Control.Presence.Config'],
-    setPresenceStudy: ['Appliance.Control.Presence.Study'],
+    'garage.set': ['Appliance.GarageDoor.State'],
+    'rollerShutter.setPosition': ['Appliance.RollerShutter.Position', 'Appliance.RollerShutter.State'],
 
     // Timer and Trigger
-    setTimerX: ['Appliance.Control.TimerX'],
-    deleteTimerX: ['Appliance.Control.TimerX'],
-    setTriggerX: ['Appliance.Control.TriggerX'],
-    deleteTriggerX: ['Appliance.Control.TriggerX']
+    'timer.set': ['Appliance.Control.TimerX'],
+    'timer.delete': ['Appliance.Control.TimerX'],
+    'trigger.set': ['Appliance.Control.TriggerX'],
+    'trigger.delete': ['Appliance.Control.TriggerX'],
+
+    // Configuration
+    'childLock.set': ['Appliance.Control.PhysicalLock'],
+    'system.setLedMode': ['Appliance.System.LedMode'],
+    'screen.setBrightness': ['Appliance.Control.Screen.Brightness'],
+    'tempUnit.set': ['Appliance.Control.TempUnit'],
+    'dnd.set': ['Appliance.System.DNDMode'],
+    'config.setOverTemp': ['Appliance.Config.OverTemp'],
+    'presence.setConfig': ['Appliance.Control.Presence.Config'],
+    'presence.setStudy': ['Appliance.Control.Presence.Study']
 };
 
 /**
  * Control method metadata registry.
- * Each entry defines:
- * - name: Human-readable name
- * - category: Feature category for grouping
- * - params: Parameter schema for input collection
- * - description: Brief description
+ * Method names use feature-based format: "feature.action"
  */
 const CONTROL_METHOD_REGISTRY = {
     // Power Control
-    setToggle: {
+    'toggle.set': {
         name: 'Toggle (On/Off)',
-        category: 'Power Control',
-        description: 'Turn device on or off',
-        params: [
-            {
-                name: 'onoff',
-                type: 'boolean',
-                label: 'State',
-                choices: [
-                    { name: 'On', value: true },
-                    { name: 'Off', value: false }
-                ],
-                required: true
-            }
-        ]
-    },
-    setToggleX: {
-        name: 'Toggle Channel (On/Off)',
         category: 'Power Control',
         description: 'Turn device channel on or off',
         params: [
@@ -92,11 +58,10 @@ const CONTROL_METHOD_REGISTRY = {
                 name: 'channel',
                 type: 'number',
                 label: 'Channel',
-                required: true,
                 default: 0
             },
             {
-                name: 'onoff',
+                name: 'on',
                 type: 'boolean',
                 label: 'State',
                 choices: [
@@ -109,30 +74,10 @@ const CONTROL_METHOD_REGISTRY = {
     },
 
     // Light Control
-    setLight: {
+    'light.set': {
         name: 'Light Control',
         category: 'Light Control',
-        description: 'Control light settings (advanced)',
-        params: [
-            {
-                name: 'light',
-                type: 'object',
-                label: 'Light Configuration',
-                required: true,
-                properties: [
-                    { name: 'channel', type: 'number', default: 0 },
-                    { name: 'onoff', type: 'number', default: 1 },
-                    { name: 'rgb', type: 'number' },
-                    { name: 'luminance', type: 'number', min: 0, max: 100 },
-                    { name: 'temperature', type: 'number', min: 0, max: 100 }
-                ]
-            }
-        ]
-    },
-    setLightColor: {
-        name: 'Light Color & Brightness',
-        category: 'Light Control',
-        description: 'Set light color, brightness, and temperature',
+        description: 'Set light color, brightness, temperature, and on/off state',
         params: [
             {
                 name: 'channel',
@@ -141,7 +86,7 @@ const CONTROL_METHOD_REGISTRY = {
                 default: 0
             },
             {
-                name: 'onoff',
+                name: 'on',
                 type: 'boolean',
                 label: 'Turn On/Off',
                 required: false
@@ -176,31 +121,45 @@ const CONTROL_METHOD_REGISTRY = {
             }
         ]
     },
-    setDiffuserLight: {
+    'diffuser.setLight': {
         name: 'Diffuser Light',
         category: 'Light Control',
         description: 'Control diffuser light settings',
         params: [
             {
-                name: 'light',
-                type: 'object',
-                label: 'Light Configuration',
-                required: true,
-                properties: [
-                    { name: 'channel', type: 'number', default: 0 },
-                    { name: 'onoff', type: 'number', default: 1 },
-                    { name: 'rgb', type: 'number' },
-                    { name: 'luminance', type: 'number', min: 0, max: 100 }
-                ]
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'on',
+                type: 'boolean',
+                label: 'State',
+                required: false
+            },
+            {
+                name: 'rgb',
+                type: 'rgb',
+                label: 'RGB Color (r,g,b)',
+                required: false
+            },
+            {
+                name: 'luminance',
+                type: 'number',
+                label: 'Brightness (0-100)',
+                min: 0,
+                max: 100,
+                required: false
             }
         ]
     },
 
     // Climate Control
-    setThermostatMode: {
-        name: 'Thermostat Mode',
+    'thermostat.set': {
+        name: 'Thermostat Control',
         category: 'Climate Control',
-        description: 'Set thermostat mode and temperature',
+        description: 'Set thermostat mode, temperature, and on/off state',
         params: [
             {
                 name: 'channel',
@@ -250,29 +209,17 @@ const CONTROL_METHOD_REGISTRY = {
                 type: 'number',
                 label: 'Manual Temperature (°C)',
                 required: false
-            }
-        ]
-    },
-    setThermostatModeB: {
-        name: 'Thermostat Mode B',
-        category: 'Climate Control',
-        description: 'Set thermostat mode B (advanced)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
             },
             {
-                name: 'modeData',
-                type: 'object',
-                label: 'Mode Data',
-                required: true
+                name: 'partialUpdate',
+                type: 'boolean',
+                label: 'Partial Update',
+                required: false,
+                default: false
             }
         ]
     },
-    setSpray: {
+    'spray.set': {
         name: 'Spray/Humidifier',
         category: 'Climate Control',
         description: 'Control spray/humidifier mode',
@@ -296,7 +243,7 @@ const CONTROL_METHOD_REGISTRY = {
             }
         ]
     },
-    setDiffuserSpray: {
+    'diffuser.setSpray': {
         name: 'Diffuser Spray',
         category: 'Climate Control',
         description: 'Control diffuser spray mode',
@@ -322,7 +269,7 @@ const CONTROL_METHOD_REGISTRY = {
     },
 
     // Cover Control
-    setGarageDoor: {
+    'garage.set': {
         name: 'Garage Door',
         category: 'Cover Control',
         description: 'Open or close garage door',
@@ -334,18 +281,14 @@ const CONTROL_METHOD_REGISTRY = {
                 default: 0
             },
             {
-                name: 'open',
-                type: 'boolean',
-                label: 'Action',
-                choices: [
-                    { name: 'Open', value: true },
-                    { name: 'Close', value: false }
-                ],
+                name: 'onoff',
+                type: 'number',
+                label: 'Action (0=close, 1=open)',
                 required: true
             }
         ]
     },
-    setRollerShutterPosition: {
+    'rollerShutter.setPosition': {
         name: 'Roller Shutter Position',
         category: 'Cover Control',
         description: 'Set roller shutter position (0-100, -1 to stop)',
@@ -366,314 +309,46 @@ const CONTROL_METHOD_REGISTRY = {
             }
         ]
     },
-    setRollerShutterUp: {
-        name: 'Roller Shutter Open',
-        category: 'Cover Control',
-        description: 'Open roller shutter (position 100)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    setRollerShutterDown: {
-        name: 'Roller Shutter Close',
-        category: 'Cover Control',
-        description: 'Close roller shutter (position 0)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    setRollerShutterStop: {
-        name: 'Roller Shutter Stop',
-        category: 'Cover Control',
-        description: 'Stop roller shutter movement',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    openRollerShutter: {
-        name: 'Roller Shutter Open',
-        category: 'Cover Control',
-        description: 'Open roller shutter (convenience method)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    closeRollerShutter: {
-        name: 'Roller Shutter Close',
-        category: 'Cover Control',
-        description: 'Close roller shutter (convenience method)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    stopRollerShutter: {
-        name: 'Roller Shutter Stop',
-        category: 'Cover Control',
-        description: 'Stop roller shutter (convenience method)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    setRollerShutterPosition: {
-        name: 'Roller Shutter Set Position',
-        category: 'Cover Control',
-        description: 'Set roller shutter to specific position (convenience method)',
-        params: [
-            {
-                name: 'position',
-                type: 'number',
-                label: 'Position (0-100)',
-                min: 0,
-                max: 100,
-                required: true
-            },
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    setRollerShutterConfig: {
-        name: 'Roller Shutter Configuration',
-        category: 'Configuration',
-        description: 'Configure roller shutter settings',
-        params: [
-            {
-                name: 'config',
-                type: 'object',
-                label: 'Configuration Object',
-                required: true
-            }
-        ]
-    },
-    openGarageDoor: {
-        name: 'Garage Door Open',
-        category: 'Cover Control',
-        description: 'Open garage door (convenience method)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    closeGarageDoor: {
-        name: 'Garage Door Close',
-        category: 'Cover Control',
-        description: 'Close garage door (convenience method)',
-        params: [
-            {
-                name: 'channel',
-                type: 'number',
-                label: 'Channel',
-                default: 0
-            }
-        ]
-    },
-    setGarageDoorConfig: {
-        name: 'Garage Door Configuration',
-        category: 'Configuration',
-        description: 'Configure garage door settings',
-        params: [
-            {
-                name: 'configData',
-                type: 'object',
-                label: 'Configuration Object',
-                required: true
-            }
-        ]
-    },
 
-    // Configuration
-    setChildLock: {
-        name: 'Child Lock',
-        category: 'Configuration',
-        description: 'Enable or disable child lock',
-        params: [
-            {
-                name: 'lockData',
-                type: 'object',
-                label: 'Lock Configuration',
-                required: true,
-                properties: [
-                    { name: 'lock', type: 'number', label: 'Lock (0=unlock, 1=lock)', required: true }
-                ]
-            }
-        ]
-    },
-    setSystemLedMode: {
-        name: 'LED Indicator Mode',
-        category: 'Configuration',
-        description: 'Control LED indicator mode',
-        params: [
-            {
-                name: 'ledModeData',
-                type: 'object',
-                label: 'LED Mode Configuration',
-                required: true
-            }
-        ]
-    },
-    setScreenBrightness: {
-        name: 'Screen Brightness',
-        category: 'Configuration',
-        description: 'Set device screen brightness',
-        params: [
-            {
-                name: 'brightnessData',
-                type: 'object',
-                label: 'Brightness Configuration',
-                required: true,
-                properties: [
-                    { name: 'brightness', type: 'number', min: 0, max: 100, required: true }
-                ]
-            }
-        ]
-    },
-    setTempUnit: {
-        name: 'Temperature Unit',
-        category: 'Configuration',
-        description: 'Set temperature unit (Celsius/Fahrenheit)',
-        params: [
-            {
-                name: 'tempUnitData',
-                type: 'object',
-                label: 'Temperature Unit Configuration',
-                required: true,
-                properties: [
-                    { name: 'unit', type: 'number', label: 'Unit (0=Celsius, 1=Fahrenheit)', required: true }
-                ]
-            }
-        ]
-    },
-    setDNDMode: {
-        name: 'Do Not Disturb Mode',
-        category: 'Configuration',
-        description: 'Enable or disable Do Not Disturb mode (turns off LED indicator)',
-        params: [
-            {
-                name: 'mode',
-                type: 'boolean',
-                label: 'DND Mode',
-                choices: [
-                    { name: 'Enable DND', value: true },
-                    { name: 'Disable DND', value: false }
-                ],
-                required: true
-            }
-        ]
-    },
-    setConfigOverTemp: {
-        name: 'Over-Temperature Protection',
-        category: 'Configuration',
-        description: 'Enable or disable over-temperature protection',
-        params: [
-            {
-                name: 'enable',
-                type: 'boolean',
-                label: 'Over-Temperature Protection',
-                choices: [
-                    { name: 'On', value: true },
-                    { name: 'Off', value: false }
-                ],
-                required: true
-            }
-        ]
-    },
-    setPresenceConfig: {
-        name: 'Presence Sensor Configuration',
-        category: 'Configuration',
-        description: 'Configure presence sensor settings (mode, sensitivity, distance, etc.)',
-        params: [
-            {
-                name: 'configData',
-                type: 'object',
-                label: 'Configuration Object',
-                required: true,
-                properties: [
-                    { name: 'channel', type: 'number', label: 'Channel', default: 0 },
-                    { name: 'mode', type: 'object', label: 'Mode Configuration' },
-                    { name: 'noBodyTime', type: 'object', label: 'No Body Time Configuration' },
-                    { name: 'distance', type: 'object', label: 'Distance Configuration' },
-                    { name: 'sensitivity', type: 'object', label: 'Sensitivity Configuration' },
-                    { name: 'mthx', type: 'object', label: 'Motion Threshold Configuration' }
-                ]
-            }
-        ]
-    },
-    setPresenceStudy: {
-        name: 'Presence Sensor Study/Calibration',
-        category: 'Configuration',
-        description: 'Start or stop presence sensor study/calibration mode',
-        params: [
-            {
-                name: 'studyData',
-                type: 'object',
-                label: 'Study Data Object',
-                required: true,
-                properties: [
-                    { name: 'channel', type: 'number', label: 'Channel', default: 0 },
-                    { name: 'value', type: 'number', label: 'Study Mode Value (typically 1-3)' },
-                    { name: 'status', type: 'number', label: 'Status (0=stop, 1=start)', required: true }
-                ]
-            }
-        ]
-    },
-    setTimerX: {
+    // Timer and Trigger
+    'timer.set': {
         name: 'Timer Control',
         category: 'Automation',
         description: 'Create or update a timer',
         params: [
             {
-                name: 'timerx',
-                type: 'object',
-                label: 'Timer Configuration',
-                required: true,
-                properties: [
-                    { name: 'id', type: 'string', label: 'Timer ID (for updates)' },
-                    { name: 'channel', type: 'number', default: 0 },
-                    { name: 'onoff', type: 'number', label: 'Action (0=off, 1=on)', required: true },
-                    { name: 'type', type: 'number', label: 'Timer Type', required: true },
-                    { name: 'time', type: 'number', label: 'Time Value', required: true }
-                ]
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'id',
+                type: 'string',
+                label: 'Timer ID (for updates)',
+                required: false
+            },
+            {
+                name: 'onoff',
+                type: 'number',
+                label: 'Action (0=off, 1=on)',
+                required: true
+            },
+            {
+                name: 'type',
+                type: 'number',
+                label: 'Timer Type',
+                required: true
+            },
+            {
+                name: 'time',
+                type: 'number',
+                label: 'Time Value',
+                required: true
             }
         ]
     },
-    deleteTimerX: {
+    'timer.delete': {
         name: 'Delete Timer',
         category: 'Automation',
         description: 'Delete a timer',
@@ -692,11 +367,17 @@ const CONTROL_METHOD_REGISTRY = {
             }
         ]
     },
-    setTriggerX: {
+    'trigger.set': {
         name: 'Trigger Control',
         category: 'Automation',
         description: 'Create or update a trigger',
         params: [
+            {
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
             {
                 name: 'triggerx',
                 type: 'object',
@@ -705,7 +386,7 @@ const CONTROL_METHOD_REGISTRY = {
             }
         ]
     },
-    deleteTriggerX: {
+    'trigger.delete': {
         name: 'Delete Trigger',
         category: 'Automation',
         description: 'Delete a trigger',
@@ -720,16 +401,164 @@ const CONTROL_METHOD_REGISTRY = {
                 name: 'channel',
                 type: 'number',
                 label: 'Channel',
-                required: false,
                 default: 0
+            }
+        ]
+    },
+
+    // Configuration
+    'childLock.set': {
+        name: 'Child Lock',
+        category: 'Configuration',
+        description: 'Enable or disable child lock',
+        params: [
+            {
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'lock',
+                type: 'number',
+                label: 'Lock (0=unlock, 1=lock)',
+                required: true
+            }
+        ]
+    },
+    'system.setLedMode': {
+        name: 'LED Indicator Mode',
+        category: 'Configuration',
+        description: 'Control LED indicator mode',
+        params: [
+            {
+                name: 'ledModeData',
+                type: 'object',
+                label: 'LED Mode Configuration',
+                required: true
+            }
+        ]
+    },
+    'screen.setBrightness': {
+        name: 'Screen Brightness',
+        category: 'Configuration',
+        description: 'Set device screen brightness',
+        params: [
+            {
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'brightness',
+                type: 'number',
+                label: 'Brightness (0-100)',
+                min: 0,
+                max: 100,
+                required: true
+            }
+        ]
+    },
+    'tempUnit.set': {
+        name: 'Temperature Unit',
+        category: 'Configuration',
+        description: 'Set temperature unit (Celsius/Fahrenheit)',
+        params: [
+            {
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'unit',
+                type: 'number',
+                label: 'Unit (0=Celsius, 1=Fahrenheit)',
+                required: true
+            }
+        ]
+    },
+    'dnd.set': {
+        name: 'Do Not Disturb Mode',
+        category: 'Configuration',
+        description: 'Enable or disable Do Not Disturb mode',
+        params: [
+            {
+                name: 'mode',
+                type: 'number',
+                label: 'DND Mode (0=disabled, 1=enabled)',
+                required: true
+            }
+        ]
+    },
+    'config.setOverTemp': {
+        name: 'Over-Temperature Protection',
+        category: 'Configuration',
+        description: 'Enable or disable over-temperature protection',
+        params: [
+            {
+                name: 'enable',
+                type: 'boolean',
+                label: 'Over-Temperature Protection',
+                choices: [
+                    { name: 'On', value: true },
+                    { name: 'Off', value: false }
+                ],
+                required: true
+            }
+        ]
+    },
+    'presence.setConfig': {
+        name: 'Presence Sensor Configuration',
+        category: 'Configuration',
+        description: 'Configure presence sensor settings',
+        params: [
+            {
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'configData',
+                type: 'object',
+                label: 'Configuration Object',
+                required: true
+            }
+        ]
+    },
+    'presence.setStudy': {
+        name: 'Presence Sensor Study/Calibration',
+        category: 'Configuration',
+        description: 'Start or stop presence sensor study/calibration mode',
+        params: [
+            {
+                name: 'channel',
+                type: 'number',
+                label: 'Channel',
+                default: 0
+            },
+            {
+                name: 'value',
+                type: 'number',
+                label: 'Study Mode Value',
+                required: false
+            },
+            {
+                name: 'status',
+                type: 'number',
+                label: 'Status (0=stop, 1=start)',
+                required: true
             }
         ]
     }
 };
 
 /**
- * Get metadata for a control method.
- * @param {string} methodName - Name of the control method
+ * Gets metadata for a control method from the registry.
+ *
+ * @param {string} methodName - Name of the control method (format: "feature.action")
  * @returns {Object|null} Method metadata or null if not found
  */
 function getMethodMetadata(methodName) {
@@ -737,7 +566,8 @@ function getMethodMetadata(methodName) {
 }
 
 /**
- * Get all methods grouped by category.
+ * Gets all control methods grouped by category for organized display.
+ *
  * @returns {Object} Methods grouped by category
  */
 function getMethodsByCategory() {
@@ -756,7 +586,8 @@ function getMethodsByCategory() {
 }
 
 /**
- * Check if device supports a required namespace.
+ * Checks if a device supports a specific ability namespace.
+ *
  * @param {Object} device - Device instance
  * @param {string} namespace - Namespace to check
  * @returns {boolean} True if device supports the namespace
@@ -769,90 +600,65 @@ function deviceSupportsNamespace(device, namespace) {
 }
 
 /**
- * Check if device supports any of the required namespaces for a method.
+ * Checks if a device supports any of the required namespaces for a method.
+ *
+ * Some methods accept multiple namespace alternatives (e.g., ToggleX or Toggle),
+ * so any match satisfies the requirement.
+ *
  * @param {Object} device - Device instance
  * @param {Array<string>} namespaces - Array of namespace strings (any match is sufficient)
  * @returns {boolean} True if device supports at least one namespace
  */
 function deviceSupportsAnyNamespace(device, namespaces) {
     if (!namespaces || namespaces.length === 0) {
-        return true; // No namespace requirement means always available
+        return true;
     }
     return namespaces.some(namespace => deviceSupportsNamespace(device, namespace));
 }
 
 /**
- * Detect available control methods on a device based on device abilities.
- * Only shows methods that are in the registry AND the device supports the required namespaces.
+ * Detects available control methods on a device based on device abilities.
+ *
+ * Validates both namespace requirements and feature availability to determine
+ * which methods can be used with a specific device. Uses feature-based API structure.
+ *
  * @param {Object} device - Device instance
  * @returns {Array} Array of available control methods with metadata
  */
 function detectControlMethods(device) {
     const availableMethods = [];
 
-    // Only show methods that are in our registry and device supports
-    // Iterate through registry instead of device methods to ensure we only show known methods
     for (const [methodName, metadata] of Object.entries(CONTROL_METHOD_REGISTRY)) {
-        // Check if method exists on device (check both exact name and common variations)
-        const deviceMethod = device[methodName];
-        if (typeof deviceMethod !== 'function') {
-            // Try alternative naming (e.g., setDNDMode might be on device)
-            continue; // Method doesn't exist on device, skip
-        }
-
-        // Check if this method requires specific namespaces
         const requiredNamespaces = METHOD_TO_NAMESPACE_MAP[methodName];
 
-        // If method has namespace requirements, check if device supports them
         if (requiredNamespaces && requiredNamespaces.length > 0) {
             if (!deviceSupportsAnyNamespace(device, requiredNamespaces)) {
-                // Device doesn't support required namespaces, skip this method
                 continue;
             }
-        } else {
-            // Method has no namespace requirement - this shouldn't happen for control methods
-            // Skip it to be safe, or we could add it but it's better to be strict
+        }
+
+        const parts = methodName.split('.');
+        if (parts.length !== 2) {
             continue;
         }
 
-        // Method exists, has namespace requirements, and device supports them - add it
+        const [featureName, action] = parts;
+
+        const feature = device[featureName];
+        if (!feature) {
+            continue;
+        }
+
+        if (typeof feature[action] !== 'function') {
+            continue;
+        }
+
         availableMethods.push({
             methodName,
             ...metadata
         });
     }
 
-    // Also check for any control/set methods on device that might not be in registry
-    // but have namespace requirements (for future extensibility)
-    for (const prop in device) {
-        if ((prop.startsWith('control') || prop.startsWith('set')) && typeof device[prop] === 'function') {
-            // Skip if already in our list
-            if (availableMethods.some(m => m.methodName === prop)) {
-                continue;
-            }
-
-            // Check if this method has namespace requirements
-            const requiredNamespaces = METHOD_TO_NAMESPACE_MAP[prop];
-
-            // Only include if it has namespace requirements AND device supports them
-            if (requiredNamespaces && requiredNamespaces.length > 0) {
-                if (deviceSupportsAnyNamespace(device, requiredNamespaces)) {
-                    // Unknown method but device supports it - add with basic info
-                    const displayName = prop.replace(/^(control|set)/, '').replace(/([A-Z])/g, ' $1').trim();
-                    availableMethods.push({
-                        methodName: prop,
-                        name: displayName,
-                        category: 'Other',
-                        description: 'Control method',
-                        params: []
-                    });
-                }
-            }
-            // If no namespace requirement, skip it (don't show unknown methods without namespace checks)
-        }
-    }
-
-    // Sort by category, then by name
     availableMethods.sort((a, b) => {
         if (a.category !== b.category) {
             return a.category.localeCompare(b.category);
@@ -872,4 +678,3 @@ module.exports = {
     deviceSupportsNamespace,
     deviceSupportsAnyNamespace
 };
-

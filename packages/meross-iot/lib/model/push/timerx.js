@@ -11,7 +11,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * device.on('pushNotification', (notification) => {
+ * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof TimerXPushNotification) {
  *         const timerData = notification.timerxData;
  *         timerData.forEach(timer => {

@@ -53,7 +53,11 @@ async function runTests(context) {
         // Try different capacity values (1, 2, 3 are common)
         for (const capacity of [1, 2, 3]) {
             try {
-                const response = await testDevice.getSensorHistory({ channel: 0, capacity });
+                if (!testDevice.sensorHistory) {
+                    lastError = 'Device does not support sensor history feature';
+                    continue;
+                }
+                const response = await testDevice.sensorHistory.get({ channel: 0, capacity });
                 
                 if (!response) {
                     lastError = `getSensorHistory returned null or undefined for capacity ${capacity}`;
@@ -107,7 +111,7 @@ async function runTests(context) {
     try {
         // Note: We don't actually delete history to avoid data loss
         // We just verify the method exists and can be called
-        if (typeof testDevice.deleteSensorHistory === 'function') {
+        if (testDevice.sensorHistory && typeof testDevice.sensorHistory.delete === 'function') {
             results.push({
                 name: 'should delete sensor history',
                 passed: true,

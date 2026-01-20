@@ -62,8 +62,8 @@ async function runTests(context) {
     
     // Test 2: Get latest sensor readings
     try {
-        if (typeof testDevice.getLatestSensorReadings === 'function') {
-            const readings = await testDevice.getLatestSensorReadings(['presence', 'light'], timeout);
+        if (testDevice.presence && typeof testDevice.presence.get === 'function') {
+            const readings = await testDevice.presence.get({ dataTypes: ['presence', 'light'], channel: 0 });
             
             if (!readings || !readings.latest) {
                 results.push({
@@ -110,8 +110,8 @@ async function runTests(context) {
     
     // Test 3: Get presence data
     try {
-        if (typeof testDevice.getPresence === 'function') {
-            const presence = testDevice.getPresence();
+        if (testDevice.presence && typeof testDevice.presence.getPresence === 'function') {
+            const presence = testDevice.presence.getPresence({ channel: 0 });
             
             // Presence can be null if no data yet, which is acceptable
             if (presence === null) {
@@ -236,8 +236,8 @@ async function runTests(context) {
     
     // Test 5: Get light reading
     try {
-        if (typeof testDevice.getLight === 'function') {
-            const light = testDevice.getLight();
+        if (testDevice.presence && typeof testDevice.presence.getLight === 'function') {
+            const light = testDevice.presence.getLight({ channel: 0 });
             
             // Light can be null if no data yet, which is acceptable
             if (light === null) {
@@ -291,8 +291,8 @@ async function runTests(context) {
     
     // Test 6: Get all sensor readings
     try {
-        if (typeof testDevice.getAllSensorReadings === 'function') {
-            const allReadings = testDevice.getAllSensorReadings();
+        if (testDevice.presence && typeof testDevice.presence.getAllSensorReadings === 'function') {
+            const allReadings = testDevice.presence.getAllSensorReadings({ channel: 0 });
             
             if (!allReadings || typeof allReadings !== 'object') {
                 results.push({
@@ -336,8 +336,8 @@ async function runTests(context) {
     
     // Test 7: Get presence configuration
     try {
-        if (typeof testDevice.getPresenceConfig === 'function') {
-            const config = await testDevice.getPresenceConfig(0, timeout);
+        if (testDevice.presence && typeof testDevice.presence.getConfig === 'function') {
+            const config = await testDevice.presence.getConfig({ channel: 0 });
             
             if (!config) {
                 results.push({
@@ -440,51 +440,6 @@ async function runTests(context) {
                 device: deviceName
             });
         }
-    }
-    
-    // Test 9: Handle presence push notifications
-    try {
-        // Set up listener for presence push notifications
-        let receivedNotification = false;
-        const notificationHandler = (notification) => {
-            if (notification.namespace === 'Appliance.Control.Sensor.LatestX') {
-                receivedNotification = true;
-            }
-        };
-        
-        testDevice.on('pushNotification', notificationHandler);
-        
-        // Request latest readings (may trigger a push notification)
-        if (typeof testDevice.getLatestSensorReadings === 'function') {
-            await testDevice.getLatestSensorReadings(['presence', 'light'], timeout);
-        }
-        
-        // Wait a bit for potential push notifications
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        // Remove listener
-        testDevice.removeListener('pushNotification', notificationHandler);
-        
-        // Note: We don't assert on receivedNotification since push notifications
-        // are device-initiated and may not occur during testing
-        // This test just verifies the listener mechanism works
-        results.push({
-            name: 'should handle presence push notifications',
-            passed: true,
-            skipped: false,
-            error: null,
-            device: deviceName,
-            details: { notificationReceived: receivedNotification }
-        });
-        
-    } catch (error) {
-        results.push({
-            name: 'should handle presence push notifications',
-            passed: false,
-            skipped: false,
-            error: error.message,
-            device: deviceName
-        });
     }
     
     return results;

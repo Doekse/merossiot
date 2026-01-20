@@ -7,48 +7,52 @@ const { collectSetLightColorParams } = require('./light');
 const { collectGenericParams } = require('./generic');
 
 /**
- * Main entry point for collecting control parameters.
- * Routes to feature-specific handlers or falls back to generic collection.
+ * Main entry point for collecting control parameters interactively.
+ *
+ * Routes to feature-specific parameter collection handlers when available, allowing
+ * specialized prompts for complex features. Falls back to generic collection for
+ * simpler methods or when feature-specific handlers are unavailable.
+ *
+ * @param {string} methodName - Control method name (e.g., "toggle.set", "light.set")
+ * @param {Object} methodMetadata - Method metadata from control registry
+ * @param {Object} device - Device instance
+ * @returns {Promise<Object>} Collected parameters object
  */
 async function collectControlParameters(methodName, methodMetadata, device) {
     if (!methodMetadata || !methodMetadata.params) {
         return {};
     }
 
-    // Route to feature-specific handlers
     switch (methodName) {
-    case 'setThermostatMode':
+    case 'thermostat.set':
         return await collectThermostatModeParams(methodMetadata, device);
 
-    case 'setLightColor':
+    case 'light.set':
         return await collectSetLightColorParams(methodMetadata, device);
 
-    case 'setTimerX':
+    case 'timer.set':
         return await collectSetTimerXParams(methodMetadata, device);
 
-    case 'deleteTimerX': {
+    case 'timer.delete': {
         const result = await collectDeleteTimerXParams(methodMetadata, device);
         if (result !== null) {
             return result;
         }
-        // Fall through to generic collection if no timers found
         break;
     }
 
-    case 'setTriggerX':
+    case 'trigger.set':
         return await collectSetTriggerXParams(methodMetadata, device);
 
-    case 'deleteTriggerX': {
+    case 'trigger.delete': {
         const result = await collectDeleteTriggerXParams(methodMetadata, device);
         if (result !== null) {
             return result;
         }
-        // Fall through to generic collection if no triggers found
         break;
     }
     }
 
-    // Default to generic parameter collection
     return await collectGenericParams(methodMetadata);
 }
 

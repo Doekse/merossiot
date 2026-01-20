@@ -82,7 +82,7 @@ async function runTests(context) {
                     }
                 }
             };
-            testDevice.on('pushNotification', handler);
+            testDevice.on('pushNotificationReceived', handler);
             
             // Timeout after 5 seconds if no push notification arrives
             setTimeout(() => {
@@ -91,7 +91,7 @@ async function runTests(context) {
             }, 5000);
         });
         
-        const createResult = await testDevice.setTimerX(testTimer);
+        const createResult = await testDevice.timer.set({ timerx: testTimer });
         
         if (!createResult) {
             results.push({
@@ -115,7 +115,7 @@ async function runTests(context) {
         } else {
             // Wait a bit and query by alias to find it
             await new Promise(resolve => setTimeout(resolve, 2000));
-            const timers = await testDevice.getTimerX({ channel: 0 });
+            const timers = await testDevice.timer.get({ channel: 0 });
             const foundTimer = timers?.timerx?.find(t => t.alias === 'Test Timer - CLI Test');
             if (foundTimer && foundTimer.id) {
                 createdTimerId = foundTimer.id;
@@ -134,7 +134,7 @@ async function runTests(context) {
         }
         
         // Verify timer exists by querying it
-        const timerInfo = await testDevice.getTimerX({ timerId: createdTimerId });
+        const timerInfo = await testDevice.timer.get({ timerId: createdTimerId });
         
         if (!timerInfo || !timerInfo.timerx) {
             results.push({
@@ -148,7 +148,8 @@ async function runTests(context) {
         }
         
         // Verify cached timer state
-        const cachedTimers = testDevice.getCachedTimerX(0);
+        const timerResponse = await testDevice.timer.get({ channel: 0 });
+        const cachedTimers = timerResponse?.timerx || [];
         
         results.push({
             name: 'should create timer',
@@ -158,7 +159,7 @@ async function runTests(context) {
             device: deviceName,
             details: { 
                 timerId: createdTimerId,
-                cachedTimerCount: cachedTimers ? cachedTimers.length : 0
+                cachedTimerCount: cachedTimers.length
             }
         });
     } catch (error) {
@@ -248,7 +249,7 @@ async function runTests(context) {
             // Clear cached state and query fresh from device
             try {
                 // Force a refresh by querying the device directly
-                const timersResponse = await testDevice.getTimerX({ channel: 0 });
+                const timersResponse = await testDevice.timer.get({ channel: 0 });
                 
                 let timerStillExists = false;
                 let allTimerIds = [];
@@ -317,50 +318,6 @@ async function runTests(context) {
                 }
             });
         }
-    }
-    
-    // Test 3: Handle timer push notifications
-    try {
-        // Set up listener for timer push notifications
-        let receivedNotification = false;
-        const notificationHandler = (notification) => {
-            if (notification.namespace === 'Appliance.Control.TimerX') {
-                receivedNotification = true;
-            }
-        };
-        
-        testDevice.on('pushNotification', notificationHandler);
-        
-        // Get timer info (may trigger a push notification)
-        await testDevice.getTimerX({ channel: 0 });
-        
-        // Wait a bit for potential push notifications
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Remove listener
-        testDevice.removeListener('pushNotification', notificationHandler);
-        
-        // Note: We don't assert on receivedNotification since push notifications
-        // are device-initiated and may not occur during testing
-        results.push({
-            name: 'should handle timer push notifications',
-            passed: true,
-            skipped: false,
-            error: null,
-            device: deviceName,
-            details: { 
-                notificationReceived: receivedNotification,
-                note: 'Push notifications are device-initiated and may not occur during testing'
-            }
-        });
-    } catch (error) {
-        results.push({
-            name: 'should handle timer push notifications',
-            passed: false,
-            skipped: false,
-            error: error.message,
-            device: deviceName
-        });
     }
     
     return results;

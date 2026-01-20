@@ -232,14 +232,12 @@ class DeviceRegistry {
         const capabilityMap = {
             'light': () => typeof device.getLightState === 'function' ||
                          typeof device.getCachedLightState === 'function',
-            'thermostat': () => typeof device.getThermostatMode === 'function' ||
-                             typeof device.getCachedThermostatState === 'function',
-            'toggle': () => typeof device.setToggle === 'function' ||
-                          typeof device.setToggleX === 'function',
-            'rollerShutter': () => typeof device.getRollerShutterState === 'function',
-            'garageDoor': () => typeof device.getGarageDoorState === 'function',
-            'diffuser': () => typeof device.getDiffuserLightState === 'function',
-            'spray': () => typeof device.getSprayState === 'function',
+            'thermostat': () => device.thermostat && typeof device.thermostat.get === 'function',
+            'toggle': () => device.toggle && typeof device.toggle.set === 'function',
+            'rollerShutter': () => device.rollerShutter && typeof device.rollerShutter.get === 'function',
+            'garageDoor': () => device.garage && typeof device.garage.get === 'function',
+            'diffuser': () => device.diffuser && typeof device.diffuser.get === 'function',
+            'spray': () => device.spray && typeof device.spray.get === 'function',
             'hub': () => typeof device.getSubdevices === 'function'
         };
 

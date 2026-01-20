@@ -61,21 +61,21 @@ async function runTests(context) {
     
     // Test 1: Detect encryption support
     try {
-        if (typeof testDevice.supportEncryption !== 'function') {
+        if (!testDevice.encryption || typeof testDevice.encryption.supportEncryption !== 'function') {
             results.push({
                 name: 'should detect encryption support',
                 passed: false,
                 skipped: true,
-                error: 'Device does not have encryption feature methods',
+                error: 'Device does not have encryption feature',
                 device: deviceName
             });
         } else {
-            const supportsEncryption = testDevice.supportEncryption();
+            const supportsEncryption = testDevice.encryption.supportEncryption();
             
             // Check if encryption key is set
             let isKeySet = false;
             if (supportsEncryption) {
-                isKeySet = testDevice.isEncryptionKeySet();
+                isKeySet = testDevice.encryption.isEncryptionKeySet();
             }
             
             results.push({
@@ -102,7 +102,7 @@ async function runTests(context) {
     
     // Test 2: Set encryption key if supported
     try {
-        if (typeof testDevice.supportEncryption !== 'function' || !testDevice.supportEncryption()) {
+        if (!testDevice.encryption || typeof testDevice.encryption.supportEncryption !== 'function' || !testDevice.encryption.supportEncryption()) {
             results.push({
                 name: 'should set encryption key if supported',
                 passed: false,
@@ -112,13 +112,13 @@ async function runTests(context) {
             });
         } else {
             // Check if key is already set
-            const isKeySet = testDevice.isEncryptionKeySet();
+            const isKeySet = testDevice.encryption.isEncryptionKeySet();
             
             // If key is not set and we have the required info, set it
             if (!isKeySet && testDevice.uuid && manager.key && testDevice.macAddress) {
-                testDevice.setEncryptionKey(testDevice.uuid, manager.key, testDevice.macAddress);
+                testDevice.encryption.setEncryptionKey(testDevice.uuid, manager.key, testDevice.macAddress);
                 
-                const keySetAfter = testDevice.isEncryptionKeySet();
+                const keySetAfter = testDevice.encryption.isEncryptionKeySet();
                 
                 if (!keySetAfter) {
                     results.push({
@@ -169,7 +169,7 @@ async function runTests(context) {
     
     // Test 3: Encrypt and decrypt messages if encryption key is set
     try {
-        if (typeof testDevice.supportEncryption !== 'function' || !testDevice.supportEncryption()) {
+        if (!testDevice.encryption || typeof testDevice.encryption.supportEncryption !== 'function' || !testDevice.encryption.supportEncryption()) {
             results.push({
                 name: 'should encrypt and decrypt messages if encryption key is set',
                 passed: false,
@@ -179,9 +179,9 @@ async function runTests(context) {
             });
         } else {
             // Ensure encryption key is set
-            if (!testDevice.isEncryptionKeySet()) {
+            if (!testDevice.encryption.isEncryptionKeySet()) {
                 if (testDevice.uuid && manager.key && testDevice.macAddress) {
-                    testDevice.setEncryptionKey(testDevice.uuid, manager.key, testDevice.macAddress);
+                    testDevice.encryption.setEncryptionKey(testDevice.uuid, manager.key, testDevice.macAddress);
                 } else {
                     results.push({
                         name: 'should encrypt and decrypt messages if encryption key is set',
@@ -198,7 +198,7 @@ async function runTests(context) {
             const testMessage = { test: 'data', value: 123 };
             
             try {
-                const encrypted = testDevice.encryptMessage(testMessage);
+                const encrypted = testDevice.encryption.encryptMessage(testMessage);
                 
                 if (!encrypted) {
                     results.push({
@@ -223,7 +223,7 @@ async function runTests(context) {
                     return results;
                 }
                 
-                const decrypted = testDevice.decryptMessage(encrypted);
+                const decrypted = testDevice.encryption.decryptMessage(encrypted);
                 
                 if (!decrypted) {
                     results.push({

@@ -6,18 +6,24 @@ const { TimerType, TimerUtils } = require('meross-iot');
 const { timeToMinutes } = TimerUtils;
 
 /**
- * Collects parameters for setTimerX with interactive prompts.
+ * Collects parameters for setTimerX interactively.
+ *
+ * Displays existing timers for context, then prompts for timer configuration.
+ * Uses device time when available to help users set accurate trigger times.
+ *
+ * @param {Object} methodMetadata - Method metadata from control registry
+ * @param {Object} device - Device instance
+ * @returns {Promise<Object>} Collected parameters object
  */
 async function collectSetTimerXParams(methodMetadata, device) {
     const params = {};
     const channel = methodMetadata.params.find(p => p.name === 'timerx')?.properties?.find(prop => prop.name === 'channel')?.default || 0;
 
-    // Show existing timers
     let hasTimers = false;
     try {
-        if (typeof device.getTimerX === 'function') {
+        if (device.timer && typeof device.timer.get === 'function') {
             console.log(chalk.dim('Fetching existing timers...'));
-            const response = await device.getTimerX({ channel });
+            const response = await device.timer.get({ channel });
             if (response && response.timerx && Array.isArray(response.timerx) && response.timerx.length > 0) {
                 hasTimers = true;
                 console.log(chalk.cyan(`\nExisting Timers (Channel ${channel}):`));
@@ -35,7 +41,7 @@ async function collectSetTimerXParams(methodMetadata, device) {
             }
         }
     } catch (e) {
-        // Failed to fetch, continue
+        // Continue without existing timers if fetch fails
     }
 
     if (!hasTimers) {
@@ -77,11 +83,10 @@ async function collectSetTimerXParams(methodMetadata, device) {
         default: 0
     }]);
 
-    // Get current time for context
     let currentTimeStr = '';
     try {
-        if (typeof device.getSystemTime === 'function') {
-            const timeResponse = await device.getSystemTime();
+        if (device.system && typeof device.system.getTime === 'function') {
+            const timeResponse = await device.system.getTime();
             if (timeResponse && timeResponse.time && timeResponse.time.timestamp) {
                 const date = new Date(timeResponse.time.timestamp * 1000);
                 const hours = date.getHours();
@@ -90,7 +95,7 @@ async function collectSetTimerXParams(methodMetadata, device) {
             }
         }
     } catch (e) {
-        // Failed to get device time
+        // Fall back to system time if device time unavailable
     }
     if (!currentTimeStr) {
         const now = new Date();
@@ -146,7 +151,6 @@ async function collectSetTimerXParams(methodMetadata, device) {
         default: 0
     }]);
 
-    // Pass user-friendly format to API (API handles conversion)
     params.channel = channel;
     params.alias = aliasAnswer.alias;
     params.time = timeAnswer.time;
@@ -166,9 +170,9 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
     const channel = methodMetadata.params.find(p => p.name === 'channel')?.default || 0;
 
     try {
-        if (typeof device.getTimerX === 'function') {
+        if (device.timer && typeof device.timer.get === 'function') {
             console.log(chalk.dim('Fetching existing timers...'));
-            const response = await device.getTimerX({ channel });
+            const response = await device.timer.get({ channel });
             if (response && response.timerx && Array.isArray(response.timerx) && response.timerx.length > 0) {
                 const items = response.timerx;
                 console.log(chalk.cyan(`\nExisting Timers (Channel ${channel}):`));
@@ -184,7 +188,6 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
                 });
                 console.log();
 
-                // Allow selection from list
                 const choices = items.map(item => {
                     const timeMinutes = item.time || 0;
                     const hours = Math.floor(timeMinutes / 60);
@@ -232,10 +235,10 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
             }
         }
     } catch (e) {
-        // Failed to fetch, continue with generic collection
+        // Fall back to generic collection if fetch fails
     }
 
-    return null; // Return null to fall back to generic collection
+    return null;
 }
 
 module.exports = { collectSetTimerXParams, collectDeleteTimerXParams };

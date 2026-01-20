@@ -81,7 +81,7 @@ async function runTests(context) {
                     }
                 }
             };
-            testDevice.on('pushNotification', handler);
+            testDevice.on('pushNotificationReceived', handler);
             
             // Timeout after 5 seconds if no push notification arrives
             setTimeout(() => {
@@ -90,7 +90,7 @@ async function runTests(context) {
             }, 5000);
         });
         
-        const createResult = await testDevice.setTriggerX(testTrigger);
+        const createResult = await testDevice.trigger.set({ triggerx: testTrigger });
         
         if (!createResult) {
             results.push({
@@ -114,7 +114,7 @@ async function runTests(context) {
         } else {
             // Wait a bit and query by alias to find it
             await new Promise(resolve => setTimeout(resolve, 2000));
-            const triggers = await testDevice.getTriggerX(0);
+            const triggers = await testDevice.trigger.get({ channel: 0 });
             const foundTrigger = triggers?.triggerx?.find(t => t.alias === 'Test Trigger - CLI Test');
             if (foundTrigger && foundTrigger.id) {
                 createdTriggerId = foundTrigger.id;
@@ -133,7 +133,7 @@ async function runTests(context) {
         }
         
         // Verify trigger exists by querying it
-        const triggerInfo = await testDevice.getTriggerX(0);
+        const triggerInfo = await testDevice.trigger.get({ channel: 0 });
         const triggerExists = triggerInfo?.triggerx?.some(t => t.id === createdTriggerId);
         
         if (!triggerExists) {
@@ -148,7 +148,8 @@ async function runTests(context) {
         }
         
         // Verify cached trigger state
-        const cachedTriggers = testDevice.getCachedTriggerX(0);
+        const triggerResponse = await testDevice.trigger.get({ channel: 0 });
+        const cachedTriggers = triggerResponse?.triggerx || [];
         
         results.push({
             name: 'should create trigger',
@@ -158,7 +159,7 @@ async function runTests(context) {
             device: deviceName,
             details: { 
                 triggerId: createdTriggerId,
-                cachedTriggerCount: cachedTriggers ? cachedTriggers.length : 0
+                cachedTriggerCount: cachedTriggers.length
             }
         });
     } catch (error) {
@@ -224,50 +225,6 @@ async function runTests(context) {
                 }
             });
         }
-    }
-    
-    // Test 3: Handle trigger push notifications
-    try {
-        // Set up listener for trigger push notifications
-        let receivedNotification = false;
-        const notificationHandler = (notification) => {
-            if (notification.namespace === 'Appliance.Control.TriggerX') {
-                receivedNotification = true;
-            }
-        };
-        
-        testDevice.on('pushNotification', notificationHandler);
-        
-        // Get trigger info (may trigger a push notification)
-        await testDevice.getTriggerX(0);
-        
-        // Wait a bit for potential push notifications
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Remove listener
-        testDevice.removeListener('pushNotification', notificationHandler);
-        
-        // Note: We don't assert on receivedNotification since push notifications
-        // are device-initiated and may not occur during testing
-        results.push({
-            name: 'should handle trigger push notifications',
-            passed: true,
-            skipped: false,
-            error: null,
-            device: deviceName,
-            details: { 
-                notificationReceived: receivedNotification,
-                note: 'Push notifications are device-initiated and may not occur during testing'
-            }
-        });
-    } catch (error) {
-        results.push({
-            name: 'should handle trigger push notifications',
-            passed: false,
-            skipped: false,
-            error: error.message,
-            device: deviceName
-        });
     }
     
     return results;

@@ -13,6 +13,7 @@ const ABILITY_MATRIX = {
     // Power plugs abilities
     'Appliance.Control.ToggleX': require('./controller/features/toggle-feature'),
     'Appliance.Control.Toggle': require('./controller/features/toggle-feature'),
+    'Appliance.Control.ConsumptionH': require('./controller/features/consumption-feature'),
     'Appliance.Control.ConsumptionX': require('./controller/features/consumption-feature'),
     'Appliance.Control.Consumption': require('./controller/features/consumption-feature'),
     'Appliance.Control.Electricity': require('./controller/features/electricity-feature'),
@@ -209,35 +210,30 @@ function getCachedDeviceClass(deviceType, hardwareVersion, firmwareVersion) {
 function _buildDynamicClass(typeKey, abilities, BaseClass) {
     const features = new Set();
 
-    // System feature provides core device functionality required by all devices
-    features.add(require('./controller/features/system-feature'));
+        features.add(require('./controller/features/system-feature'));
 
-    if (abilities && typeof abilities === 'object') {
-        // X-suffixed namespaces are extended versions that replace base namespaces
-        // Track base namespaces to avoid adding both base and X versions
-        const hasXVersion = new Set();
-        for (const namespace of Object.keys(abilities)) {
-            if (namespace.endsWith('X')) {
-                const baseNamespace = namespace.slice(0, -1);
-                hasXVersion.add(baseNamespace);
-            }
-        }
-
-        // Prefer X versions over base versions to use the most capable feature implementation
-        for (const [namespace] of Object.entries(abilities)) {
-            const feature = ABILITY_MATRIX[namespace];
-            if (feature) {
+        if (abilities && typeof abilities === 'object') {
+            const hasXVersion = new Set();
+            for (const namespace of Object.keys(abilities)) {
                 if (namespace.endsWith('X')) {
-                    features.add(feature);
-                } else {
-                    // Only add base version if no X version exists
-                    if (!hasXVersion.has(namespace)) {
+                    const baseNamespace = namespace.slice(0, -1);
+                    hasXVersion.add(baseNamespace);
+                }
+            }
+
+            for (const [namespace] of Object.entries(abilities)) {
+                const feature = ABILITY_MATRIX[namespace];
+                if (feature) {
+                    if (namespace.endsWith('X')) {
                         features.add(feature);
+                    } else {
+                        if (!hasXVersion.has(namespace)) {
+                            features.add(feature);
+                        }
                     }
                 }
             }
         }
-    }
 
     class DynamicDevice extends BaseClass {}
 
@@ -245,10 +241,6 @@ function _buildDynamicClass(typeKey, abilities, BaseClass) {
     const pushHandlers = [];
     const refreshHandlers = [];
 
-    // Separate handlers from other properties so they can be chained together.
-    // Features are applied at class creation time, so no existing handlers need
-    // to be preserved. This allows multiple features to handle the same namespace
-    // or participate in state refresh operations.
     for (const feature of featureArray) {
         if (feature.handlePushNotification) {
             pushHandlers.push(feature.handlePushNotification);
@@ -261,8 +253,6 @@ function _buildDynamicClass(typeKey, abilities, BaseClass) {
         Object.assign(DynamicDevice.prototype, featureProperties);
     }
 
-    // Chain push handlers so multiple features can process notifications.
-    // The first handler that returns true stops the chain to avoid duplicate processing.
     if (pushHandlers.length > 0) {
         DynamicDevice.prototype.handlePushNotification = function (namespace, data) {
             for (const handler of pushHandlers) {
@@ -274,9 +264,6 @@ function _buildDynamicClass(typeKey, abilities, BaseClass) {
         };
     }
 
-    // Chain refresh handlers so all features can update their state.
-    // All handlers are called sequentially since state refresh operations
-    // may depend on each other and must complete in order.
     if (refreshHandlers.length > 0) {
         DynamicDevice.prototype.refreshState = async function (timeout = null) {
             for (const handler of refreshHandlers) {
@@ -306,14 +293,12 @@ function buildDevice(deviceInfo, abilities, manager, subDeviceList) {
     const hardwareVersion = deviceInfo.hdwareVersion;
     const firmwareVersion = deviceInfo.fmwareVersion;
 
-    // Hub detection must happen before class selection since hubs use a different base class
     const isHub = abilities && typeof abilities === 'object' &&
                  HUB_DISCRIMINATING_ABILITY in abilities;
 
     let DeviceClass = getCachedDeviceClass(deviceType, hardwareVersion, firmwareVersion);
 
     if (!DeviceClass) {
-        // Lazy import device classes to avoid circular dependency
         const { MerossDevice } = require('./controller/device');
         const { MerossHubDevice } = require('./controller/hub-device');
 

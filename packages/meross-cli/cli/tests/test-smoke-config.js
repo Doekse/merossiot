@@ -44,7 +44,17 @@ async function runTests(context) {
     
     // Test 1: Get smoke config
     try {
-        const response = await testDevice.getSmokeConfig(0);
+        if (!testDevice.smokeConfig) {
+            results.push({
+                name: 'should get smoke config',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support smoke config feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const response = await testDevice.smokeConfig.get({ channel: 0 });
         
         if (!response) {
             results.push({
@@ -84,8 +94,18 @@ async function runTests(context) {
     
     // Test 2: Control smoke config
     try {
+        if (!testDevice.smokeConfig) {
+            results.push({
+                name: 'should control smoke config',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support smoke config feature',
+                device: deviceName
+            });
+            return results;
+        }
         // Get current config first
-        const currentResponse = await testDevice.getSmokeConfig(0);
+        const currentResponse = await testDevice.smokeConfig.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         if (!currentResponse || !Array.isArray(currentResponse.config)) {
@@ -96,12 +116,12 @@ async function runTests(context) {
                 error: 'Could not get current smoke config or config is not an array',
                 device: deviceName
             });
-        } else if (typeof testDevice.setSmokeConfig !== 'function') {
+        } else if (typeof testDevice.smokeConfig.set !== 'function') {
             results.push({
                 name: 'should control smoke config',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support setSmokeConfig',
+                error: 'Device does not support set',
                 device: deviceName
             });
         } else {

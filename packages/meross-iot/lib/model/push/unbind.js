@@ -11,7 +11,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * device.on('pushNotification', (notification) => {
+ * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof UnbindPushNotification) {
  *         console.log('Device unbound:', notification.originatingDeviceUuid);
  *         // Device is no longer associated with this account

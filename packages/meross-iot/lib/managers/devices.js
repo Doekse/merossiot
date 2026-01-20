@@ -678,22 +678,22 @@ class ManagerDevices {
     async connect(deviceObj, dev) {
         const deviceId = deviceObj.uuid;
 
-        deviceObj.on('close', (error) => {
+        deviceObj.on('disconnected', (error) => {
             this.manager.emit('close', deviceId, error);
         });
         deviceObj.on('error', (error) => {
             this.manager.emit('error', error, deviceId);
         });
-        deviceObj.on('rawSendData', (message) => {
+        deviceObj.on('rawMessageSent', (message) => {
             this.manager.emit('rawData', deviceId, message);
         });
-        deviceObj.on('pushNotification', (notification) => {
+        deviceObj.on('pushNotificationReceived', (notification) => {
             this.manager.emit('pushNotification', deviceId, notification, deviceObj);
         });
 
         if (this.manager._subscriptionManager) {
-            deviceObj.on('stateChange', () => {
-                // Subscription manager handles stateChange events separately
+            deviceObj.on('stateChanged', () => {
+                // Subscription manager handles stateChanged events separately
             });
         }
 

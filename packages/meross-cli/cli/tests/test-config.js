@@ -47,7 +47,17 @@ async function runTests(context) {
     
     // Test 1: Get config over temp
     try {
-        const response = await testDevice.getConfigOverTemp();
+        if (!testDevice.config) {
+            results.push({
+                name: 'should get config over temp',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support config feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const response = await testDevice.config.get();
         
         if (!response) {
             results.push({
@@ -87,8 +97,18 @@ async function runTests(context) {
     
     // Test 2: Control config over temp
     try {
+        if (!testDevice.config) {
+            results.push({
+                name: 'should control config over temp',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support config feature',
+                device: deviceName
+            });
+            return results;
+        }
         // Get current config first
-        const currentResponse = await testDevice.getConfigOverTemp();
+        const currentResponse = await testDevice.config.get();
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         if (!currentResponse || !currentResponse.overTemp) {

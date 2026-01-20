@@ -6,18 +6,24 @@ const { TriggerType, TriggerUtils } = require('meross-iot');
 const { durationToSeconds, secondsToDuration } = TriggerUtils;
 
 /**
- * Collects parameters for setTriggerX with interactive prompts.
+ * Collects parameters for setTriggerX interactively.
+ *
+ * Displays existing triggers for context, then prompts for trigger configuration.
+ * Supports multiple trigger types and flexible duration formats.
+ *
+ * @param {Object} methodMetadata - Method metadata from control registry
+ * @param {Object} device - Device instance
+ * @returns {Promise<Object>} Collected parameters object
  */
 async function collectSetTriggerXParams(methodMetadata, device) {
     const params = {};
     const channel = methodMetadata.params.find(p => p.name === 'triggerx')?.properties?.find(prop => prop.name === 'channel')?.default || 0;
 
-    // Show existing triggers
     let hasTriggers = false;
     try {
-        if (typeof device.getTriggerX === 'function') {
+        if (device.trigger && typeof device.trigger.get === 'function') {
             console.log(chalk.dim('Fetching existing triggers...'));
-            const response = await device.getTriggerX({ channel });
+            const response = await device.trigger.get({ channel });
             if (response && response.triggerx && Array.isArray(response.triggerx) && response.triggerx.length > 0) {
                 hasTriggers = true;
                 console.log(chalk.cyan(`\nExisting Triggers (Channel ${channel}):`));
@@ -32,14 +38,13 @@ async function collectSetTriggerXParams(methodMetadata, device) {
             }
         }
     } catch (e) {
-        // Failed to fetch, continue
+        // Continue without existing triggers if fetch fails
     }
 
     if (!hasTriggers) {
         console.log(chalk.yellow('No triggers currently set.\n'));
     }
 
-    // Collect trigger configuration
     const aliasAnswer = await inquirer.prompt([{
         type: 'input',
         name: 'alias',
@@ -116,7 +121,6 @@ async function collectSetTriggerXParams(methodMetadata, device) {
         default: 0
     }]);
 
-    // Pass user-friendly format to API (API handles conversion)
     params.channel = channel;
     params.alias = aliasAnswer.alias;
     params.duration = durationAnswer.duration;
@@ -128,16 +132,24 @@ async function collectSetTriggerXParams(methodMetadata, device) {
 }
 
 /**
- * Collects parameters for deleteTriggerX with interactive prompts.
+ * Collects parameters for deleteTriggerX interactively.
+ *
+ * Displays existing triggers and allows selection from a list, or manual ID entry
+ * if no triggers are found. Returns null to fall back to generic collection when
+ * no triggers are available.
+ *
+ * @param {Object} methodMetadata - Method metadata from control registry
+ * @param {Object} device - Device instance
+ * @returns {Promise<Object|null>} Collected parameters object, or null to use generic collection
  */
 async function collectDeleteTriggerXParams(methodMetadata, device) {
     const params = {};
     const channel = methodMetadata.params.find(p => p.name === 'channel')?.default || 0;
 
     try {
-        if (typeof device.getTriggerX === 'function') {
+        if (device.trigger && typeof device.trigger.get === 'function') {
             console.log(chalk.dim('Fetching existing triggers...'));
-            const response = await device.getTriggerX({ channel });
+            const response = await device.trigger.get({ channel });
             if (response && response.triggerx && Array.isArray(response.triggerx) && response.triggerx.length > 0) {
                 const items = response.triggerx;
                 console.log(chalk.cyan(`\nExisting Triggers (Channel ${channel}):`));
@@ -150,7 +162,6 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
                 });
                 console.log();
 
-                // Allow selection from list
                 const choices = items.map(item => {
                     const durationSeconds = item.rule?.duration || 0;
                     const durationStr = secondsToDuration(durationSeconds);
@@ -196,10 +207,10 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
             }
         }
     } catch (e) {
-        // Failed to fetch, continue with generic collection
+        // Fall back to generic collection if fetch fails
     }
 
-    return null; // Return null to fall back to generic collection
+    return null;
 }
 
 module.exports = { collectSetTriggerXParams, collectDeleteTriggerXParams };

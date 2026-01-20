@@ -10,7 +10,7 @@ const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStat
 const metadata = {
     name: 'electricity',
     description: 'Tests electricity metrics and power consumption tracking',
-    requiredAbilities: ['Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption', 'Appliance.Control.Electricity'],
+    requiredAbilities: ['Appliance.Control.ConsumptionH', 'Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption', 'Appliance.Control.Electricity'],
     minDevices: 1
 };
 
@@ -22,8 +22,12 @@ async function runTests(context) {
     // If no devices provided, discover them
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        // Find consumption/electricity devices (try ConsumptionX first, then Consumption, then Electricity)
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.ConsumptionX', OnlineStatus.ONLINE);
+        // Find consumption/electricity devices (try ConsumptionH first, then ConsumptionX, then Consumption, then Electricity)
+        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.ConsumptionH', OnlineStatus.ONLINE);
+        
+        if (testDevices.length === 0) {
+            testDevices = await findDevicesByAbility(manager, 'Appliance.Control.ConsumptionX', OnlineStatus.ONLINE);
+        }
         
         if (testDevices.length === 0) {
             testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Consumption', OnlineStatus.ONLINE);
@@ -39,7 +43,7 @@ async function runTests(context) {
             name: 'should get instant electricity metrics',
             passed: false,
             skipped: true,
-            error: 'No ConsumptionX/Electricity device has been found to run this test on',
+            error: 'No ConsumptionH/ConsumptionX/Consumption/Electricity device has been found to run this test on',
             device: null
         });
         return results;
@@ -53,35 +57,35 @@ async function runTests(context) {
     
     // Test 1: Get instant electricity metrics
     try {
-        // Try to get electricity data
-        let metrics = null;
-        
-        // Check which method is available
-        if (typeof testDevice.getElectricity === 'function') {
-            metrics = await testDevice.getElectricity();
-        } else if (typeof testDevice.getPowerConsumptionX === 'function') {
-            metrics = await testDevice.getPowerConsumptionX();
-        } else if (typeof testDevice.getPowerConsumption === 'function') {
-            metrics = await testDevice.getPowerConsumption();
-        }
-        
-        if (!metrics || typeof metrics !== 'object') {
+        if (!testDevice.electricity || typeof testDevice.electricity.get !== 'function') {
             results.push({
                 name: 'should get instant electricity metrics',
                 passed: false,
-                skipped: false,
-                error: 'Metrics is not an object or is null',
+                skipped: true,
+                error: 'Device does not support electricity feature',
                 device: deviceName
             });
         } else {
-            results.push({
-                name: 'should get instant electricity metrics',
-                passed: true,
-                skipped: false,
-                error: null,
-                device: deviceName,
-                details: { metrics: metrics }
-            });
+            const metrics = await testDevice.electricity.get({ channel: 0 });
+            
+            if (!metrics || typeof metrics !== 'object') {
+                results.push({
+                    name: 'should get instant electricity metrics',
+                    passed: false,
+                    skipped: false,
+                    error: 'electricity.get() returned null, undefined, or non-object',
+                    device: deviceName
+                });
+            } else {
+                results.push({
+                    name: 'should get instant electricity metrics',
+                    passed: true,
+                    skipped: false,
+                    error: null,
+                    device: deviceName,
+                    details: { metrics: metrics }
+                });
+            }
         }
     } catch (error) {
         results.push({
@@ -95,7 +99,7 @@ async function runTests(context) {
     
     // Test 2: Get daily power consumption
     try {
-        if (typeof testDevice.getPowerConsumptionX !== 'function') {
+        if (!testDevice.consumption) {
             results.push({
                 name: 'should get daily power consumption',
                 passed: false,
@@ -104,7 +108,7 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            const consumption = await testDevice.getPowerConsumptionX();
+            const consumption = await testDevice.consumption.get({ channel: 0 });
             
             if (!Array.isArray(consumption)) {
                 results.push({
@@ -160,23 +164,23 @@ async function runTests(context) {
     
     // Test 3: Get consumption config
     try {
-        if (typeof testDevice.getConsumptionConfig !== 'function') {
+        if (!testDevice.consumption) {
             results.push({
                 name: 'should get consumption config',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getConsumptionConfig',
+                error: 'Device does not support consumption config',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getConsumptionConfig();
+            const response = await testDevice.consumption.getConfig();
             
             if (!response) {
                 results.push({
                     name: 'should get consumption config',
                     passed: false,
                     skipped: false,
-                    error: 'getConsumptionConfig returned null or undefined',
+                    error: 'getConfig returned null or undefined',
                     device: deviceName
                 });
             } else {

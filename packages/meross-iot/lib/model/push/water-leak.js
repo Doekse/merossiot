@@ -11,7 +11,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * hubDevice.on('pushNotification', (notification) => {
+ * hubDevice.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof WaterLeakPushNotification) {
  *         console.log('Water leak sensor update from subdevice:', notification.subdeviceId);
  *         console.log('Latest sample indicates leak:', notification.latestSampleIsLeak);

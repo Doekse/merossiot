@@ -47,7 +47,17 @@ async function runTests(context) {
     
     // Test 1: Get alarm status
     try {
-        const response = await testDevice.getAlarmStatus({ channel: 0 });
+        if (!testDevice.alarm) {
+            results.push({
+                name: 'should get alarm status',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support alarm feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const response = await testDevice.alarm.get({ channel: 0 });
         
         if (!response) {
             results.push({
@@ -87,8 +97,18 @@ async function runTests(context) {
     
     // Test 2: Store alarm events from push notifications
     try {
+        if (!testDevice.alarm) {
+            results.push({
+                name: 'should store alarm events from push notifications',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support alarm feature',
+                device: deviceName
+            });
+            return results;
+        }
         // Get initial alarm events (should be empty or existing events)
-        const initialEvents = testDevice.getLastAlarmEvents();
+        const initialEvents = testDevice.alarm.getLastEvents();
         
         if (!Array.isArray(initialEvents)) {
             results.push({

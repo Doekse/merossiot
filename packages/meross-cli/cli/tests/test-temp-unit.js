@@ -47,7 +47,17 @@ async function runTests(context) {
     
     // Test 1: Get temp unit
     try {
-        const response = await testDevice.getTempUnit(0);
+        if (!testDevice.tempUnit) {
+            results.push({
+                name: 'should get temp unit',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support temp unit feature',
+                device: deviceName
+            });
+            return results;
+        }
+        const response = await testDevice.tempUnit.get({ channel: 0 });
         
         if (!response) {
             results.push({
@@ -87,8 +97,18 @@ async function runTests(context) {
     
     // Test 2: Control temp unit
     try {
+        if (!testDevice.tempUnit) {
+            results.push({
+                name: 'should control temp unit',
+                passed: false,
+                skipped: true,
+                error: 'Device does not support temp unit feature',
+                device: deviceName
+            });
+            return results;
+        }
         // Get current temp unit first
-        const currentResponse = await testDevice.getTempUnit(0);
+        const currentResponse = await testDevice.tempUnit.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         if (!currentResponse || !Array.isArray(currentResponse.tempUnit) || currentResponse.tempUnit.length === 0) {

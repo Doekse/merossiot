@@ -43,13 +43,13 @@ async function runTests(context) {
     // Wait for devices to be connected
     for (const device of lightDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.getDiffuserLightState();
+        await device.diffuser.get({ type: 'light', channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     for (const device of sprayDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.getDiffuserSprayState();
+        await device.diffuser.get({ type: 'spray', channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
@@ -67,7 +67,7 @@ async function runTests(context) {
         const deviceName = getDeviceName(light);
         
         try {
-            await light.getDiffuserLightState();
+            await light.diffuser.get({ type: 'light', channel: 0 });
             
             // Set mode to FIXED_RGB
             await light.setDiffuserLight({
@@ -142,7 +142,7 @@ async function runTests(context) {
         const deviceName = getDeviceName(light);
         
         try {
-            await light.getDiffuserLightState();
+            await light.diffuser.get({ type: 'light', channel: 0 });
             
             // Set mode to FIXED RGB
             await light.setDiffuserLight({
@@ -275,7 +275,7 @@ async function runTests(context) {
         const deviceName = getDeviceName(light);
         
         try {
-            await light.getDiffuserLightState();
+            await light.diffuser.get({ type: 'light', channel: 0 });
             
             await light.setDiffuserLight({
                 channel: 0,
@@ -365,7 +365,7 @@ async function runTests(context) {
         const deviceName = getDeviceName(light);
         
         try {
-            await light.getDiffuserLightState();
+            await light.diffuser.get({ type: 'light', channel: 0 });
             
             await light.setDiffuserLight({
                 channel: 0,
@@ -430,7 +430,7 @@ async function runTests(context) {
         const deviceName = getDeviceName(spray);
         
         try {
-            await spray.getDiffuserSprayState();
+            await spray.diffuser.getSpray({ channel: 0 });
             
             await spray.setDiffuserSpray(0, DiffuserSprayMode.LIGHT);
             await new Promise(resolve => setTimeout(resolve, 1000));

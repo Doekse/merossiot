@@ -54,13 +54,13 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
                     }
 
                     // Example: Toggle a subdevice switch
-                    if (subdevice.abilities && subdevice.abilities['Appliance.Control.ToggleX']) {
-                        await subdevice.setToggleX({ channel: 0, onoff: true });
+                    if (subdevice.toggle) {
+                        await subdevice.toggle.set({ channel: 0, on: true });
                         console.log('    ✓ Turned on');
 
                         await new Promise(resolve => setTimeout(resolve, 2000));
 
-                        await subdevice.setToggleX({ channel: 0, onoff: false });
+                        await subdevice.toggle.set({ channel: 0, on: false });
                         console.log('    ✓ Turned off');
                     }
 
@@ -82,10 +82,11 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
                         console.log(`\n  [Subdevice Connected] ${subdevice.name}`);
                     });
 
-                    subdevice.on('pushNotification', (notification) => {
-                        console.log(`\n  [Subdevice Push] ${subdevice.name}:`);
-                        console.log(`    Namespace: ${notification.namespace}`);
-                        console.log(`    Data: ${JSON.stringify(notification.rawData, null, 2)}`);
+                    subdevice.on('state', (event) => {
+                        console.log(`\n  [Subdevice State] ${subdevice.name}:`);
+                        console.log(`    Type: ${event.type}`);
+                        console.log(`    Channel: ${event.channel}`);
+                        console.log(`    Value: ${JSON.stringify(event.value, null, 2)}`);
                     });
                 });
 

@@ -3,7 +3,10 @@
 const inquirer = require('inquirer');
 
 /**
- * Validates an RGB color value.
+ * Validates RGB color input format for inquirer prompts.
+ *
+ * @param {string} value - RGB color string in format "r,g,b"
+ * @returns {boolean|string} True if valid, error message if invalid
  */
 function _validateRgb(value) {
     if (!value || value.trim() === '') {
@@ -23,7 +26,10 @@ function _validateRgb(value) {
 }
 
 /**
- * Builds a channel question for inquirer.
+ * Builds an inquirer question for channel selection.
+ *
+ * @param {Object} channelParam - Channel parameter metadata
+ * @returns {Object} Inquirer question configuration
  */
 function _buildChannelQuestion(channelParam) {
     return {
@@ -35,13 +41,16 @@ function _buildChannelQuestion(channelParam) {
 }
 
 /**
- * Builds an on/off question for inquirer.
+ * Builds an inquirer question for on/off state selection.
+ *
+ * @param {Object} onParam - On/off parameter metadata
+ * @returns {Object} Inquirer question configuration
  */
-function _buildOnOffQuestion(onoffParam) {
+function _buildOnOffQuestion(onParam) {
     return {
         type: 'list',
-        name: 'onoff',
-        message: onoffParam.label || 'Turn On/Off',
+        name: 'on',
+        message: onParam.label || 'Turn On/Off',
         choices: [
             { name: 'Skip (no change)', value: undefined },
             { name: 'On', value: true },
@@ -53,7 +62,10 @@ function _buildOnOffQuestion(onoffParam) {
 }
 
 /**
- * Builds an RGB question for inquirer.
+ * Builds an inquirer question for RGB color input.
+ *
+ * @param {Object} rgbParam - RGB parameter metadata
+ * @returns {Object} Inquirer question configuration
  */
 function _buildRgbQuestion(rgbParam) {
     return {
@@ -72,7 +84,10 @@ function _buildRgbQuestion(rgbParam) {
 }
 
 /**
- * Builds a temperature question for inquirer.
+ * Builds an inquirer question for color temperature input.
+ *
+ * @param {Object} tempParam - Temperature parameter metadata
+ * @returns {Object} Inquirer question configuration
  */
 function _buildTemperatureQuestion(tempParam) {
     return {
@@ -86,7 +101,10 @@ function _buildTemperatureQuestion(tempParam) {
 }
 
 /**
- * Builds a luminance question for inquirer.
+ * Builds an inquirer question for brightness (luminance) input.
+ *
+ * @param {Object} luminanceParam - Luminance parameter metadata
+ * @returns {Object} Inquirer question configuration
  */
 function _buildLuminanceQuestion(luminanceParam) {
     return {
@@ -100,7 +118,10 @@ function _buildLuminanceQuestion(luminanceParam) {
 }
 
 /**
- * Builds a gradual transition question for inquirer.
+ * Builds an inquirer question for transition type selection.
+ *
+ * @param {Object} gradualParam - Gradual parameter metadata
+ * @returns {Object} Inquirer question configuration
  */
 function _buildGradualQuestion(gradualParam) {
     return {
@@ -118,8 +139,14 @@ function _buildGradualQuestion(gradualParam) {
 }
 
 /**
- * Collects parameters for setLightColor method, filtering options based on device capabilities.
- * Only shows RGB, temperature, and luminance options if the device actually supports them.
+ * Collects parameters for light.set method interactively.
+ *
+ * Filters available options based on device capabilities to avoid showing unsupported
+ * features. Only displays RGB, temperature, and luminance options if the device supports them.
+ *
+ * @param {Object} methodMetadata - Method metadata from control registry
+ * @param {Object} device - Device instance
+ * @returns {Promise<Object>} Collected parameters object
  */
 async function collectSetLightColorParams(methodMetadata, device) {
     const params = {};
@@ -129,24 +156,30 @@ async function collectSetLightColorParams(methodMetadata, device) {
         return params;
     }
 
-    // Check device capabilities
-    const supportsRgb = typeof device.getSupportsRgb === 'function' && device.getSupportsRgb(0);
-    const supportsTemperature = typeof device.getSupportsTemperature === 'function' && device.getSupportsTemperature(0);
-    const supportsLuminance = typeof device.getSupportsLuminance === 'function' && device.getSupportsLuminance(0);
+    let supportsRgb = false;
+    let supportsTemperature = false;
+    let supportsLuminance = false;
+    
+    if (device.light && device.abilities && device.abilities['Appliance.Control.Light']) {
+        const lightAbility = device.abilities['Appliance.Control.Light'];
+        if (lightAbility && lightAbility.capacity) {
+            const { LightMode } = require('meross-iot');
+            supportsRgb = (lightAbility.capacity & LightMode.MODE_RGB) === LightMode.MODE_RGB;
+            supportsTemperature = (lightAbility.capacity & LightMode.MODE_TEMPERATURE) === LightMode.MODE_TEMPERATURE;
+            supportsLuminance = (lightAbility.capacity & LightMode.MODE_LUMINANCE) === LightMode.MODE_LUMINANCE;
+        }
+    }
 
-    // Channel parameter (always available)
     const channelParam = methodMetadata.params.find(p => p.name === 'channel');
     if (channelParam) {
         questions.push(_buildChannelQuestion(channelParam));
     }
 
-    // On/Off parameter (always available, but optional)
-    const onoffParam = methodMetadata.params.find(p => p.name === 'onoff');
-    if (onoffParam) {
-        questions.push(_buildOnOffQuestion(onoffParam));
+    const onParam = methodMetadata.params.find(p => p.name === 'on');
+    if (onParam) {
+        questions.push(_buildOnOffQuestion(onParam));
     }
 
-    // RGB parameter (only if device supports it)
     if (supportsRgb) {
         const rgbParam = methodMetadata.params.find(p => p.name === 'rgb');
         if (rgbParam) {
@@ -154,7 +187,6 @@ async function collectSetLightColorParams(methodMetadata, device) {
         }
     }
 
-    // Temperature parameter (only if device supports it)
     if (supportsTemperature) {
         const tempParam = methodMetadata.params.find(p => p.name === 'temperature');
         if (tempParam) {
@@ -162,7 +194,6 @@ async function collectSetLightColorParams(methodMetadata, device) {
         }
     }
 
-    // Luminance parameter (only if device supports it)
     if (supportsLuminance) {
         const luminanceParam = methodMetadata.params.find(p => p.name === 'luminance');
         if (luminanceParam) {
@@ -170,7 +201,6 @@ async function collectSetLightColorParams(methodMetadata, device) {
         }
     }
 
-    // Gradual parameter (always available as an option)
     const gradualParam = methodMetadata.params.find(p => p.name === 'gradual');
     if (gradualParam) {
         questions.push(_buildGradualQuestion(gradualParam));

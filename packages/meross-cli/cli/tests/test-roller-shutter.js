@@ -43,18 +43,21 @@ async function runTests(context) {
     const deviceName = getDeviceName(testDevice);
     
     await waitForDeviceConnection(testDevice, timeout);
-    await testDevice.getRollerShutterState();
+    await testDevice.rollerShutter.get({ channel: 0 });
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Test 1: Open roller shutter
     try {
-        await testDevice.getRollerShutterState();
+        await testDevice.rollerShutter.get({ channel: 0 });
         
         // Set timers (if method exists)
-        if (typeof testDevice.setRollerShutterConfig === 'function') {
-            await testDevice.setRollerShutterConfig({
-                openTimerSeconds: DEFAULT_OPEN_TIMER,
-                closeTimerSeconds: DEFAULT_CLOSE_TIMER
+        if (testDevice.rollerShutter && typeof testDevice.rollerShutter.setConfig === 'function') {
+            await testDevice.rollerShutter.setConfig({
+                config: [{
+                    channel: 0,
+                    open_timer_duration_millis: DEFAULT_OPEN_TIMER * 1000,
+                    close_timer_duration_millis: DEFAULT_CLOSE_TIMER * 1000
+                }]
             });
         }
         
@@ -63,36 +66,28 @@ async function runTests(context) {
         let stateIdle = false;
         let positionOpened = false;
         
-        const onData = (namespace, payload) => {
-            if (namespace === 'Appliance.RollerShutter.State') {
-                if (payload.state) {
-                    const state = Array.isArray(payload.state) ? payload.state[0] : payload.state;
-                    if (state.channel === 0) {
-                        if (state.state === 1) { // OPENING
-                            stateOpening = true;
-                        } else if (state.state === 0) { // IDLE
-                            stateIdle = true;
-                        }
+        const onStateChange = (event) => {
+            if (event.type === 'rollerShutter' && event.channel === 0) {
+                if (event.value.state !== undefined) {
+                    if (event.value.state === 1) { // OPENING
+                        stateOpening = true;
+                    } else if (event.value.state === 0) { // IDLE
+                        stateIdle = true;
                     }
                 }
-            }
-            if (namespace === 'Appliance.RollerShutter.Position') {
-                if (payload.position) {
-                    const position = Array.isArray(payload.position) ? payload.position[0] : payload.position;
-                    if (position.channel === 0 && position.position === 100) {
-                        positionOpened = true;
-                    }
+                if (event.value.position !== undefined && event.value.position === 100) {
+                    positionOpened = true;
                 }
             }
         };
         
-        testDevice.on('data', onData);
+        testDevice.on('state', onStateChange);
         
         // Trigger the opening
-        if (typeof testDevice.openRollerShutter === 'function') {
-            await testDevice.openRollerShutter({ channel: 0 });
+        if (testDevice.rollerShutter && typeof testDevice.rollerShutter.open === 'function') {
+            await testDevice.rollerShutter.open({ channel: 0 });
         } else {
-            await testDevice.setRollerShutterPosition({ position: 100, channel: 0 });
+            await testDevice.rollerShutter.set({ position: 100, channel: 0 });
         }
         
         // Wait for state changes
@@ -102,7 +97,7 @@ async function runTests(context) {
         }
         
         if (!stateOpening) {
-            testDevice.removeListener('data', onData);
+            testDevice.removeListener('state', onStateChange);
             results.push({
                 name: 'should open roller shutter',
                 passed: false,
@@ -118,7 +113,7 @@ async function runTests(context) {
         }
         
         if (!stateIdle) {
-            testDevice.removeListener('data', onData);
+            testDevice.removeListener('state', onStateChange);
             results.push({
                 name: 'should open roller shutter',
                 passed: false,
@@ -133,7 +128,7 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        testDevice.removeListener('data', onData);
+        testDevice.removeListener('state', onStateChange);
         
         if (!positionOpened) {
             results.push({
@@ -165,51 +160,46 @@ async function runTests(context) {
     // Test 2: Close roller shutter
     try {
         // Set timers (if method exists)
-        if (typeof testDevice.setRollerShutterConfig === 'function') {
-            await testDevice.setRollerShutterConfig({
-                openTimerSeconds: DEFAULT_OPEN_TIMER,
-                closeTimerSeconds: DEFAULT_CLOSE_TIMER
+        if (testDevice.rollerShutter && typeof testDevice.rollerShutter.setConfig === 'function') {
+            await testDevice.rollerShutter.setConfig({
+                config: [{
+                    channel: 0,
+                    open_timer_duration_millis: DEFAULT_OPEN_TIMER * 1000,
+                    close_timer_duration_millis: DEFAULT_CLOSE_TIMER * 1000
+                }]
             });
         }
         
         // Update its status
-        await testDevice.getRollerShutterState();
+        await testDevice.rollerShutter.get({ channel: 0 });
         
         // Set up event listeners for state changes
         let stateClosing = false;
         let stateIdle = false;
         let positionClosed = false;
         
-        const onData = (namespace, payload) => {
-            if (namespace === 'Appliance.RollerShutter.State') {
-                if (payload.state) {
-                    const state = Array.isArray(payload.state) ? payload.state[0] : payload.state;
-                    if (state.channel === 0) {
-                        if (state.state === 2) { // CLOSING
-                            stateClosing = true;
-                        } else if (state.state === 0) { // IDLE
-                            stateIdle = true;
-                        }
+        const onStateChange = (event) => {
+            if (event.type === 'rollerShutter' && event.channel === 0) {
+                if (event.value.state !== undefined) {
+                    if (event.value.state === 2) { // CLOSING
+                        stateClosing = true;
+                    } else if (event.value.state === 0) { // IDLE
+                        stateIdle = true;
                     }
                 }
-            }
-            if (namespace === 'Appliance.RollerShutter.Position') {
-                if (payload.position) {
-                    const position = Array.isArray(payload.position) ? payload.position[0] : payload.position;
-                    if (position.channel === 0 && position.position === 0) {
-                        positionClosed = true;
-                    }
+                if (event.value.position !== undefined && event.value.position === 0) {
+                    positionClosed = true;
                 }
             }
         };
         
-        testDevice.on('data', onData);
+        testDevice.on('state', onStateChange);
         
         // Trigger the closing
-        if (typeof testDevice.closeRollerShutter === 'function') {
-            await testDevice.closeRollerShutter({ channel: 0 });
+        if (testDevice.rollerShutter && typeof testDevice.rollerShutter.close === 'function') {
+            await testDevice.rollerShutter.close({ channel: 0 });
         } else {
-            await testDevice.setRollerShutterPosition({ position: 0, channel: 0 });
+            await testDevice.rollerShutter.set({ position: 0, channel: 0 });
         }
         
         // Wait for state changes
@@ -219,7 +209,7 @@ async function runTests(context) {
         }
         
         if (!stateClosing) {
-            testDevice.removeListener('data', onData);
+            testDevice.removeListener('state', onStateChange);
             results.push({
                 name: 'should close roller shutter',
                 passed: false,
@@ -235,7 +225,7 @@ async function runTests(context) {
         }
         
         if (!stateIdle) {
-            testDevice.removeListener('data', onData);
+            testDevice.removeListener('state', onStateChange);
             results.push({
                 name: 'should close roller shutter',
                 passed: false,
@@ -250,7 +240,7 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        testDevice.removeListener('data', onData);
+        testDevice.removeListener('state', onStateChange);
         
         if (!positionClosed) {
             results.push({
@@ -281,9 +271,7 @@ async function runTests(context) {
     
     // Test 3: Get opening timer duration
     try {
-        await testDevice.getRollerShutterState();
-        
-        const state = testDevice.getCachedRollerShutterState(0);
+        const state = await testDevice.rollerShutter.get({ channel: 0 });
         
         if (!state) {
             results.push({
@@ -327,9 +315,7 @@ async function runTests(context) {
     
     // Test 4: Get closing timer duration
     try {
-        await testDevice.getRollerShutterState();
-        
-        const state = testDevice.getCachedRollerShutterState(0);
+        const state = await testDevice.rollerShutter.get({ channel: 0 });
         
         if (!state) {
             results.push({
@@ -373,10 +359,8 @@ async function runTests(context) {
     
     // Test 5: Set roller shutter config timers
     try {
-        await testDevice.getRollerShutterState();
-        
         // Retrieve original values
-        const originalState = testDevice.getCachedRollerShutterState(0);
+        const originalState = await testDevice.rollerShutter.get({ channel: 0 });
         
         if (!originalState) {
             results.push({
@@ -386,12 +370,12 @@ async function runTests(context) {
                 error: 'Could not get original state',
                 device: deviceName
             });
-        } else if (typeof testDevice.setRollerShutterConfig !== 'function') {
+        } else if (!testDevice.rollerShutter || typeof testDevice.rollerShutter.setConfig !== 'function') {
             results.push({
                 name: 'should set roller shutter config timers',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support setRollerShutterConfig',
+                error: 'Device does not support setConfig',
                 device: deviceName
             });
         } else {
@@ -402,16 +386,17 @@ async function runTests(context) {
             const openTimer = Math.floor(Math.random() * (120 - 10 + 1)) + 10; // 10-120 seconds
             const closeTimer = Math.floor(Math.random() * (120 - 10 + 1)) + 10; // 10-120 seconds
             
-            await testDevice.setRollerShutterConfig({
-                openTimerSeconds: openTimer,
-                closeTimerSeconds: closeTimer,
-                channel: 0
+            await testDevice.rollerShutter.setConfig({
+                config: [{
+                    channel: 0,
+                    open_timer_duration_millis: openTimer * 1000,
+                    close_timer_duration_millis: closeTimer * 1000
+                }]
             });
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await testDevice.getRollerShutterState();
-            const newState = testDevice.getCachedRollerShutterState(0);
+            const newState = await testDevice.rollerShutter.get({ channel: 0 });
             
             if (!newState) {
                 results.push({
@@ -432,10 +417,12 @@ async function runTests(context) {
                 });
             } else {
                 // Restore original values
-                await testDevice.setRollerShutterConfig({
-                    openTimerSeconds: Math.floor(originalOpenTimer / 1000),
-                    closeTimerSeconds: Math.floor(originalCloseTimer / 1000),
-                    channel: 0
+                await testDevice.rollerShutter.setConfig({
+                    config: [{
+                        channel: 0,
+                        open_timer_duration_millis: originalOpenTimer,
+                        close_timer_duration_millis: originalCloseTimer
+                    }]
                 });
                 
                 results.push({
@@ -459,16 +446,17 @@ async function runTests(context) {
     
     // Test 6: Get roller shutter config
     try {
-        if (typeof testDevice.getRollerShutterConfig !== 'function') {
+        if (!testDevice.rollerShutter || typeof testDevice.rollerShutter.getConfig !== 'function') {
             results.push({
                 name: 'should get roller shutter config',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getRollerShutterConfig',
+                error: 'Device does not support getConfig',
                 device: deviceName
             });
         } else {
-            const config = await testDevice.getRollerShutterConfig();
+            const response = await testDevice.rollerShutter.getConfig();
+            const config = response?.config;
             
             if (!config) {
                 results.push({
@@ -501,16 +489,16 @@ async function runTests(context) {
     
     // Test 7: Get roller shutter position
     try {
-        if (typeof testDevice.getRollerShutterPosition !== 'function') {
+        if (!testDevice.rollerShutter || typeof testDevice.rollerShutter.getPosition !== 'function') {
             results.push({
                 name: 'should get roller shutter position',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getRollerShutterPosition',
+                error: 'Device does not support getPosition',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getRollerShutterPosition({ channel: 0 });
+            const response = await testDevice.rollerShutter.getPosition({ channel: 0 });
             
             if (!response) {
                 results.push({
@@ -553,7 +541,7 @@ async function runTests(context) {
             });
         } else {
             // Get current position first
-            await testDevice.getRollerShutterPosition({ channel: 0 });
+            await testDevice.rollerShutter.getPosition({ channel: 0 });
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Note: We don't actually change the position to avoid disrupting the device
@@ -579,16 +567,16 @@ async function runTests(context) {
     
     // Test 9: Get roller shutter adjust
     try {
-        if (typeof testDevice.getRollerShutterAdjust !== 'function') {
+        if (!testDevice.rollerShutter || typeof testDevice.rollerShutter.getAdjust !== 'function') {
             results.push({
                 name: 'should get roller shutter adjust',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getRollerShutterAdjust',
+                error: 'Device does not support getAdjust',
                 device: deviceName
             });
         } else {
-            const response = await testDevice.getRollerShutterAdjust({ channel: 0 });
+            const response = await testDevice.rollerShutter.getAdjust({ channel: 0 });
             
             if (!response) {
                 results.push({

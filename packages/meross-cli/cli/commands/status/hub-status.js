@@ -3,6 +3,16 @@
 const chalk = require('chalk');
 const { displaySubdeviceStatus } = require('./subdevices');
 
+/**
+ * Displays hub device status including all subdevices.
+ *
+ * Refreshes hub state to get latest subdevice data, fetches battery information
+ * for sensors, and displays status for each subdevice.
+ *
+ * @param {Object} device - Hub device instance
+ * @param {string|null} filterSubdeviceId - Optional subdevice ID to filter to a single subdevice
+ * @returns {Promise<boolean>} True if any readings were displayed, false otherwise
+ */
 async function displayHubStatus(device, filterSubdeviceId = null) {
     const subdevices = filterSubdeviceId
         ? [device.getSubdevice(filterSubdeviceId)].filter(Boolean)
@@ -17,14 +27,12 @@ async function displayHubStatus(device, filterSubdeviceId = null) {
         return false;
     }
 
-    // Refresh hub state to get latest subdevice data
     try {
         await device.refreshState();
 
-        // Also fetch battery data for sensors
         try {
-            if (typeof device.getHubBattery === 'function') {
-                const batteryResponse = await device.getHubBattery();
+            if (device.hub && typeof device.hub.getBattery === 'function') {
+                const batteryResponse = await device.hub.getBattery();
                 if (batteryResponse && batteryResponse.battery && Array.isArray(batteryResponse.battery)) {
                     for (const batteryData of batteryResponse.battery) {
                         const subdeviceId = batteryData.id;
@@ -37,10 +45,10 @@ async function displayHubStatus(device, filterSubdeviceId = null) {
                 }
             }
         } catch {
-            // Battery fetch failed, but continue anyway
+            // Continue without battery data if fetch fails
         }
     } catch (error) {
-        // Silently fail - continue with cached data
+        // Continue with cached data if refresh fails
     }
 
     if (!filterSubdeviceId) {

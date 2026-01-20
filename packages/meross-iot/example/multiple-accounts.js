@@ -84,13 +84,13 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         if (account1Devices.length > 0) {
             const device = account1Devices[0];
             console.log(`\nControlling device from Account 1: ${device.name}`);
-            // await device.setToggleX({ channel: 1, onoff: true });
+            // await device.toggle.set({ channel: 1, on: true });
         }
 
         if (account2Devices.length > 0) {
             const device = account2Devices[0];
             console.log(`\nControlling device from Account 2: ${device.name}`);
-            // await device.setToggleX({ channel: 1, onoff: true });
+            // await device.toggle.set({ channel: 1, on: true });
         }
 
         console.log('\nListening for device events... (Press Ctrl+C to exit)');

@@ -41,6 +41,7 @@ The test system is designed for simplicity, maintainability, and excellent error
 - `test-config.js` - Tests for config features (over temp)
 - `test-control.js` - Tests for control features (multiple commands, upgrade, over temp)
 - `test-presence.js` - Tests for presence sensor devices
+- `test-system.js` - Tests for system information, hardware, firmware, abilities, and configuration
 
 ## Running Tests
 
@@ -107,6 +108,7 @@ meross-cli test electricity --email your@email.com --password yourpass
 - `config` - Config features (over temp)
 - `control` - Control features (multiple commands, upgrade, over temp)
 - `presence` - Presence sensor devices
+- `system` - System information, hardware, firmware, abilities, and configuration
 
 ## Writing New Tests
 

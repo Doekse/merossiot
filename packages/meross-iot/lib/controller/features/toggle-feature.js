@@ -4,220 +4,162 @@ const ToggleState = require('../../model/states/toggle-state');
 const { normalizeChannel, validateRequired } = require('../../utilities/options');
 
 /**
- * Toggle feature module.
+ * Creates a toggle feature object for a device.
+ *
  * Provides control over device on/off state for single-channel and multi-channel devices.
+ * Auto-detects Toggle vs ToggleX capabilities internally.
+ *
+ * @param {Object} device - The device instance
+ * @returns {Object} Toggle feature object with set(), get(), and isOn() methods
  */
-module.exports = {
-    /**
-     * Controls the toggle state (on/off) for single-channel devices.
-     *
-     * @param {Object} options - Toggle options
-     * @param {boolean} options.onoff - True to turn on, false to turn off
-     * @returns {Promise<Object>} Response from the device
-     * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-     * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
-     */
-    async setToggle(options = {}) {
-        validateRequired(options, ['onoff']);
-        const payload = { 'toggle': { 'onoff': options.onoff ? 1 : 0 } };
-        const response = await this.publishMessage('SET', 'Appliance.Control.Toggle', payload);
+function createToggleFeature(device) {
+    return {
+        /**
+         * Sets the toggle state (on/off) for a channel.
+         *
+         * Auto-detects whether to use Toggle or ToggleX based on device capabilities.
+         *
+         * @param {Object} options - Toggle options
+         * @param {number} [options.channel=0] - Channel to control (default: 0)
+         * @param {boolean} options.on - True to turn on, false to turn off
+         * @returns {Promise<void>} Promise that resolves when state is set
+         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
+         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {import('../lib/errors/errors').UnknownDeviceTypeError} If device does not support Toggle or ToggleX
+         */
+        async set(options = {}) {
+            validateRequired(options, ['on']);
+            const channel = normalizeChannel(options);
+            const onoff = options.on ? 1 : 0;
 
-        if (response && response.toggle) {
-            this._updateToggleState(response.toggle, 'response');
-        } else {
-            this._updateToggleState({ channel: 0, onoff: options.onoff ? 1 : 0 }, 'response');
-        }
+            // Auto-detect Toggle vs ToggleX
+            const hasToggleX = device.abilities?.['Appliance.Control.ToggleX'];
+            const hasToggle = device.abilities?.['Appliance.Control.Toggle'];
 
-        return response;
-    },
-
-    /**
-     * Controls the toggle state for a specific channel (on/off).
-     *
-     * @param {Object} options - Toggle options
-     * @param {number} [options.channel=0] - Channel to control (default: 0)
-     * @param {boolean} options.onoff - True to turn on, false to turn off
-     * @returns {Promise<Object>} Response from the device
-     * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-     * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
-     */
-    async setToggleX(options = {}) {
-        validateRequired(options, ['onoff']);
-        const channel = normalizeChannel(options);
-        const payload = { 'togglex': { channel, 'onoff': options.onoff ? 1 : 0 } };
-        const response = await this.publishMessage('SET', 'Appliance.Control.ToggleX', payload);
-
-        if (response && response.togglex) {
-            this._updateToggleState(response.togglex, 'response');
-            this.lastFullUpdateTimestamp = Date.now();
-        } else {
-            this._updateToggleState({ channel, onoff: options.onoff ? 1 : 0 }, 'response');
-            this.lastFullUpdateTimestamp = Date.now();
-        }
-
-        return response;
-    },
-
-    /**
-     * Gets the current toggle state from the device.
-     *
-     * @param {Object} [options={}] - Get options
-     * @param {number} [options.channel=0] - Channel to get state for (default: 0, use 65535 or 0xffff for all channels)
-     * @returns {Promise<Object>} Response containing toggle state
-     * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-     * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
-     */
-    async getToggleState(options = {}) {
-        const channel = normalizeChannel(options);
-        const payload = { 'togglex': { channel } };
-        const response = await this.publishMessage('GET', 'Appliance.Control.ToggleX', payload);
-        if (response && response.togglex) {
-            this._updateToggleState(response.togglex, 'response');
-            this.lastFullUpdateTimestamp = Date.now();
-        }
-        return response;
-    },
-
-    /**
-     * Gets the cached toggle state for the specified channel.
-     *
-     * @param {number} [channel=0] - Channel to get state for (default: 0)
-     * @returns {Object|undefined} Cached toggle state or undefined if not available
-     * @throws {Error} If state has not been initialized (call refreshState() first)
-     */
-    getCachedToggleState(channel = 0) {
-        this.validateState();
-        return this._toggleStateByChannel.get(channel);
-    },
-
-    /**
-     * Gets all cached toggle states for all channels.
-     *
-     * Returns a read-only copy of the internal state map. Modifications to the returned
-     * Map will not affect the internal state.
-     *
-     * @returns {Map<number, ToggleState>} Map of channel numbers to toggle states, or empty Map if no states cached
-     * @throws {Error} If state has not been initialized (call refreshState() first)
-     */
-    getAllCachedToggleStates() {
-        this.validateState();
-        return new Map(this._toggleStateByChannel);
-    },
-
-    /**
-     * Checks if the device is on for the specified channel.
-     *
-     * @param {number} [channel=0] - Channel to check (default: 0)
-     * @returns {boolean|undefined} True if on, false if off, undefined if not available
-     * @throws {Error} If state has not been initialized (call refreshState() first)
-     */
-    isOn(channel = 0) {
-        this.validateState();
-        const toggleState = this._toggleStateByChannel.get(channel);
-        if (toggleState) {
-            return toggleState.isOn;
-        }
-        return undefined;
-    },
-
-    /**
-     * Turns on the device for the specified channel.
-     *
-     * Automatically selects the appropriate toggle method (ToggleX or Toggle) based on
-     * device capabilities.
-     *
-     * @param {Object} [options={}] - Turn on options
-     * @param {number} [options.channel=0] - Channel to control (default: 0)
-     * @returns {Promise<Object>} Response from the device
-     * @throws {import('../lib/errors/errors').UnknownDeviceTypeError} If device does not support Toggle or ToggleX
-     * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-     * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
-     */
-    async turnOn(options = {}) {
-        if (this.abilities) {
-            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this.abilities['Appliance.Control.Toggle'];
-
+            let response;
             if (hasToggleX) {
-                return await this.setToggleX({ ...options, onoff: true });
+                const payload = { 'togglex': { channel, onoff } };
+                response = await device.publishMessage('SET', 'Appliance.Control.ToggleX', payload);
+
+                if (response && response.togglex) {
+                    device._updateToggleState(response.togglex, 'response');
+                    device.lastFullUpdateTimestamp = Date.now();
+                } else {
+                    device._updateToggleState({ channel, onoff }, 'response');
+                    device.lastFullUpdateTimestamp = Date.now();
+                }
             } else if (hasToggle) {
-                return await this.setToggle({ onoff: true });
-            }
-        }
-        const { MerossErrorUnknownDeviceType } = require('../../model/exception');
-        throw new MerossErrorUnknownDeviceType('Device does not support Toggle or ToggleX', this.deviceType);
-    },
+                const payload = { 'toggle': { onoff } };
+                response = await device.publishMessage('SET', 'Appliance.Control.Toggle', payload);
 
-    /**
-     * Turns off the device for the specified channel.
-     *
-     * Automatically selects the appropriate toggle method (ToggleX or Toggle) based on
-     * device capabilities.
-     *
-     * @param {Object} [options={}] - Turn off options
-     * @param {number} [options.channel=0] - Channel to control (default: 0)
-     * @returns {Promise<Object>} Response from the device
-     * @throws {import('../lib/errors/errors').UnknownDeviceTypeError} If device does not support Toggle or ToggleX
-     * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-     * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
-     */
-    async turnOff(options = {}) {
-        if (this.abilities) {
-            const hasToggleX = this.abilities['Appliance.Control.ToggleX'];
-            const hasToggle = this.abilities['Appliance.Control.Toggle'];
-
-            if (hasToggleX) {
-                return await this.setToggleX({ ...options, onoff: false });
-            } else if (hasToggle) {
-                return await this.setToggle({ onoff: false });
-            }
-        }
-        const { MerossErrorUnknownDeviceType } = require('../../model/exception');
-        throw new MerossErrorUnknownDeviceType('Device does not support Toggle or ToggleX', this.deviceType);
-    },
-
-    /**
-     * Updates the cached toggle state from toggle data.
-     *
-     * Called automatically when ToggleX push notifications are received or System.All
-     * digest is processed. Handles both single objects and arrays of toggle data.
-     *
-     * @param {Object|Array} toggleData - Toggle data (single object or array)
-     * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
-     * @private
-     */
-    _updateToggleState(toggleData, source = 'response') {
-        if (!toggleData) {return;}
-
-        const toggleArray = Array.isArray(toggleData) ? toggleData : [toggleData];
-
-        for (const toggleItem of toggleArray) {
-            const channelIndex = toggleItem.channel;
-            if (channelIndex === undefined || channelIndex === null) {continue;}
-
-            const oldState = this._toggleStateByChannel.get(channelIndex);
-            const oldValue = oldState ? oldState.isOn : undefined;
-
-            let state = this._toggleStateByChannel.get(channelIndex);
-            if (!state) {
-                state = new ToggleState(toggleItem);
-                this._toggleStateByChannel.set(channelIndex, state);
+                if (response && response.toggle) {
+                    device._updateToggleState(response.toggle, 'response');
+                } else {
+                    device._updateToggleState({ channel: 0, onoff }, 'response');
+                }
             } else {
-                state.update(toggleItem);
+                const { MerossErrorUnknownDeviceType } = require('../../model/exception');
+                throw new MerossErrorUnknownDeviceType('Device does not support Toggle or ToggleX', device.deviceType);
+            }
+        },
+
+        /**
+         * Gets the current toggle state for a channel.
+         *
+         * Automatically uses cache if fresh (within 5 seconds), otherwise fetches from device.
+         *
+         * @param {Object} [options={}] - Get options
+         * @param {number} [options.channel=0] - Channel to get state for (default: 0)
+         * @returns {Promise<ToggleState|undefined>} Promise that resolves with toggle state or undefined
+         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
+         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         */
+        async get(options = {}) {
+            const channel = normalizeChannel(options);
+            const CACHE_MAX_AGE = 5000; // 5 seconds
+            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
+
+            // Use cache if fresh, otherwise fetch
+            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
+                const cached = device._toggleStateByChannel.get(channel);
+                if (cached) {
+                    return cached;
+                }
             }
 
-            const newValue = state.isOn;
-            if (oldValue !== newValue) {
-                this.emit('stateChange', {
-                    type: 'toggle',
-                    channel: channelIndex,
-                    value: newValue,
-                    oldValue,
-                    source,
-                    timestamp: Date.now()
-                });
+            // Fetch fresh state
+            const payload = { 'togglex': { channel } };
+            const response = await device.publishMessage('GET', 'Appliance.Control.ToggleX', payload);
+
+            if (response?.togglex) {
+                device._updateToggleState(response.togglex, 'response');
+                device.lastFullUpdateTimestamp = Date.now();
             }
+
+            return device._toggleStateByChannel.get(channel);
+        },
+
+        /**
+         * Checks if the device is on for the specified channel.
+         *
+         * @param {Object} [options={}] - Options
+         * @param {number} [options.channel=0] - Channel to check (default: 0)
+         * @returns {boolean|undefined} True if on, false if off, undefined if not available
+         */
+        isOn(options = {}) {
+            const channel = normalizeChannel(options);
+            const toggleState = device._toggleStateByChannel.get(channel);
+            if (toggleState) {
+                return toggleState.isOn;
+            }
+            return undefined;
+        }
+    };
+}
+
+/**
+ * Updates the cached toggle state from toggle data.
+ *
+ * Called automatically when ToggleX push notifications are received or System.All
+ * digest is processed. Handles both single objects and arrays of toggle data.
+ *
+ * @param {Object} device - The device instance
+ * @param {Object|Array} toggleData - Toggle data (single object or array)
+ * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
+ */
+function updateToggleState(device, toggleData, source = 'response') {
+    if (!toggleData) {return;}
+
+    const toggleArray = Array.isArray(toggleData) ? toggleData : [toggleData];
+
+    for (const toggleItem of toggleArray) {
+        const channelIndex = toggleItem.channel;
+        if (channelIndex === undefined || channelIndex === null) {continue;}
+
+        const oldState = device._toggleStateByChannel.get(channelIndex);
+        const oldValue = oldState ? oldState.isOn : undefined;
+
+        let state = device._toggleStateByChannel.get(channelIndex);
+        if (!state) {
+            state = new ToggleState(toggleItem);
+            device._toggleStateByChannel.set(channelIndex, state);
+        } else {
+            state.update(toggleItem);
+        }
+
+        const newValue = state.isOn;
+        if (oldValue !== newValue) {
+            device.emit('state', {
+                type: 'toggle',
+                channel: channelIndex,
+                value: newValue,
+                source,
+                timestamp: Date.now()
+            });
         }
     }
-};
+}
+
+module.exports = createToggleFeature;
+module.exports._updateToggleState = updateToggleState;
 

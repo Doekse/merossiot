@@ -300,7 +300,7 @@ Examples:
             console.log();
         }
         console.log('Usage: meross-cli control <uuid> <method> [options]');
-        console.log('Example: meross-cli control <uuid> setToggleX --channel 0 --on');
+        console.log('Example: meross-cli control <uuid> toggle.set --channel 0 --on true');
     }
 
     function _findMethodInfo(availableMethods, methodName) {

@@ -12,7 +12,7 @@ const { PresenceState } = require('../enums');
  * @class
  * @extends GenericPushNotification
  * @example
- * hubDevice.on('pushNotification', (notification) => {
+ * hubDevice.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof SensorLatestXPushNotification) {
  *         const latestData = notification.latestData;
  *         latestData.forEach(sensor => {

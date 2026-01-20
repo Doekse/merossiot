@@ -29,7 +29,7 @@ async function runTests(context) {
     // Wait for devices to be connected
     for (const device of testDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.getSprayState();
+        await device.spray.get({ channel: 0 });
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
@@ -50,10 +50,10 @@ async function runTests(context) {
     // Test: Set different spray modes
     try {
         // Set CONTINUOUS mode
-        await testDevice.setSpray(0, SprayMode.CONTINUOUS);
+        await testDevice.spray.set({ channel: 0, mode: SprayMode.CONTINUOUS });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mode1 = testDevice.getCurrentSprayMode(0);
+        await testDevice.spray.get({ channel: 0 });
+        const mode1 = testDevice.spray.getMode({ channel: 0 });
         if (mode1 !== SprayMode.CONTINUOUS) {
             results.push({
                 name: 'should set different spray modes',
@@ -66,10 +66,10 @@ async function runTests(context) {
         }
         
         // Set INTERMITTENT mode
-        await testDevice.setSpray(0, SprayMode.INTERMITTENT);
+        await testDevice.spray.set({ channel: 0, mode: SprayMode.INTERMITTENT });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mode2 = testDevice.getCurrentSprayMode(0);
+        await testDevice.spray.get({ channel: 0 });
+        const mode2 = testDevice.spray.getMode({ channel: 0 });
         if (mode2 !== SprayMode.INTERMITTENT) {
             results.push({
                 name: 'should set different spray modes',
@@ -82,10 +82,10 @@ async function runTests(context) {
         }
         
         // Set OFF mode
-        await testDevice.setSpray(0, SprayMode.OFF);
+        await testDevice.spray.set({ channel: 0, mode: SprayMode.OFF });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mode3 = testDevice.getCurrentSprayMode(0);
+        await testDevice.spray.get({ channel: 0 });
+        const mode3 = testDevice.spray.getMode({ channel: 0 });
         if (mode3 !== SprayMode.OFF) {
             results.push({
                 name: 'should set different spray modes',
@@ -98,7 +98,7 @@ async function runTests(context) {
         }
         
         // Update state
-        await testDevice.getSprayState();
+        await testDevice.spray.get({ channel: 0 });
         
         results.push({
             name: 'should set different spray modes',

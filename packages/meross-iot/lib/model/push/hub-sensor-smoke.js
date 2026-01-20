@@ -11,7 +11,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * hubDevice.on('pushNotification', (notification) => {
+ * hubDevice.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof HubSensorSmokePushNotification) {
  *         console.log('Smoke alarm from subdevice:', notification.subdeviceId);
  *         console.log('Status:', notification.status);

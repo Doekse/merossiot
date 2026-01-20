@@ -11,7 +11,7 @@ const { intToRgb } = require('../../utilities/conversion');
  *
  * @class
  * @example
- * const lightState = device.getCachedLightState(0);
+ * const lightState = await device.light.get({ channel: 0 });
  * if (lightState) {
  *     console.log('Light is on:', lightState.isOn);
  *     console.log('RGB color:', lightState.rgbTuple);

@@ -27,8 +27,9 @@ async function runTests(context) {
         const allDevices = manager.devices.list();
         testDevices = allDevices.filter(d => {
             return d.onlineStatus === OnlineStatus.ONLINE &&
-                   typeof d.getDNDMode === 'function' &&
-                   typeof d.setDNDMode === 'function';
+                   d.dnd &&
+                   typeof d.dnd.get === 'function' &&
+                   typeof d.dnd.set === 'function';
         });
     }
     
@@ -56,67 +57,77 @@ async function runTests(context) {
     
     // Test 1: Get and set DND mode
     try {
-        // Get current DND mode
-        const initialMode = await testDevice.getDNDMode();
-        
-        if (initialMode === null || initialMode === undefined) {
+        if (!testDevice.dnd) {
             results.push({
                 name: 'should get and set DND mode',
                 passed: false,
-                skipped: false,
-                error: 'getDNDMode returned null or undefined',
-                device: deviceName
-            });
-        } else if (initialMode !== DNDMode.DND_DISABLED && initialMode !== DNDMode.DND_ENABLED) {
-            results.push({
-                name: 'should get and set DND mode',
-                passed: false,
-                skipped: false,
-                error: `Invalid DND mode value: ${initialMode}`,
+                skipped: true,
+                error: 'Device does not support DND feature',
                 device: deviceName
             });
         } else {
-            // Toggle DND mode
-            const newMode = initialMode === DNDMode.DND_ENABLED ? DNDMode.DND_DISABLED : DNDMode.DND_ENABLED;
-            await testDevice.setDNDMode({ mode: newMode });
+            // Get current DND mode
+            const initialMode = await testDevice.dnd.get();
             
-            // Wait for the change to take effect
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Verify the change
-            const updatedMode = await testDevice.getDNDMode();
-            
-            if (updatedMode !== newMode) {
+            if (initialMode === null || initialMode === undefined) {
                 results.push({
                     name: 'should get and set DND mode',
                     passed: false,
                     skipped: false,
-                    error: `DND mode did not change. Expected ${newMode}, got ${updatedMode}`,
+                    error: 'dnd.get() returned null or undefined',
+                    device: deviceName
+                });
+            } else if (initialMode !== DNDMode.DND_DISABLED && initialMode !== DNDMode.DND_ENABLED) {
+                results.push({
+                    name: 'should get and set DND mode',
+                    passed: false,
+                    skipped: false,
+                    error: `Invalid DND mode value: ${initialMode}`,
                     device: deviceName
                 });
             } else {
-                // Restore original mode
-                await testDevice.setDNDMode({ mode: initialMode });
+                // Toggle DND mode
+                const newMode = initialMode === DNDMode.DND_ENABLED ? DNDMode.DND_DISABLED : DNDMode.DND_ENABLED;
+                await testDevice.dnd.set({ mode: newMode });
+                
+                // Wait for the change to take effect
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                const restoredMode = await testDevice.getDNDMode();
+                // Verify the change
+                const updatedMode = await testDevice.dnd.get();
                 
-                if (restoredMode !== initialMode) {
+                if (updatedMode !== newMode) {
                     results.push({
                         name: 'should get and set DND mode',
                         passed: false,
                         skipped: false,
-                        error: `Failed to restore DND mode. Expected ${initialMode}, got ${restoredMode}`,
+                        error: `DND mode did not change. Expected ${newMode}, got ${updatedMode}`,
                         device: deviceName
                     });
                 } else {
-                    results.push({
-                        name: 'should get and set DND mode',
-                        passed: true,
-                        skipped: false,
-                        error: null,
-                        device: deviceName
-                    });
+                    // Restore original mode
+                    await testDevice.dnd.set({ mode: initialMode });
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const restoredMode = await testDevice.dnd.get();
+                    
+                    if (restoredMode !== initialMode) {
+                        results.push({
+                            name: 'should get and set DND mode',
+                            passed: false,
+                            skipped: false,
+                            error: `Failed to restore DND mode. Expected ${initialMode}, got ${restoredMode}`,
+                            device: deviceName
+                        });
+                    } else {
+                        results.push({
+                            name: 'should get and set DND mode',
+                            passed: true,
+                            skipped: false,
+                            error: null,
+                            device: deviceName
+                        });
+                    }
                 }
             }
         }
@@ -132,37 +143,47 @@ async function runTests(context) {
     
     // Test 2: Accept boolean values for DND mode
     try {
-        // Get current mode
-        const initialMode = await testDevice.getDNDMode();
-        const initialBoolean = initialMode === DNDMode.DND_ENABLED;
-        
-        // Set using boolean (true = enabled)
-        await testDevice.setDNDMode({ mode: !initialBoolean });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const updatedMode = await testDevice.getDNDMode();
-        const expectedMode = !initialBoolean ? DNDMode.DND_ENABLED : DNDMode.DND_DISABLED;
-        
-        if (updatedMode !== expectedMode) {
+        if (!testDevice.dnd) {
             results.push({
                 name: 'should accept boolean values for DND mode',
                 passed: false,
-                skipped: false,
-                error: `Boolean set failed. Expected ${expectedMode}, got ${updatedMode}`,
+                skipped: true,
+                error: 'Device does not support DND feature',
                 device: deviceName
             });
         } else {
-            // Restore original mode
-            await testDevice.setDNDMode({ mode: initialBoolean });
+            // Get current mode
+            const initialMode = await testDevice.dnd.get();
+            const initialBoolean = initialMode === DNDMode.DND_ENABLED;
+            
+            // Set using boolean (true = enabled)
+            await testDevice.dnd.set({ mode: !initialBoolean });
             await new Promise(resolve => setTimeout(resolve, 2000));
             
-            results.push({
-                name: 'should accept boolean values for DND mode',
-                passed: true,
-                skipped: false,
-                error: null,
-                device: deviceName
-            });
+            const updatedMode = await testDevice.dnd.get();
+            const expectedMode = !initialBoolean ? DNDMode.DND_ENABLED : DNDMode.DND_DISABLED;
+            
+            if (updatedMode !== expectedMode) {
+                results.push({
+                    name: 'should accept boolean values for DND mode',
+                    passed: false,
+                    skipped: false,
+                    error: `Boolean set failed. Expected ${expectedMode}, got ${updatedMode}`,
+                    device: deviceName
+                });
+            } else {
+                // Restore original mode
+                await testDevice.dnd.set({ mode: initialBoolean });
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                results.push({
+                    name: 'should accept boolean values for DND mode',
+                    passed: true,
+                    skipped: false,
+                    error: null,
+                    device: deviceName
+                });
+            }
         }
     } catch (error) {
         results.push({
@@ -176,16 +197,16 @@ async function runTests(context) {
     
     // Test 3: Get raw DND mode value
     try {
-        if (typeof testDevice.getRawDNDMode !== 'function') {
+        if (!testDevice.dnd || typeof testDevice.dnd.getRaw !== 'function') {
             results.push({
                 name: 'should get raw DND mode value',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support getRawDNDMode',
+                error: 'Device does not support dnd.getRaw',
                 device: deviceName
             });
         } else {
-            const rawMode = await testDevice.getRawDNDMode();
+            const rawMode = await testDevice.dnd.getRaw();
             
             if (typeof rawMode !== 'number') {
                 results.push({
@@ -205,7 +226,7 @@ async function runTests(context) {
                 });
             } else {
                 // Verify it matches enum value
-                const enumMode = await testDevice.getDNDMode();
+                const enumMode = await testDevice.dnd.get();
                 
                 if (rawMode !== enumMode) {
                     results.push({

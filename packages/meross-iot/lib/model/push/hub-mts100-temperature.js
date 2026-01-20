@@ -11,7 +11,7 @@ const GenericPushNotification = require('./generic');
  * @class
  * @extends GenericPushNotification
  * @example
- * hubDevice.on('pushNotification', (notification) => {
+ * hubDevice.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof HubMts100TemperaturePushNotification) {
  *         const tempData = notification.temperatureData;
  *         tempData.forEach(thermostat => {
