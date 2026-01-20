@@ -91,7 +91,7 @@ class MerossHubDevice extends MerossDevice {
      * Prevents duplicate registrations to avoid state conflicts from multiple instances.
      *
      * @param {MerossSubDevice} subdevice - The subdevice instance to register
-     * @throws {UnknownDeviceTypeError} If the subdevice is invalid or missing a subdeviceId
+     * @throws {MerossErrorUnknownDeviceType} If the subdevice is invalid or missing a subdeviceId
      * @example
      * const subdevice = buildSubdevice(subdeviceInfo, hubUuid, hubAbilities, manager, hub);
      * hub.registerSubdevice(subdevice);

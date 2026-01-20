@@ -328,7 +328,7 @@ class MerossDevice extends EventEmitter {
      * device lookup operations.
      *
      * @returns {string} Internal ID string
-     * @throws {Error} If device UUID is missing
+     * @throws {MerossErrorUnknownDeviceType} If device UUID is missing
      */
     get internalId() {
         if (this._internalId) {
@@ -350,7 +350,7 @@ class MerossDevice extends EventEmitter {
      * round trips. Emits a 'stateRefreshed' event with the updated state.
      *
      * @returns {Promise<void>} Promise that resolves when state is refreshed
-     * @throws {Error} If device does not support refreshState()
+     * @throws {MerossErrorUnknownDeviceType} If device does not support refreshState()
      */
     async refreshState() {
         if (this.system && typeof this.system.getAllData === 'function') {
@@ -1126,8 +1126,8 @@ class MerossDevice extends EventEmitter {
      * @param {Object} payload - Message payload
      * @param {number|null} [transportMode=null] - Transport mode from TransportMode enum
      * @returns {Promise<Object>} Promise that resolves with the response payload
-     * @throws {Error} If device has no data connection available
-     * @throws {Error} If message times out
+     * @throws {MerossErrorUnconnected} If device has no data connection available
+     * @throws {MerossErrorCommandTimeout} If message times out
      */
     async publishMessage(method, namespace, payload, transportMode = null) {
         const data = this.cloudInst.mqtt.encode(method, namespace, payload, this.uuid);
@@ -1232,7 +1232,7 @@ class MerossDevice extends EventEmitter {
      *
      * @param {number|string} channelIdOrName - Channel index (number) or channel name (string)
      * @returns {ChannelInfo} Matching ChannelInfo object
-     * @throws {Error} If channel is not found or multiple channels match
+     * @throws {MerossErrorNotFound} If channel is not found or multiple channels match
      * @example
      * const channel = device.lookupChannel(0); // Find by index
      * const channel2 = device.lookupChannel('Main channel'); // Find by name
@@ -1262,7 +1262,7 @@ class MerossDevice extends EventEmitter {
      *
      * @param {HttpDeviceInfo} deviceInfo - HttpDeviceInfo object created via HttpDeviceInfo.fromDict()
      * @returns {Promise<MerossDevice>} Promise that resolves with this device instance
-     * @throws {Error} If device info is missing or UUID doesn't match
+     * @throws {MerossErrorValidation} If device info is missing or UUID doesn't match
      * @example
      * const updatedInfo = HttpDeviceInfo.fromDict(deviceDataFromApi);
      * await device.updateFromHttpState(updatedInfo);

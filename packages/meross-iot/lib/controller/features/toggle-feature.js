@@ -23,9 +23,9 @@ function createToggleFeature(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {boolean} options.on - True to turn on, false to turn off
          * @returns {Promise<void>} Promise that resolves when state is set
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
-         * @throws {import('../lib/errors/errors').UnknownDeviceTypeError} If device does not support Toggle or ToggleX
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossErrorUnknownDeviceType} If device does not support Toggle or ToggleX
          */
         async set(options = {}) {
             validateRequired(options, ['on']);
@@ -71,8 +71,8 @@ function createToggleFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<ToggleState|undefined>} Promise that resolves with toggle state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

@@ -23,8 +23,8 @@ function createPresenceSensorFeature(device) {
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @param {Array<string>} [options.dataTypes=['presence', 'light']] - Array of data types to request
          * @returns {Promise<PresenceSensorState|undefined>} Promise that resolves with presence sensor state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

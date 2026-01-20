@@ -20,7 +20,7 @@ function createThermostatFeature(device) {
      * @param {number} temperature - Temperature in Celsius
      * @param {number} [channel=0] - Channel to get temperature limits for (default: 0)
      * @returns {number} Temperature in device units (tenths of degrees)
-     * @throws {import('../lib/errors/errors').CommandError} If temperature is out of valid range
+     * @throws {MerossErrorCommand} If temperature is out of valid range
      * @private
      */
     function alignThermostatTemperature(temperature, channel = 0) {
@@ -71,9 +71,9 @@ function createThermostatFeature(device) {
          * @param {number} [options.state] - Mode B state (for ModeB namespace)
          * @param {boolean} [options.windowOpened] - Window opened status
          * @returns {Promise<Object>} Response from the device
-         * @throws {import('../lib/errors/errors').CommandError} If mode value is invalid or temperature is out of range
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorCommand} If mode value is invalid or temperature is out of range
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async set(options = {}) {
             const channel = normalizeChannel(options);
@@ -166,8 +166,8 @@ function createThermostatFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<ThermostatState|undefined>} Promise that resolves with thermostat state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
@@ -200,7 +200,7 @@ function createThermostatFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get mode B for (default: 0)
          * @returns {Promise<Object>} Response containing thermostat mode B
-         * @throws {import('../lib/errors/errors').CommandError} If the device does not support the ModeB namespace
+         * @throws {MerossErrorCommand} If the device does not support the ModeB namespace
          */
         async getModeB(options = {}) {
             const channel = normalizeChannel(options);

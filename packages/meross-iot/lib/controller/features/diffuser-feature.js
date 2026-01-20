@@ -29,8 +29,8 @@ function createDiffuserFeature(device) {
          * @param {number} [options.mode] - Spray mode value (for spray control)
          * @param {number} [options.channel=0] - Channel to control (default: 0, for spray)
          * @returns {Promise<Object>} Response from the device
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async set(options = {}) {
             // Handle light
@@ -80,8 +80,8 @@ function createDiffuserFeature(device) {
          * @param {string} [options.type='light'] - Type to get: 'light' or 'spray' (default: 'light')
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<DiffuserLightState|DiffuserSprayState|undefined>} Promise that resolves with state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const type = options.type || 'light';

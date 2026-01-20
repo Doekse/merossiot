@@ -23,7 +23,7 @@ const { MerossErrorValidation } = require('../model/exception');
  * @private
  * @param {number} value - Numeric duration in seconds
  * @returns {number} Duration in seconds
- * @throws {Error} If duration is negative
+ * @throws {MerossErrorValidation} If duration is negative
  */
 function parseNumericDuration(value) {
     if (value < 0) {
@@ -42,7 +42,7 @@ function parseNumericDuration(value) {
  * @private
  * @param {string} str - Duration string with unit suffix
  * @returns {number|null} Duration in seconds, or null if format doesn't match
- * @throws {Error} If format is invalid
+ * @throws {MerossErrorValidation} If format is invalid
  */
 function parseUnitSuffixDuration(str) {
     const timeUnitMatch = str.match(/^(\d+)([smh])$/i);
@@ -74,7 +74,7 @@ function parseUnitSuffixDuration(str) {
  * @param {number} minutes - Minutes value
  * @param {number} seconds - Seconds value
  * @param {string} originalDuration - Original duration string for error messages
- * @throws {Error} If validation fails
+ * @throws {MerossErrorValidation} If validation fails
  */
 function validateMMSS(minutes, seconds, originalDuration) {
     if (isNaN(minutes) || isNaN(seconds) || minutes < 0 || seconds < 0 || seconds >= 60) {
@@ -94,7 +94,7 @@ function validateMMSS(minutes, seconds, originalDuration) {
  * @param {number} minutes - Minutes value
  * @param {number} seconds - Seconds value
  * @param {string} originalDuration - Original duration string for error messages
- * @throws {Error} If validation fails
+ * @throws {MerossErrorValidation} If validation fails
  */
 function validateHHMMSS(hours, minutes, seconds, originalDuration) {
     if (isNaN(hours) || isNaN(minutes) || isNaN(seconds) ||
@@ -115,7 +115,7 @@ function validateHHMMSS(hours, minutes, seconds, originalDuration) {
  * @param {string} str - Time string in "HH:MM:SS" or "MM:SS" format
  * @param {string} originalDuration - Original duration string for error messages
  * @returns {number|null} Duration in seconds, or null if format doesn't match
- * @throws {Error} If format is invalid
+ * @throws {MerossErrorValidation} If format is invalid
  */
 function parseTimeStringDuration(str, originalDuration) {
     const timePattern = /^(?:(\d+):)?(\d+):(\d+)$/;
@@ -150,7 +150,7 @@ function parseTimeStringDuration(str, originalDuration) {
  *
  * @param {string|number} duration - Duration as seconds (number), "HH:MM:SS" string, "30m" (minutes), "2h" (hours), etc.
  * @returns {number} Duration in seconds
- * @throws {Error} If duration format is invalid
+ * @throws {MerossErrorValidation} If duration format is invalid
  * @example
  * durationToSeconds(600); // Returns 600
  * durationToSeconds('10m'); // Returns 600 (10 minutes)
@@ -191,7 +191,7 @@ function durationToSeconds(duration) {
  *
  * @param {number} seconds - Duration in seconds
  * @returns {string} Human-readable duration (e.g., "1h 30m", "45m", "30s")
- * @throws {Error} If seconds value is invalid
+ * @throws {MerossErrorValidation} If seconds value is invalid
  * @example
  * secondsToDuration(5400); // Returns "1h 30m"
  * secondsToDuration(600); // Returns "10m"

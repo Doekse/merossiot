@@ -22,7 +22,7 @@ const { MerossErrorValidation } = require('../model/exception');
  *
  * @param {string|Date|number} time - Time in HH:MM format (24-hour), Date object, or minutes since midnight
  * @returns {number} Minutes since midnight (0-1439)
- * @throws {Error} If time format is invalid
+ * @throws {MerossErrorValidation} If time format is invalid
  * @example
  * timeToMinutes('14:30'); // Returns 870
  * timeToMinutes(new Date(2023, 0, 1, 14, 30)); // Returns 870 (14:30)
@@ -63,7 +63,7 @@ function timeToMinutes(time) {
  *
  * @param {number} minutes - Minutes since midnight (0-1439)
  * @returns {string} Time in HH:MM format (24-hour)
- * @throws {Error} If minutes value is invalid
+ * @throws {MerossErrorValidation} If minutes value is invalid
  * @example
  * minutesToTime(870); // Returns "14:30"
  * minutesToTime(0); // Returns "00:00"
@@ -108,7 +108,7 @@ function getSpecialKeywordBitmask(keyword) {
  * @private
  * @param {string|number} day - Day value as number (0-6) or string (day name)
  * @returns {number} Day number (0-6, where 0=Monday)
- * @throws {Error} If day value is invalid
+ * @throws {MerossErrorValidation} If day value is invalid
  */
 function parseDayToNumber(day) {
     const dayMap = {
@@ -158,7 +158,7 @@ function parseDayToNumber(day) {
  * @param {Array<string|number>} days - Array of weekday names ('monday', 'tuesday', etc.) or numbers (0-6, where 0=Monday)
  * @param {boolean} [repeat=true] - Whether to set the repeat bit (bit 7). Default: true
  * @returns {number} Week bitmask with selected days and repeat bit
- * @throws {Error} If day names are invalid
+ * @throws {MerossErrorValidation} If day names are invalid
  * @example
  * daysToWeekMask(['monday', 'wednesday', 'friday']); // Returns bitmask for Mon, Wed, Fri + repeat
  * daysToWeekMask([0, 2, 4]); // Same as above using numbers

@@ -75,7 +75,7 @@ class ManagerHttp {
      * @param {string} messageData - Request body data
      * @param {number} timeout - Request timeout in milliseconds
      * @returns {Promise<Response>} Fetch response object
-     * @throws {Error} If request times out
+     * @throws {MerossErrorNetworkTimeout} If request times out
      * @throws {MerossErrorHttpApi} If response status is not 200
      * @private
      */

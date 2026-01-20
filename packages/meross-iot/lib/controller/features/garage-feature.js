@@ -21,8 +21,8 @@ function createGarageFeature(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {boolean} options.open - True to open, false to close
          * @returns {Promise<Object>} Response from the device
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async set(options = {}) {
             if (options.open === undefined) {
@@ -51,8 +51,8 @@ function createGarageFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<GarageDoorState|undefined>} Promise that resolves with garage door state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

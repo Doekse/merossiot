@@ -22,8 +22,8 @@ function createSprayFeature(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {number|import('../lib/enums').SprayMode} options.mode - Spray mode value or SprayMode enum
          * @returns {Promise<Object>} Response from the device
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async set(options = {}) {
             if (options.mode === undefined) {
@@ -54,8 +54,8 @@ function createSprayFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<SprayState|undefined>} Promise that resolves with spray state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

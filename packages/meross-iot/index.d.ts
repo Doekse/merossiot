@@ -1733,8 +1733,8 @@ declare module 'meross-iot' {
          * The httpClient should already be authenticated when passed to the constructor.
          * 
          * @returns Promise resolving to the number of devices discovered
-         * @throws {HttpApiError} If API request fails
-         * @throws {TokenExpiredError} If authentication token has expired
+         * @throws {MerossErrorHttpApi} If API request fails
+         * @throws {MerossErrorTokenExpired} If authentication token has expired
          */
         login(): Promise<number>
         
@@ -1877,8 +1877,8 @@ declare module 'meross-iot' {
          * @param password - User password
          * @param mfaCode - Optional MFA code if required
          * @returns Promise resolving to login response with token data
-         * @throws {MFARequiredError} If MFA is required
-         * @throws {AuthenticationError} If login fails
+         * @throws {MerossErrorMFARequired} If MFA is required
+         * @throws {MerossErrorAuthentication} If login fails
          */
         login(email: string, password: string, mfaCode?: string): Promise<{
             token: string;
@@ -1892,7 +1892,7 @@ declare module 'meross-iot' {
          * Gets the list of devices for the authenticated user.
          * 
          * @returns Promise resolving to array of device definitions
-         * @throws {UnauthorizedError} If not authenticated
+         * @throws {MerossErrorUnauthorized} If not authenticated
          */
         getDevices(): Promise<DeviceDefinition[]>;
         
@@ -2741,7 +2741,7 @@ declare module 'meross-iot' {
          * 
          * @param channelIdOrName - Channel index or name
          * @returns ChannelInfo instance
-         * @throws {Error} If channel not found
+         * @throws {MerossErrorNotFound} If channel not found
          */
         lookupChannel(channelIdOrName: number | string): ChannelInfo
         

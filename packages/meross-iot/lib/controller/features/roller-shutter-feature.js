@@ -21,8 +21,8 @@ function createRollerShutterFeature(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {number} options.position - Position value (0-100 for open/close, -1 for stop)
          * @returns {Promise<Object>} Response from the device
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async set(options = {}) {
             if (options.position === undefined) {
@@ -51,8 +51,8 @@ function createRollerShutterFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<RollerShutterState|undefined>} Promise that resolves with roller shutter state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

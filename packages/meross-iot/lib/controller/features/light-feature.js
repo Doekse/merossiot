@@ -45,8 +45,8 @@ function createLightFeature(device) {
          * @param {number} [options.temperature] - Temperature value (0-100)
          * @param {boolean|number} [options.gradual] - Enable gradual transition (default: true for RGB, false otherwise)
          * @returns {Promise<Object|null>} Response from the device or null if no changes needed
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async set(options = {}) {
             const channel = normalizeChannel(options);
@@ -126,8 +126,8 @@ function createLightFeature(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<LightState|undefined>} Promise that resolves with light state or undefined
-         * @throws {import('../lib/errors/errors').UnconnectedError} If device is not connected
-         * @throws {import('../lib/errors/errors').CommandTimeoutError} If command times out
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

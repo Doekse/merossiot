@@ -63,7 +63,7 @@ class ManagerMeross extends EventEmitter {
      *
      * @private
      * @param {Object} options - Configuration options
-     * @throws {Error} If httpClient is missing
+     * @throws {MerossErrorValidation} If httpClient is missing
      */
     _validateOptions(options) {
         if (!options || !options.httpClient) {
@@ -358,8 +358,8 @@ class ManagerMeross extends EventEmitter {
      * authentication errors during device discovery.
      *
      * @returns {Promise<number>} Promise that resolves with the number of devices discovered
-     * @throws {HttpApiError} If API request fails
-     * @throws {TokenExpiredError} If authentication token has expired
+     * @throws {MerossErrorHttpApi} If API request fails
+     * @throws {MerossErrorTokenExpired} If authentication token has expired
      */
     async login() {
         return await this.devices.initialize();
@@ -373,8 +373,8 @@ class ManagerMeross extends EventEmitter {
      * errors during initialization.
      *
      * @returns {Promise<number>} Promise that resolves with the number of devices connected
-     * @throws {HttpApiError} If API request fails
-     * @throws {TokenExpiredError} If authentication token has expired
+     * @throws {MerossErrorHttpApi} If API request fails
+     * @throws {MerossErrorTokenExpired} If authentication token has expired
      */
     async connect() {
         try {
@@ -398,7 +398,7 @@ class ManagerMeross extends EventEmitter {
      * Should be called when shutting down the application to properly clean up resources.
      *
      * @returns {Promise<Object|null>} Promise that resolves with logout response data from Meross API (or null if empty)
-     * @throws {AuthenticationError} If not authenticated
+     * @throws {MerossErrorAuthentication} If not authenticated
      */
     async logout() {
         if (!this.authenticated || !this.token) {

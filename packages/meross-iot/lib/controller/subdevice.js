@@ -37,7 +37,7 @@ class MerossSubDevice extends MerossDevice {
      * @param {Object} [kwargs] - Additional subdevice information
      * @param {string} [kwargs.subDeviceType] - Subdevice type (or type)
      * @param {string} [kwargs.subDeviceName] - Subdevice name (or name)
-     * @throws {Error} If hub device is not found or subdevice ID is missing
+     * @throws {MerossErrorUnknownDeviceType} If hub device is not found or subdevice ID is missing
      */
     constructor(hubDeviceUuid, subdeviceId, manager, kwargs = {}) {
         const hubs = manager.devices.find({ deviceUuids: [hubDeviceUuid] });
@@ -121,7 +121,7 @@ class MerossSubDevice extends MerossDevice {
      * in the device registry.
      *
      * @returns {string} Internal ID string
-     * @throws {Error} If hub UUID is missing
+     * @throws {MerossErrorUnknownDeviceType} If hub UUID is missing
      */
     get internalId() {
         if (this._internalId) {
@@ -956,7 +956,7 @@ class HubThermostatValve extends MerossSubDevice {
      * @param {string} preset - Preset name (must be one of: 'custom', 'comfort', 'economy', 'away')
      * @param {number} temperature - Temperature in Celsius
      * @returns {Promise<void>} Promise that resolves when command is sent
-     * @throws {Error} If preset is not supported
+     * @throws {MerossErrorCommand} If preset is not supported
      */
     async setPresetTemperature(preset, temperature) {
         if (!this.getSupportedPresets().includes(preset)) {

@@ -13,7 +13,7 @@
  * @param {Array<number>} [rgb] - If array, expected format [r, g, b] where each is 0-255
  * @param {Object} [rgb] - If object, expected format {r, g, b} or {red, green, blue}
  * @returns {number} RGB color as integer
- * @throws {CommandError} If RGB value is invalid
+ * @throws {MerossErrorCommand} If RGB value is invalid
  * @example
  * const rgbInt = rgbToInt([255, 0, 0]); // Red
  * const rgbInt2 = rgbToInt({r: 0, g: 255, b: 0}); // Green
