@@ -132,7 +132,7 @@ async function collectSetTriggerXParams(methodMetadata, device) {
 }
 
 /**
- * Collects parameters for deleteTriggerX interactively.
+ * Collects parameters for trigger.delete interactively.
  *
  * Displays existing triggers and allows selection from a list, or manual ID entry
  * if no triggers are found. Returns null to fall back to generic collection when
@@ -148,10 +148,15 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
 
     try {
         if (device.trigger && typeof device.trigger.get === 'function') {
+            // Clear cache to force fresh fetch after potential deletions
+            if (device._triggerxStateByChannel) {
+                device._triggerxStateByChannel.delete(channel);
+            }
             console.log(chalk.dim('Fetching existing triggers...'));
             const response = await device.trigger.get({ channel });
-            if (response && response.triggerx && Array.isArray(response.triggerx) && response.triggerx.length > 0) {
-                const items = response.triggerx;
+            const items = response && response.triggerx && Array.isArray(response.triggerx) ? response.triggerx : [];
+            
+            if (items.length > 0) {
                 console.log(chalk.cyan(`\nExisting Triggers (Channel ${channel}):`));
                 items.forEach((item, index) => {
                     const durationSeconds = item.rule?.duration || 0;
@@ -172,12 +177,6 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
                     };
                 });
 
-                choices.push(new inquirer.Separator());
-                choices.push({
-                    name: 'Enter ID Manually',
-                    value: '__manual__'
-                });
-
                 const selected = await inquirer.prompt([{
                     type: 'list',
                     name: 'id',
@@ -185,31 +184,24 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
                     choices
                 }]);
 
-                if (selected.id === '__manual__') {
-                    const manualAnswer = await inquirer.prompt([{
-                        type: 'input',
-                        name: 'id',
-                        message: 'Trigger ID',
-                        validate: (value) => {
-                            if (!value || value.trim() === '') {
-                                return 'ID is required';
-                            }
-                            return true;
-                        }
-                    }]);
-                    params.triggerId = manualAnswer.id;
-                } else {
-                    params.triggerId = selected.id;
-                }
-
-                params.channel = channel;
-                return params;
+                params.triggerId = selected.id;
+            } else {
+                throw new Error(`No triggers found on channel ${channel}. Nothing to delete.`);
             }
+
+            params.channel = channel;
+            return params;
         }
     } catch (e) {
-        // Fall back to generic collection if fetch fails
+        // If it's our "no triggers" error, re-throw it
+        if (e.message && e.message.includes('No triggers found')) {
+            throw e;
+        }
+        // If fetch fails, throw error
+        throw new Error('Unable to fetch triggers from device. Please try again.');
     }
 
+    // Fallback if trigger feature is not available
     return null;
 }
 

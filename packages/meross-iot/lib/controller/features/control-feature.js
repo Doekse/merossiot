@@ -58,4 +58,27 @@ function createControlFeature(device) {
     };
 }
 
+/**
+ * Gets control capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Control capability object or null if not supported
+ */
+function getControlCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasMultiple = !!device.abilities['Appliance.Control.Multiple'];
+    const hasUpgrade = !!device.abilities['Appliance.Control.Upgrade'];
+
+    if (!hasMultiple && !hasUpgrade) {return null;}
+
+    return {
+        supported: true,
+        multiple: hasMultiple,
+        upgrade: hasUpgrade
+    };
+}
+
 module.exports = createControlFeature;
+module.exports.getCapabilities = getControlCapabilities;

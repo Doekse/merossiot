@@ -275,5 +275,34 @@ function updatePresenceState(device, latestData, source = 'response') {
     }
 }
 
+/**
+ * Gets presence sensor capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Presence sensor capability object or null if not supported
+ */
+function getPresenceSensorCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    // Presence sensors are detected by Presence.Config or Presence.Study namespaces
+    const hasPresenceConfig = !!device.abilities['Appliance.Control.Presence.Config'];
+    const hasPresenceStudy = !!device.abilities['Appliance.Control.Presence.Study'];
+
+    if (!hasPresenceConfig && !hasPresenceStudy) {return null;}
+
+    // Check if device has Sensor.LatestX namespace which indicates data query capability including LUX
+    const hasLatestX = !!device.abilities['Appliance.Control.Sensor.LatestX'];
+
+    return {
+        supported: true,
+        channels: channelIds,
+        presenceEvents: true,
+        lux: hasLatestX,
+        distance: true
+    };
+}
+
 module.exports = createPresenceSensorFeature;
 module.exports._updatePresenceState = updatePresenceState;
+module.exports.getCapabilities = getPresenceSensorCapabilities;

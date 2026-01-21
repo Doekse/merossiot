@@ -94,6 +94,187 @@ declare module 'meross-iot' {
     }
 
     /**
+     * Normalized device capabilities map.
+     * 
+     * Provides a user-friendly capability map that abstracts away Meross namespace strings,
+     * making it easy for integrators to discover device features without dealing with protocol details.
+     * This map is derived from device abilities and channel information.
+     * 
+     * @example
+     * ```typescript
+     * if (device.capabilities?.toggle?.supported) {
+     *   console.log(`Device has ${device.capabilities.toggle.channels.length} toggle channels`);
+     * }
+     * 
+     * if (device.capabilities?.light?.rgb) {
+     *   await device.light.set({ channel: 0, rgb: [255, 0, 0] });
+     * }
+     * ```
+     */
+    export interface DeviceCapabilities {
+        /** Channel information */
+        channels: {
+            /** Array of channel IDs (indices) */
+            ids: number[]
+            /** Total number of channels */
+            count: number
+        }
+        /** Toggle (on/off) control capability */
+        toggle?: {
+            supported: true
+            channels: number[]
+            multiChannel: boolean
+        }
+        /** Light control capability */
+        light?: {
+            supported: true
+            channels: number[]
+            rgb: boolean
+            luminance: boolean
+            temperature: boolean
+        }
+        /** Thermostat control capability */
+        thermostat?: {
+            supported: true
+            channels: number[]
+            modeB: boolean
+            schedule?: boolean
+            windowOpened?: boolean
+            sensor?: boolean
+            summerMode?: boolean
+            holdAction?: boolean
+            calibration?: boolean
+            deadZone?: boolean
+            frost?: boolean
+            overheat?: boolean
+        }
+        /** Roller shutter control capability */
+        rollerShutter?: {
+            supported: true
+            channels: number[]
+        }
+        /** Garage door control capability */
+        garage?: {
+            supported: true
+            channels: number[]
+        }
+        /** Diffuser control capability */
+        diffuser?: {
+            supported: true
+            channels: number[]
+            light: boolean
+            spray: boolean
+        }
+        /** Spray control capability */
+        spray?: {
+            supported: true
+            channels: number[]
+        }
+        /** Power consumption monitoring capability */
+        consumption?: {
+            supported: true
+            channels: number[]
+        }
+        /** Real-time electricity monitoring capability */
+        electricity?: {
+            supported: true
+            channels: number[]
+        }
+        /** Timer capability */
+        timer?: {
+            supported: true
+            channels: number[]
+        }
+        /** Trigger capability */
+        trigger?: {
+            supported: true
+            channels: number[]
+        }
+        /** Presence sensor capability */
+        presence?: {
+            supported: true
+            channels: number[]
+            presenceEvents: boolean
+            lux: boolean
+            distance: boolean
+        }
+        /** Sensor capability (for hub sensors) */
+        sensor?: {
+            supported: true
+            channels: number[]
+            temperature?: boolean
+            humidity?: boolean
+            lux?: boolean
+            waterLeak?: boolean
+            smoke?: boolean
+        }
+        /** Alarm capability */
+        alarm?: {
+            supported: true
+            channels: number[]
+        }
+        /** Child lock capability */
+        childLock?: {
+            supported: true
+            channels: number[]
+        }
+        /** Screen control capability */
+        screen?: {
+            supported: true
+            channels: number[]
+        }
+        /** Runtime statistics capability */
+        runtime?: {
+            supported: true
+            channels: number[]
+        }
+        /** Configuration capability */
+        config?: {
+            supported: true
+            channels: number[]
+        }
+        /** Do Not Disturb mode capability */
+        dnd?: {
+            supported: true
+            channels: number[]
+        }
+        /** Temperature unit setting capability */
+        tempUnit?: {
+            supported: true
+        }
+        /** Smoke detector configuration capability */
+        smokeConfig?: {
+            supported: true
+            channels: number[]
+        }
+        /** Sensor history capability */
+        sensorHistory?: {
+            supported: true
+            channels: number[]
+        }
+        /** Digest timer capability */
+        digestTimer?: {
+            supported: true
+        }
+        /** Digest trigger capability */
+        digestTrigger?: {
+            supported: true
+        }
+        /** Advanced control capability (batch commands, firmware upgrades) */
+        control?: {
+            supported: true
+            multiple: boolean
+            upgrade: boolean
+        }
+        /** Hub device capability */
+        hub?: {
+            supported: true
+            subDeviceList: boolean
+            battery: boolean
+        }
+    }
+
+    /**
      * Channel metadata for a device.
      * 
      * Encapsulates channel information parsed from device initialization data.
@@ -2673,6 +2854,8 @@ declare module 'meross-iot' {
         readonly mqttPort: number | null
         /** Device capabilities object containing supported features and namespaces */
         readonly abilities: Record<string, any> | null
+        /** Normalized device capabilities map for easy feature discovery without namespace knowledge */
+        readonly capabilities: DeviceCapabilities | null
         /** Unix timestamp of last full state refresh */
         readonly lastFullUpdateTimestamp: number | null
         /** Online status: 0=connecting, 1=online, 2=offline, -1=unknown, 3=upgrading */

@@ -271,5 +271,28 @@ function updateGarageDoorConfig(device, configData) {
     }
 }
 
+/**
+ * Gets garage door capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Garage door capability object or null if not supported
+ */
+function getGarageCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasGarageDoorState = !!device.abilities['Appliance.GarageDoor.State'];
+    const hasGarageDoorConfig = !!device.abilities['Appliance.GarageDoor.Config'];
+    const hasGarageDoorMultipleConfig = !!device.abilities['Appliance.GarageDoor.MultipleConfig'];
+
+    if (!hasGarageDoorState && !hasGarageDoorConfig && !hasGarageDoorMultipleConfig) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createGarageFeature;
 module.exports._updateGarageDoorState = updateGarageDoorState;
+module.exports.getCapabilities = getGarageCapabilities;

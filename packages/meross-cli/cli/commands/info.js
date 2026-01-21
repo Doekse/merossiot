@@ -177,13 +177,21 @@ function _buildAbilityCategories(abilityNames) {
 }
 
 /**
- * Displays device capabilities grouped by category.
+ * Displays device abilities (raw namespace list) when verbose mode is enabled.
  *
  * @param {Object} device - Device instance
+ * @param {Object} manager - ManagerMeross instance (to check verbose state)
  */
-function _displayCapabilities(device) {
+function _displayAbilities(device, manager) {
+    // Check verbose mode via environment variable or manager logger option
+    const isVerbose = process.env.MEROSS_VERBOSE === 'true' ||
+        (manager && manager.options && manager.options.logger !== null);
+    
+    if (!isVerbose) {
+        return;
+    }
+
     if (!device.deviceConnected) {
-        console.log(`\n${chalk.yellow('Device is not connected. Connect to see capabilities.')}`);
         return;
     }
 
@@ -198,7 +206,7 @@ function _displayCapabilities(device) {
         const abilityCount = abilityNames.length;
         const categories = _buildAbilityCategories(abilityNames);
 
-        console.log(`\n${chalk.bold.underline('Capabilities')}`);
+        console.log(`\n${chalk.bold.underline('Abilities (Raw Namespaces)')}`);
         console.log(`  Total: ${chalk.cyan(abilityCount)} abilities\n`);
 
         Object.entries(categories).forEach(([category, items]) => {
@@ -212,6 +220,173 @@ function _displayCapabilities(device) {
         });
     } catch (error) {
         // Abilities display is optional, continue without it
+    }
+}
+
+/**
+ * Displays device capabilities using the normalized capabilities map.
+ *
+ * @param {Object} device - Device instance
+ */
+function _displayCapabilities(device) {
+    if (!device.deviceConnected) {
+        console.log(`\n${chalk.yellow('Device is not connected. Connect to see capabilities.')}`);
+        return;
+    }
+
+    try {
+        const capabilities = device.capabilities;
+
+        if (!capabilities) {
+            console.log(`\n${chalk.yellow('Capabilities not yet available. Device may need to connect first.')}`);
+            return;
+        }
+
+        console.log(`\n${chalk.bold.underline('Capabilities')}`);
+
+        // Display channel information
+        if (capabilities.channels) {
+            console.log(`\n  ${chalk.white.bold('Channels')}:`);
+            console.log(`    Count: ${chalk.cyan(capabilities.channels.count)}`);
+            console.log(`    IDs: ${chalk.cyan(capabilities.channels.ids.join(', '))}`);
+        }
+
+        // Display feature capabilities
+        const featureKeys = Object.keys(capabilities).filter(key => key !== 'channels');
+        if (featureKeys.length > 0) {
+            console.log(`\n  ${chalk.white.bold('Features')}:`);
+            featureKeys.forEach(featureKey => {
+                const feature = capabilities[featureKey];
+                if (feature && feature.supported) {
+                    let featureInfo = `    ${chalk.green('✓')} ${chalk.bold(featureKey)}`;
+                    if (feature.channels) {
+                        featureInfo += ` (channels: ${chalk.cyan(feature.channels.join(', '))})`;
+                    }
+                    if (feature.multiChannel) {
+                        featureInfo += ` ${chalk.gray('[multi-channel]')}`;
+                    }
+                    if (feature.rgb || feature.luminance || feature.temperature) {
+                        const lightFeatures = [];
+                        if (feature.rgb) {lightFeatures.push('RGB');}
+                        if (feature.luminance) {lightFeatures.push('brightness');}
+                        if (feature.temperature) {lightFeatures.push('temperature');}
+                        featureInfo += ` ${chalk.gray(`[${lightFeatures.join(', ')}]`)}`;
+                    }
+                    if (featureKey === 'thermostat') {
+                        const thermostatFeatures = [];
+                        if (feature.modeB) {thermostatFeatures.push('ModeB');}
+                        if (feature.schedule) {thermostatFeatures.push('schedule');}
+                        if (feature.windowOpened) {thermostatFeatures.push('window detection');}
+                        if (feature.sensor) {thermostatFeatures.push('sensor selection');}
+                        if (feature.summerMode) {thermostatFeatures.push('summer mode');}
+                        if (feature.holdAction) {thermostatFeatures.push('hold action');}
+                        if (feature.calibration) {thermostatFeatures.push('calibration');}
+                        if (feature.deadZone) {thermostatFeatures.push('dead zone');}
+                        if (feature.frost) {thermostatFeatures.push('frost protection');}
+                        if (feature.overheat) {thermostatFeatures.push('overheat protection');}
+                        if (thermostatFeatures.length > 0) {
+                            featureInfo += ` ${chalk.gray(`[${thermostatFeatures.join(', ')}]`)}`;
+                        }
+                    }
+                    if (feature.light !== undefined || feature.spray !== undefined) {
+                        const diffuserFeatures = [];
+                        if (feature.light) {diffuserFeatures.push('light');}
+                        if (feature.spray) {diffuserFeatures.push('spray');}
+                        featureInfo += ` ${chalk.gray(`[${diffuserFeatures.join(', ')}]`)}`;
+                    }
+                    if (feature.multiple || feature.upgrade) {
+                        const controlFeatures = [];
+                        if (feature.multiple) {controlFeatures.push('batch');}
+                        if (feature.upgrade) {controlFeatures.push('upgrade');}
+                        featureInfo += ` ${chalk.gray(`[${controlFeatures.join(', ')}]`)}`;
+                    }
+                    if (feature.subDeviceList || feature.battery) {
+                        const hubFeatures = [];
+                        if (feature.subDeviceList) {hubFeatures.push('subdevices');}
+                        if (feature.battery) {hubFeatures.push('battery');}
+                        featureInfo += ` ${chalk.gray(`[${hubFeatures.join(', ')}]`)}`;
+                    }
+                    if (featureKey === 'presence' && (feature.presenceEvents !== undefined || feature.lux !== undefined || feature.distance !== undefined)) {
+                        const presenceFeatures = [];
+                        if (feature.presenceEvents) {presenceFeatures.push('presence events');}
+                        if (feature.lux) {presenceFeatures.push('LUX');}
+                        if (feature.distance) {presenceFeatures.push('distance');}
+                        featureInfo += ` ${chalk.gray(`[${presenceFeatures.join(', ')}]`)}`;
+                    }
+                    if (featureKey === 'sensor' && (feature.temperature !== undefined || feature.humidity !== undefined || feature.lux !== undefined || feature.waterLeak !== undefined || feature.smoke !== undefined)) {
+                        const sensorFeatures = [];
+                        if (feature.temperature) {sensorFeatures.push('temperature');}
+                        if (feature.humidity) {sensorFeatures.push('humidity');}
+                        if (feature.lux) {sensorFeatures.push('LUX');}
+                        if (feature.waterLeak) {sensorFeatures.push('water leak');}
+                        if (feature.smoke) {sensorFeatures.push('smoke');}
+                        featureInfo += ` ${chalk.gray(`[${sensorFeatures.join(', ')}]`)}`;
+                    }
+                    console.log(featureInfo);
+                }
+            });
+        } else {
+            console.log(`\n  ${chalk.gray('No features detected')}`);
+        }
+    } catch (error) {
+        // Capabilities display is optional, continue without it
+    }
+}
+
+/**
+ * Displays subdevice information for hub devices.
+ *
+ * @param {Object} device - Device instance (should be a hub)
+ */
+async function _displaySubdevices(device) {
+    // Check if device is a hub and has getSubdevices method
+    if (!device || typeof device.getSubdevices !== 'function') {
+        return;
+    }
+
+    const subdevices = device.getSubdevices();
+    if (!subdevices || subdevices.length === 0) {
+        return;
+    }
+
+    console.log(`\n${chalk.bold.underline('Subdevices')}`);
+    console.log(`  Total: ${chalk.cyan(subdevices.length)} subdevice${subdevices.length !== 1 ? 's' : ''}\n`);
+
+    for (const subdevice of subdevices) {
+        console.log(`  ${chalk.white.bold(subdevice.name || subdevice.subdeviceId)}`);
+        console.log(`    Type: ${chalk.cyan(subdevice.type || 'unknown')}`);
+        console.log(`    ID: ${chalk.cyan(subdevice.subdeviceId)}`);
+
+        // Display subdevice capabilities if available
+        if (subdevice.capabilities) {
+            const subCaps = subdevice.capabilities;
+            const subFeatureKeys = Object.keys(subCaps).filter(key => key !== 'channels');
+            if (subFeatureKeys.length > 0) {
+                const subFeatures = [];
+                subFeatureKeys.forEach(featureKey => {
+                    const feature = subCaps[featureKey];
+                    if (feature && feature.supported) {
+                        if (featureKey === 'sensor') {
+                            const sensorTypes = [];
+                            if (feature.temperature) {sensorTypes.push('temperature');}
+                            if (feature.humidity) {sensorTypes.push('humidity');}
+                            if (feature.lux) {sensorTypes.push('LUX');}
+                            if (feature.waterLeak) {sensorTypes.push('water leak');}
+                            if (feature.smoke) {sensorTypes.push('smoke');}
+                            if (sensorTypes.length > 0) {
+                                subFeatures.push(`sensor [${sensorTypes.join(', ')}]`);
+                            }
+                        } else {
+                            subFeatures.push(featureKey);
+                        }
+                    }
+                });
+                if (subFeatures.length > 0) {
+                    console.log(`    Capabilities: ${chalk.gray(subFeatures.join(', '))}`);
+                }
+            }
+        }
+        console.log();
     }
 }
 
@@ -242,6 +417,8 @@ async function showDeviceInfo(manager, uuid) {
     _displayChannels(device);
     _displayHttpInfo(device);
     _displayCapabilities(device);
+    _displayAbilities(device, manager);
+    await _displaySubdevices(device);
 }
 
 module.exports = { showDeviceInfo };

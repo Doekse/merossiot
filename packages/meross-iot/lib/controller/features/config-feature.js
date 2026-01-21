@@ -56,4 +56,21 @@ function createConfigFeature(device) {
     };
 }
 
+/**
+ * Gets config capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Config capability object or null if not supported
+ */
+function getConfigCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Config.OverTemp']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createConfigFeature;
+module.exports.getCapabilities = getConfigCapabilities;

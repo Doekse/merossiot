@@ -252,5 +252,28 @@ function updateConsumptionState(device, consumptionData, source = 'response') {
     }
 }
 
+/**
+ * Gets consumption capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Consumption capability object or null if not supported
+ */
+function getConsumptionCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasConsumptionH = !!device.abilities['Appliance.Control.ConsumptionH'];
+    const hasConsumptionX = !!device.abilities['Appliance.Control.ConsumptionX'];
+    const hasConsumption = !!device.abilities['Appliance.Control.Consumption'];
+
+    if (!hasConsumptionH && !hasConsumptionX && !hasConsumption) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createConsumptionFeature;
 module.exports._updateConsumptionState = updateConsumptionState;
+module.exports.getCapabilities = getConsumptionCapabilities;

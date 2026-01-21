@@ -315,5 +315,28 @@ function updateLightState(device, lightData, source = 'response') {
     }
 }
 
+/**
+ * Gets light capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Light capability object or null if not supported
+ */
+function getLightCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Light']) {return null;}
+
+    const lightFeature = device.light;
+    if (!lightFeature) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds,
+        rgb: lightFeature.supportsRgb ? lightFeature.supportsRgb({ channel: 0 }) : false,
+        luminance: lightFeature.supportsLuminance ? lightFeature.supportsLuminance({ channel: 0 }) : false,
+        temperature: lightFeature.supportsTemperature ? lightFeature.supportsTemperature({ channel: 0 }) : false
+    };
+}
+
 module.exports = createLightFeature;
 module.exports._updateLightState = updateLightState;
+module.exports.getCapabilities = getLightCapabilities;

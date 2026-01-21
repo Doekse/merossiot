@@ -685,6 +685,38 @@ function updateThermostatModeB(device, modeData, source = 'response') {
     }
 }
 
+/**
+ * Gets thermostat capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Thermostat capability object or null if not supported
+ */
+function getThermostatCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasThermostatMode = !!device.abilities['Appliance.Control.Thermostat.Mode'];
+    const hasThermostatModeB = !!device.abilities['Appliance.Control.Thermostat.ModeB'];
+
+    if (!hasThermostatMode && !hasThermostatModeB) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds,
+        modeB: hasThermostatModeB,
+        schedule: !!device.abilities['Appliance.Control.Thermostat.Schedule'],
+        windowOpened: !!device.abilities['Appliance.Control.Thermostat.WindowOpened'],
+        sensor: !!device.abilities['Appliance.Control.Thermostat.Sensor'],
+        summerMode: !!device.abilities['Appliance.Control.Thermostat.SummerMode'],
+        holdAction: !!device.abilities['Appliance.Control.Thermostat.HoldAction'],
+        calibration: !!device.abilities['Appliance.Control.Thermostat.Calibration'],
+        deadZone: !!device.abilities['Appliance.Control.Thermostat.DeadZone'],
+        frost: !!device.abilities['Appliance.Control.Thermostat.Frost'],
+        overheat: !!device.abilities['Appliance.Control.Thermostat.Overheat']
+    };
+}
+
 module.exports = createThermostatFeature;
 module.exports._updateThermostatMode = updateThermostatMode;
 module.exports._updateThermostatModeB = updateThermostatModeB;
+module.exports.getCapabilities = getThermostatCapabilities;

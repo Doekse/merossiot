@@ -163,7 +163,7 @@ async function collectSetTimerXParams(methodMetadata, device) {
 }
 
 /**
- * Collects parameters for deleteTimerX with interactive prompts.
+ * Collects parameters for timer.delete with interactive prompts.
  */
 async function collectDeleteTimerXParams(methodMetadata, device) {
     const params = {};
@@ -171,10 +171,15 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
 
     try {
         if (device.timer && typeof device.timer.get === 'function') {
+            // Clear cache to force fresh fetch after potential deletions
+            if (device._timerxStateByChannel) {
+                device._timerxStateByChannel.delete(channel);
+            }
             console.log(chalk.dim('Fetching existing timers...'));
             const response = await device.timer.get({ channel });
-            if (response && response.timerx && Array.isArray(response.timerx) && response.timerx.length > 0) {
-                const items = response.timerx;
+            const items = response && response.timerx && Array.isArray(response.timerx) ? response.timerx : [];
+            
+            if (items.length > 0) {
                 console.log(chalk.cyan(`\nExisting Timers (Channel ${channel}):`));
                 items.forEach((item, index) => {
                     const timeMinutes = item.time || 0;
@@ -200,12 +205,6 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
                     };
                 });
 
-                choices.push(new inquirer.Separator());
-                choices.push({
-                    name: 'Enter ID Manually',
-                    value: '__manual__'
-                });
-
                 const selected = await inquirer.prompt([{
                     type: 'list',
                     name: 'id',
@@ -213,31 +212,24 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
                     choices
                 }]);
 
-                if (selected.id === '__manual__') {
-                    const manualAnswer = await inquirer.prompt([{
-                        type: 'input',
-                        name: 'id',
-                        message: 'Timer ID',
-                        validate: (value) => {
-                            if (!value || value.trim() === '') {
-                                return 'ID is required';
-                            }
-                            return true;
-                        }
-                    }]);
-                    params.timerId = manualAnswer.id;
-                } else {
-                    params.timerId = selected.id;
-                }
-
-                params.channel = channel;
-                return params;
+                params.timerId = selected.id;
+            } else {
+                throw new Error(`No timers found on channel ${channel}. Nothing to delete.`);
             }
+
+            params.channel = channel;
+            return params;
         }
     } catch (e) {
-        // Fall back to generic collection if fetch fails
+        // If it's our "no timers" error, re-throw it
+        if (e.message && e.message.includes('No timers found')) {
+            throw e;
+        }
+        // If fetch fails, throw error
+        throw new Error('Unable to fetch timers from device. Please try again.');
     }
 
+    // Fallback if timer feature is not available
     return null;
 }
 

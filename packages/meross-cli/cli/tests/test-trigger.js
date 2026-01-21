@@ -176,7 +176,7 @@ async function runTests(context) {
     // Test 2: Delete the trigger
     if (createdTriggerId) {
         try {
-            const deleteResponse = await testDevice.deleteTriggerX(createdTriggerId, 0);
+            const deleteResponse = await testDevice.trigger.delete({ triggerId: createdTriggerId, channel: 0 });
             
             // Check what the DELETE response contains
             const deleteResponseError = deleteResponse?.error;

@@ -57,4 +57,26 @@ function createSensorHistoryFeature(device) {
     };
 }
 
+/**
+ * Gets sensor history capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Sensor history capability object or null if not supported
+ */
+function getSensorHistoryCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasHistory = !!device.abilities['Appliance.Control.Sensor.History'];
+    const hasHistoryX = !!device.abilities['Appliance.Control.Sensor.HistoryX'];
+
+    if (!hasHistory && !hasHistoryX) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createSensorHistoryFeature;
+module.exports.getCapabilities = getSensorHistoryCapabilities;

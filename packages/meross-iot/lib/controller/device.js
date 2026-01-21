@@ -43,6 +43,34 @@ const createDigestTimerFeature = require('./features/digest-timer-feature');
 const createDigestTriggerFeature = require('./features/digest-trigger-feature');
 const createControlFeature = require('./features/control-feature');
 
+// Import capability getters
+const getToggleCapabilities = require('./features/toggle-feature').getCapabilities;
+const getLightCapabilities = require('./features/light-feature').getCapabilities;
+const getThermostatCapabilities = require('./features/thermostat-feature').getCapabilities;
+const getRollerShutterCapabilities = require('./features/roller-shutter-feature').getCapabilities;
+const getGarageCapabilities = require('./features/garage-feature').getCapabilities;
+const getDiffuserCapabilities = require('./features/diffuser-feature').getCapabilities;
+const getSprayCapabilities = require('./features/spray-feature').getCapabilities;
+const getConsumptionCapabilities = require('./features/consumption-feature').getCapabilities;
+const getElectricityCapabilities = require('./features/electricity-feature').getCapabilities;
+const getTimerCapabilities = require('./features/timer-feature').getCapabilities;
+const getTriggerCapabilities = require('./features/trigger-feature').getCapabilities;
+const getPresenceSensorCapabilities = require('./features/presence-sensor-feature').getCapabilities;
+const getAlarmCapabilities = require('./features/alarm-feature').getCapabilities;
+const getChildLockCapabilities = require('./features/child-lock-feature').getCapabilities;
+const getScreenCapabilities = require('./features/screen-feature').getCapabilities;
+const getRuntimeCapabilities = require('./features/runtime-feature').getCapabilities;
+const getConfigCapabilities = require('./features/config-feature').getCapabilities;
+const getDNDCapabilities = require('./features/dnd-feature').getCapabilities;
+const getTempUnitCapabilities = require('./features/temp-unit-feature').getCapabilities;
+const getSmokeConfigCapabilities = require('./features/smoke-config-feature').getCapabilities;
+const getSensorHistoryCapabilities = require('./features/sensor-history-feature').getCapabilities;
+const getDigestTimerCapabilities = require('./features/digest-timer-feature').getCapabilities;
+const getDigestTriggerCapabilities = require('./features/digest-trigger-feature').getCapabilities;
+const getControlCapabilities = require('./features/control-feature').getCapabilities;
+const getHubCapabilities = require('./features/hub-feature').getCapabilities;
+const getSensorCapabilities = require('./features/hub-feature').getSensorCapabilities;
+
 // Import update functions
 const updateToggleState = require('./features/toggle-feature')._updateToggleState;
 const updateLightState = require('./features/light-feature')._updateLightState;
@@ -161,6 +189,7 @@ class MerossDevice extends EventEmitter {
         }
 
         this.abilities = null;
+        this.capabilities = null;
         this.macAddress = null;
         this.lanIp = null;
         this.mqttHost = null;
@@ -241,6 +270,7 @@ class MerossDevice extends EventEmitter {
             try {
                 const httpInfo = HttpDeviceInfo.fromDict(dev);
                 this.channels = MerossDevice._parseChannels(dev.channels);
+                this._buildCapabilities();
 
                 // Copy extended properties directly to device instance; bindTime already
                 // normalized to Date by HttpDeviceInfo.fromDict()
@@ -304,6 +334,71 @@ class MerossDevice extends EventEmitter {
         if (this.encryption && typeof this.encryption._updateAbilitiesWithEncryption === 'function') {
             this.encryption._updateAbilitiesWithEncryption(abilities);
         }
+        this._buildCapabilities();
+    }
+
+    /**
+     * Builds the normalized capabilities map from device abilities and channels.
+     *
+     * Provides a user-friendly capability map that abstracts away Meross namespace strings,
+     * making it easy for integrators to discover device features without dealing with protocol details.
+     *
+     * @private
+     */
+    _buildCapabilities() {
+        if (!this.abilities) {
+            this.capabilities = null;
+            return;
+        }
+
+        const channelIds = this.channels ? this.channels.map(ch => ch.index) : [0];
+        const channelCount = channelIds.length;
+
+        const caps = {
+            channels: {
+                ids: channelIds,
+                count: channelCount
+            }
+        };
+
+        // Query each feature for its capabilities
+        const capabilityGetters = [
+            { key: 'toggle', getter: getToggleCapabilities },
+            { key: 'light', getter: getLightCapabilities },
+            { key: 'thermostat', getter: getThermostatCapabilities },
+            { key: 'rollerShutter', getter: getRollerShutterCapabilities },
+            { key: 'garage', getter: getGarageCapabilities },
+            { key: 'diffuser', getter: getDiffuserCapabilities },
+            { key: 'spray', getter: getSprayCapabilities },
+            { key: 'consumption', getter: getConsumptionCapabilities },
+            { key: 'electricity', getter: getElectricityCapabilities },
+            { key: 'timer', getter: getTimerCapabilities },
+            { key: 'trigger', getter: getTriggerCapabilities },
+            { key: 'presence', getter: getPresenceSensorCapabilities },
+            { key: 'alarm', getter: getAlarmCapabilities },
+            { key: 'childLock', getter: getChildLockCapabilities },
+            { key: 'screen', getter: getScreenCapabilities },
+            { key: 'runtime', getter: getRuntimeCapabilities },
+            { key: 'config', getter: getConfigCapabilities },
+            { key: 'dnd', getter: getDNDCapabilities },
+            { key: 'tempUnit', getter: getTempUnitCapabilities },
+            { key: 'smokeConfig', getter: getSmokeConfigCapabilities },
+            { key: 'sensorHistory', getter: getSensorHistoryCapabilities },
+            { key: 'digestTimer', getter: getDigestTimerCapabilities },
+            { key: 'digestTrigger', getter: getDigestTriggerCapabilities },
+            { key: 'control', getter: getControlCapabilities },
+            { key: 'hub', getter: getHubCapabilities },
+            { key: 'sensor', getter: getSensorCapabilities }
+        ];
+
+        for (const { key, getter } of capabilityGetters) {
+            const featureCaps = getter(this, channelIds);
+            if (featureCaps) {
+                caps[key] = featureCaps;
+            }
+        }
+
+        this.capabilities = caps;
     }
 
     /**
@@ -1277,6 +1372,7 @@ class MerossDevice extends EventEmitter {
         }
 
         this.channels = MerossDevice._parseChannels(deviceInfo.channels);
+        this._buildCapabilities();
 
         // Subdevices override name and onlineStatus as getter-only properties that
         // compute values from parent hub, so we must check before assignment

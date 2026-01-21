@@ -65,4 +65,21 @@ function createScreenFeature(device) {
     };
 }
 
+/**
+ * Gets screen capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Screen capability object or null if not supported
+ */
+function getScreenCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Screen.Brightness']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createScreenFeature;
+module.exports.getCapabilities = getScreenCapabilities;

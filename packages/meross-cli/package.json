@@ -1,6 +1,6 @@
 {
   "name": "meross-cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Command-line interface for controlling Meross smart home devices",
   "author": "Abe Haverkamp",
   "homepage": "https://github.com/Doekse/merossiot#readme",

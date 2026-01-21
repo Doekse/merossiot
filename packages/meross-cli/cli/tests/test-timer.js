@@ -181,7 +181,7 @@ async function runTests(context) {
             
             let deleteResponse;
             try {
-                deleteResponse = await testDevice.deleteTimerX({ timerId: createdTimerId, channel: 0 });
+                deleteResponse = await testDevice.timer.delete({ timerId: createdTimerId, channel: 0 });
             } catch (deleteError) {
                 results.push({
                     name: 'should delete timer',

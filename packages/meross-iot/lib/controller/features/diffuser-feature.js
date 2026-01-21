@@ -258,6 +258,30 @@ function updateDiffuserSprayState(device, sprayData, source = 'response') {
     }
 }
 
+/**
+ * Gets diffuser capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Diffuser capability object or null if not supported
+ */
+function getDiffuserCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasLight = !!device.abilities['Appliance.Control.Diffuser.Light'];
+    const hasSpray = !!device.abilities['Appliance.Control.Diffuser.Spray'];
+
+    if (!hasLight && !hasSpray) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds,
+        light: hasLight,
+        spray: hasSpray
+    };
+}
+
 module.exports = createDiffuserFeature;
 module.exports._updateDiffuserLightState = updateDiffuserLightState;
 module.exports._updateDiffuserSprayState = updateDiffuserSprayState;
+module.exports.getCapabilities = getDiffuserCapabilities;

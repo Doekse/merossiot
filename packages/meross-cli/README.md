@@ -23,7 +23,7 @@ Command-line interface for controlling and managing Meross smart home devices.
 npm install -g meross-cli@alpha
 
 # Or install specific version
-npm install -g meross-cli@0.5.0
+npm install -g meross-cli@0.6.0
 ```
 
 Or use via npx:
@@ -77,6 +77,17 @@ The CLI supports all devices that are supported by the underlying `meross-iot` l
 
 ## Changelog
 
+### [0.6.0] - 2026-01-20
+
+#### Added
+- Enhanced `info` command with normalized capabilities display
+  - Displays user-friendly device capabilities using the new `device.capabilities` map
+  - Shows channel information and supported features in an organized format
+  - Verbose mode support for displaying raw abilities (namespaces) when `MEROSS_VERBOSE=true` is set
+
+<details>
+<summary>Older</summary>
+
 ### [0.5.0] - 2026-01-20
 
 #### Changed
@@ -87,24 +98,6 @@ The CLI supports all devices that are supported by the underlying `meross-iot` l
     - `device.setLightColor()` → `device.light.set()`
     - `device.getLightState()` → `device.light.get()`
     - Similar changes for all features (toggle, thermostat, etc.)
-
-### [0.4.0] - 2026-01-19
-
-#### Changed
-- **BREAKING**: Updated to use new manager module structure from `meross-iot` v0.5.0
-  - Updated to use manager properties (`manager.devices`, `manager.mqtt`, `manager.http`, etc.) instead of direct methods
-  - Updated all commands and helpers to use new property-based access patterns
-- **BREAKING**: Updated to use standardized error handling from `meross-iot` v0.5.0
-  - Updated to use new `MerossError*` error class names
-  - Replaced inline error handling with centralized `handleError()` function
-  - All error handling now uses the new error handler utility for consistent, user-friendly formatted messages
-
-#### Added
-- Centralized error handler utility (`cli/utils/error-handler.js`) with formatted error messages
-- Enhanced error display with better context and user-friendly formatting
-
-<details>
-<summary>Older</summary>
 
 ### [0.4.0] - 2026-01-19
 

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-20
+
+### Added
+- Normalized device capabilities map (`device.capabilities`)
+  - Provides user-friendly capability discovery without needing to know Meross namespace strings
+  - Includes channel information and feature-specific capabilities (toggle, light, thermostat, etc.)
+  - Each feature now exports `getCapabilities()` function to provide capability information
+  - Capabilities are automatically built when device abilities are updated
+  - TypeScript definitions updated with `DeviceCapabilities` interface
+
 ## [0.6.0] - 2026-01-20
 
 ### Changed

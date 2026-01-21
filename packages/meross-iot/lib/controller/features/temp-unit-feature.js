@@ -55,4 +55,20 @@ function createTempUnitFeature(device) {
     };
 }
 
+/**
+ * Gets temp unit capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Temp unit capability object or null if not supported
+ */
+function getTempUnitCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.TempUnit']) {return null;}
+
+    return {
+        supported: true
+    };
+}
+
 module.exports = createTempUnitFeature;
+module.exports.getCapabilities = getTempUnitCapabilities;

@@ -84,5 +84,22 @@ function updateAlarmEvents(device, alarmData, source = 'push') {
     }
 }
 
+/**
+ * Gets alarm capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Alarm capability object or null if not supported
+ */
+function getAlarmCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Alarm']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createAlarmFeature;
 module.exports._updateAlarmEvents = updateAlarmEvents;
+module.exports.getCapabilities = getAlarmCapabilities;

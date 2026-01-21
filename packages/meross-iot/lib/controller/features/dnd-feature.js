@@ -72,4 +72,21 @@ function createDNDFeature(device) {
     };
 }
 
+/**
+ * Gets DND capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} DND capability object or null if not supported
+ */
+function getDNDCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.DNDMode']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createDNDFeature;
+module.exports.getCapabilities = getDNDCapabilities;

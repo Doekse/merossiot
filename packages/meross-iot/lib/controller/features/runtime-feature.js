@@ -61,4 +61,21 @@ function createRuntimeFeature(device) {
     };
 }
 
+/**
+ * Gets runtime capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Runtime capability object or null if not supported
+ */
+function getRuntimeCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Runtime']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createRuntimeFeature;
+module.exports.getCapabilities = getRuntimeCapabilities;

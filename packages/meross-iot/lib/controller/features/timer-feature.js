@@ -246,7 +246,7 @@ function createTimerFeature(device) {
          * @param {number} [options.channel=0] - Channel the timer belongs to (default: 0)
          * @returns {Promise<Object>} Response from the device
          */
-        async deleteTimerX(options = {}) {
+        async delete(options = {}) {
             if (!options.timerId) {
                 throw new MerossErrorValidation('timerId is required', 'timerId');
             }
@@ -311,7 +311,7 @@ function createTimerFeature(device) {
             if (!timer) {
                 throw new MerossErrorNotFound(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'timer', options.alias);
             }
-            return await this.deleteTimerX({ timerId: timer.id, channel });
+            return await this.delete({ timerId: timer.id, channel });
         },
 
         /**
@@ -392,7 +392,7 @@ function createTimerFeature(device) {
 
             const deletePromises = response.timerx.map(timer => {
                 if (timer.id) {
-                    return this.deleteTimerX({ timerId: timer.id, channel }).catch(error => {
+                    return this.delete({ timerId: timer.id, channel }).catch(error => {
                         if (device.log) {
                             device.log(`Failed to delete timer ${timer.id}: ${error.message}`);
                         }
@@ -455,6 +455,28 @@ function updateTimerXState(device, timerxData, source = 'response') {
     }
 }
 
+/**
+ * Gets timer capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Timer capability object or null if not supported
+ */
+function getTimerCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasTimerX = !!device.abilities['Appliance.Control.TimerX'];
+    const hasTimer = !!device.abilities['Appliance.Control.Timer'];
+
+    if (!hasTimerX && !hasTimer) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createTimerFeature;
 module.exports._updateTimerXState = updateTimerXState;
+module.exports.getCapabilities = getTimerCapabilities;
 

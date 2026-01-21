@@ -21,4 +21,25 @@ function createDigestTriggerFeature(device) {
     };
 }
 
+/**
+ * Gets digest trigger capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Digest trigger capability object or null if not supported
+ */
+function getDigestTriggerCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasDigestTriggerX = !!device.abilities['Appliance.Digest.TriggerX'];
+    const hasDigestTrigger = !!device.abilities['Appliance.Digest.Trigger'];
+
+    if (!hasDigestTriggerX && !hasDigestTrigger) {return null;}
+
+    return {
+        supported: true
+    };
+}
+
 module.exports = createDigestTriggerFeature;
+module.exports.getCapabilities = getDigestTriggerCapabilities;

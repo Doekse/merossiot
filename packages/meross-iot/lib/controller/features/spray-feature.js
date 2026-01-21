@@ -160,5 +160,22 @@ function updateSprayState(device, sprayData, source = 'response') {
     }
 }
 
+/**
+ * Gets spray capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Spray capability object or null if not supported
+ */
+function getSprayCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Spray']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createSprayFeature;
 module.exports._updateSprayState = updateSprayState;
+module.exports.getCapabilities = getSprayCapabilities;

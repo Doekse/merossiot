@@ -21,4 +21,25 @@ function createDigestTimerFeature(device) {
     };
 }
 
+/**
+ * Gets digest timer capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Digest timer capability object or null if not supported
+ */
+function getDigestTimerCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasDigestTimerX = !!device.abilities['Appliance.Digest.TimerX'];
+    const hasDigestTimer = !!device.abilities['Appliance.Digest.Timer'];
+
+    if (!hasDigestTimerX && !hasDigestTimer) {return null;}
+
+    return {
+        supported: true
+    };
+}
+
 module.exports = createDigestTimerFeature;
+module.exports.getCapabilities = getDigestTimerCapabilities;

@@ -303,6 +303,30 @@ function updateRollerShutterConfig(device, configData) {
     }
 }
 
+/**
+ * Gets roller shutter capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Roller shutter capability object or null if not supported
+ */
+function getRollerShutterCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasRollerShutterState = !!device.abilities['Appliance.RollerShutter.State'];
+    const hasRollerShutterPosition = !!device.abilities['Appliance.RollerShutter.Position'];
+    const hasRollerShutterConfig = !!device.abilities['Appliance.RollerShutter.Config'];
+    const hasRollerShutterAdjust = !!device.abilities['Appliance.RollerShutter.Adjust'];
+
+    if (!hasRollerShutterState && !hasRollerShutterPosition && !hasRollerShutterConfig && !hasRollerShutterAdjust) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createRollerShutterFeature;
 module.exports._updateRollerShutterState = updateRollerShutterState;
 module.exports._updateRollerShutterPosition = updateRollerShutterPosition;
+module.exports.getCapabilities = getRollerShutterCapabilities;

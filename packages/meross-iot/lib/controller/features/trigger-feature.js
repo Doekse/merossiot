@@ -93,7 +93,7 @@ function createTriggerFeature(device) {
          * @param {number} [options.channel=0] - Channel the trigger belongs to (default: 0)
          * @returns {Promise<Object>} Response from the device
          */
-        async deleteTriggerX(options = {}) {
+        async delete(options = {}) {
             if (!options.triggerId) {
                 throw new MerossErrorValidation('triggerId is required', 'triggerId');
             }
@@ -150,7 +150,7 @@ function createTriggerFeature(device) {
             if (!trigger) {
                 throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
             }
-            return await this.deleteTriggerX({ triggerId: trigger.id, channel });
+            return await this.delete({ triggerId: trigger.id, channel });
         },
 
         async enableTriggerByAlias(options = {}) {
@@ -208,7 +208,7 @@ function createTriggerFeature(device) {
 
             const deletePromises = response.triggerx.map(trigger => {
                 if (trigger.id) {
-                    return this.deleteTriggerX({ triggerId: trigger.id, channel }).catch(error => {
+                    return this.delete({ triggerId: trigger.id, channel }).catch(error => {
                         if (device.log) {
                             device.log(`Failed to delete trigger ${trigger.id}: ${error.message}`);
                         }
@@ -271,6 +271,28 @@ function updateTriggerXState(device, triggerxData, source = 'response') {
     }
 }
 
+/**
+ * Gets trigger capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Trigger capability object or null if not supported
+ */
+function getTriggerCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasTriggerX = !!device.abilities['Appliance.Control.TriggerX'];
+    const hasTrigger = !!device.abilities['Appliance.Control.Trigger'];
+
+    if (!hasTriggerX && !hasTrigger) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createTriggerFeature;
 module.exports._updateTriggerXState = updateTriggerXState;
+module.exports.getCapabilities = getTriggerCapabilities;
 

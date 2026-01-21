@@ -160,6 +160,29 @@ function updateToggleState(device, toggleData, source = 'response') {
     }
 }
 
+/**
+ * Gets toggle capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Toggle capability object or null if not supported
+ */
+function getToggleCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasToggleX = !!device.abilities['Appliance.Control.ToggleX'];
+    const hasToggle = !!device.abilities['Appliance.Control.Toggle'];
+
+    if (!hasToggleX && !hasToggle) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds,
+        multiChannel: channelIds.length > 1
+    };
+}
+
 module.exports = createToggleFeature;
 module.exports._updateToggleState = updateToggleState;
+module.exports.getCapabilities = getToggleCapabilities;
 

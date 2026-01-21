@@ -63,4 +63,21 @@ function createSmokeConfigFeature(device) {
     };
 }
 
+/**
+ * Gets smoke config capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Smoke config capability object or null if not supported
+ */
+function getSmokeConfigCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Smoke.Config']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createSmokeConfigFeature;
+module.exports.getCapabilities = getSmokeConfigCapabilities;

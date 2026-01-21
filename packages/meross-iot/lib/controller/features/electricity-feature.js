@@ -130,5 +130,22 @@ function updateElectricityState(device, electricityData, source = 'response') {
     }
 }
 
+/**
+ * Gets electricity capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Electricity capability object or null if not supported
+ */
+function getElectricityCapabilities(device, channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.Electricity']) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds
+    };
+}
+
 module.exports = createElectricityFeature;
 module.exports._updateElectricityState = updateElectricityState;
+module.exports.getCapabilities = getElectricityCapabilities;

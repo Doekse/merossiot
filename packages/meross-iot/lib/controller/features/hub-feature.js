@@ -633,5 +633,88 @@ function createHubFeature(device) {
     return hubFeature;
 }
 
+/**
+ * Gets hub capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} _channelIds - Array of channel IDs (unused for hub capabilities)
+ * @returns {Object|null} Hub capability object or null if not supported
+ */
+function getHubCapabilities(device, _channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasSubDeviceList = !!device.abilities['Appliance.Hub.SubDeviceList'];
+    const hasBattery = !!device.abilities['Appliance.Hub.Battery'];
+
+    if (!hasSubDeviceList && !hasBattery) {return null;}
+
+    return {
+        supported: true,
+        subDeviceList: hasSubDeviceList,
+        battery: hasBattery
+    };
+}
+
+/**
+ * Gets sensor capability information for hub subdevices.
+ *
+ * Detects hub sensor types and returns appropriate sensor data type capabilities.
+ * This is for subdevices that connect through hubs (temperature/humidity sensors,
+ * water leak sensors, smoke detectors).
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Sensor capability object or null if not a hub sensor
+ */
+function getSensorCapabilities(device, channelIds) {
+    // Skip if not a subdevice (subdevices have a subdeviceId property)
+    if (!device.subdeviceId) {
+        return null;
+    }
+
+    // Get device type - subdevices store it in _type, regular devices use deviceType
+    const deviceType = ((device._type || device.type || device.deviceType || '').toLowerCase());
+
+    // Check if this is a hub temperature/humidity sensor
+    // Check constructor name first (most reliable), then device type
+    const isTempHumSensor = device.constructor.name === 'HubTempHumSensor' ||
+        ['ms100', 'ms100f', 'ms130'].includes(deviceType);
+    if (isTempHumSensor) {
+        return {
+            supported: true,
+            channels: channelIds,
+            temperature: true,
+            humidity: true,
+            lux: true
+        };
+    }
+
+    // Check if this is a hub water leak sensor
+    const isWaterLeakSensor = device.constructor.name === 'HubWaterLeakSensor' ||
+        ['ms405', 'ms400'].includes(deviceType);
+    if (isWaterLeakSensor) {
+        return {
+            supported: true,
+            channels: channelIds,
+            waterLeak: true
+        };
+    }
+
+    // Check if this is a hub smoke detector
+    const isSmokeDetector = device.constructor.name === 'HubSmokeDetector' ||
+        ['ma151'].includes(deviceType);
+    if (isSmokeDetector) {
+        return {
+            supported: true,
+            channels: channelIds,
+            smoke: true
+        };
+    }
+
+    return null;
+}
+
 module.exports = createHubFeature;
 module.exports.handlePushNotification = handlePushNotification;
+module.exports.getCapabilities = getHubCapabilities;
+module.exports.getSensorCapabilities = getSensorCapabilities;
