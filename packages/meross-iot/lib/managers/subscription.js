@@ -6,12 +6,15 @@ const { MerossErrorValidation } = require('../model/exception');
 /**
  * Manages automatic polling and unified update streams for Meross devices.
  *
- * Coordinates push notifications and periodic polling to provide a single event stream
- * for device state changes. Some device features support push notifications (toggle,
- * light, thermostat), while others require polling (electricity, consumption).
+ * Coordinates push notifications and targeted polling to provide a single event stream for
+ * device state changes. Device state is polled once on initial subscription to establish a
+ * baseline for listeners, then typically relies on push notifications for ongoing updates.
+ * Some features (electricity, consumption) require periodic polling because they do not
+ * emit push notifications.
  *
- * Push notifications are preferred when available to reduce network traffic and latency.
- * Polling serves as a fallback for features without push support or when push is inactive.
+ * Push notifications reduce latency and network traffic compared to frequent polling.
+ * Periodic polling is intended for features without push support (electricity, consumption)
+ * or as an explicit fallback when a device is not producing push updates.
  *
  * @class
  * @extends EventEmitter
@@ -23,13 +26,13 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} manager - MerossManager instance that provides device access
      * @param {Object} [options={}] - Configuration options
      * @param {Function} [options.logger] - Logger function for debug output
-     * @param {number} [options.deviceStateInterval=30000] - Device state polling interval in milliseconds (0 to disable polling, rely on push only)
+     * @param {number} [options.deviceStateInterval=0] - Device state polling interval in milliseconds (0 to disable periodic polling, rely on push only after initial state)
      * @param {number} [options.electricityInterval=30000] - Electricity metrics polling interval in milliseconds (0 to disable)
      * @param {number} [options.consumptionInterval=60000] - Power consumption polling interval in milliseconds (0 to disable)
      * @param {number} [options.httpDeviceListInterval=120000] - HTTP device list polling interval in milliseconds
      * @param {boolean} [options.smartCaching=true] - Skip polling when cached data is fresh to reduce network traffic
      * @param {number} [options.cacheMaxAge=10000] - Maximum cache age in milliseconds before considering data stale
-     * @param {boolean} [options.pushOnly=false] - If true, disable polling for features with push notifications (electricity/consumption still polled if intervals > 0)
+     * @param {boolean} [options.pushOnly=false] - If true, treat push as the primary update mechanism (a baseline state is still emitted on subscribe; metrics polling still depends on intervals)
      */
     constructor(manager, options = {}) {
         super();
@@ -42,7 +45,7 @@ class ManagerSubscription extends EventEmitter {
         this.logger = options.logger || (() => {});
 
         this.defaultConfig = {
-            deviceStateInterval: options.pushOnly ? 0 : (options.deviceStateInterval !== undefined ? options.deviceStateInterval : 30000),
+            deviceStateInterval: options.deviceStateInterval !== undefined ? options.deviceStateInterval : 0,
             electricityInterval: options.electricityInterval !== undefined ? options.electricityInterval : 30000,
             consumptionInterval: options.consumptionInterval !== undefined ? options.consumptionInterval : 60000,
             httpDeviceListInterval: options.httpDeviceListInterval || 120000,
@@ -60,17 +63,19 @@ class ManagerSubscription extends EventEmitter {
      * Subscribe to device updates.
      *
      * Registers event listeners for push notifications and starts periodic polling
-     * based on configuration. Multiple calls with different intervals merge using
-     * the shortest interval to ensure all listeners receive updates at the required frequency.
+     * based on configuration. For metrics (electricity/consumption), multiple calls merge by
+     * selecting the shortest interval so all listeners receive updates at the required frequency.
+     * Device state polling is configured explicitly via `deviceStateInterval` (with a baseline
+     * state poll on initial subscription).
      *
      * @param {MerossDevice} device - Device to subscribe to
      * @param {Object} [config={}] - Subscription configuration
-     * @param {number} [config.deviceStateInterval] - Device state polling interval in milliseconds (0 to disable)
+     * @param {number} [config.deviceStateInterval] - Device state polling interval in milliseconds (0 to disable periodic polling, rely on push only after initial state)
      * @param {number} [config.electricityInterval] - Electricity metrics polling interval in milliseconds (0 to disable)
      * @param {number} [config.consumptionInterval] - Power consumption polling interval in milliseconds (0 to disable)
      * @param {boolean} [config.smartCaching] - Skip polling when cached data is fresh
      * @param {number} [config.cacheMaxAge] - Maximum cache age in milliseconds before refresh
-     * @param {boolean} [config.pushOnly=false] - Disable polling for push-enabled features
+     * @param {boolean} [config.pushOnly=false] - Prefer push-driven updates and emit cached state immediately when available
      * @example
      * subscription.subscribe(device, { pushOnly: true });
      * subscription.on(`deviceUpdate:${device.uuid}`, (update) => {
@@ -93,10 +98,7 @@ class ManagerSubscription extends EventEmitter {
         const pushOnly = config.pushOnly !== undefined ? config.pushOnly : (existingConfig.pushOnly || this.defaultConfig.pushOnly);
 
         subscription.config = {
-            deviceStateInterval: pushOnly ? 0 : Math.min(
-                existingConfig.deviceStateInterval || this.defaultConfig.deviceStateInterval,
-                config.deviceStateInterval !== undefined ? config.deviceStateInterval : (existingConfig.deviceStateInterval || this.defaultConfig.deviceStateInterval)
-            ),
+            deviceStateInterval: config.deviceStateInterval !== undefined ? config.deviceStateInterval : (existingConfig.deviceStateInterval !== undefined ? existingConfig.deviceStateInterval : this.defaultConfig.deviceStateInterval),
             electricityInterval: Math.min(
                 existingConfig.electricityInterval || this.defaultConfig.electricityInterval,
                 config.electricityInterval !== undefined ? config.electricityInterval : (existingConfig.electricityInterval || this.defaultConfig.electricityInterval)
@@ -215,26 +217,27 @@ class ManagerSubscription extends EventEmitter {
             pollingIntervals: new Map(),
             lastPollTimes: new Map(),
             lastUpdate: null,
-            pushActive: false,
-            pushLastSeen: null
+            pushActiveNamespaces: new Map()
         };
 
         this.subscriptions.set(device.uuid, subscription);
 
-        device.on('pushNotificationReceived', () => {
-            this._markPushActive(device.uuid);
+        device.on('pushNotificationReceived', (namespace) => {
+            this._setPushActive(device.uuid, namespace);
         });
 
         device.on('state', (event) => {
-            this._handleStateEvent(device.uuid, event);
+            this._onStateEvent(device.uuid, event);
         });
     }
 
     /**
-     * Start periodic polling for device state, electricity, and consumption data.
+     * Start polling for device state, electricity, and consumption data.
      *
-     * Creates intervals for each supported feature based on configuration. Performs
-     * an immediate poll on startup to provide initial state to listeners.
+     * Performs a one-time device state poll on initial subscription so consumers
+     * can receive a current baseline state without waiting for the next push event.
+     * Periodic polling is reserved for features that do not support push notifications
+     * (electricity, consumption) and for the optional device-state fallback interval.
      *
      * @private
      * @param {MerossDevice} device - Device to poll
@@ -243,13 +246,14 @@ class ManagerSubscription extends EventEmitter {
     _startPolling(device, subscription) {
         const config = subscription.config || this.defaultConfig;
 
+        this._pollDeviceState(device, subscription);
+
         if (config.deviceStateInterval > 0) {
             const interval = setInterval(async () => {
                 await this._pollDeviceState(device, subscription);
             }, config.deviceStateInterval);
 
             subscription.pollingIntervals.set('deviceState', interval);
-            this._pollDeviceState(device, subscription);
         }
 
         if (config.electricityInterval > 0 && device.electricity && typeof device.electricity.get === 'function') {
@@ -291,19 +295,19 @@ class ManagerSubscription extends EventEmitter {
     /**
      * Poll device state via System.All namespace.
      *
+     * Called once on initial subscription to provide current state to listeners.
      * Skips polling when push notifications were received recently or cached data
-     * is fresh to avoid redundant network requests.
+     * is fresh to avoid redundant network requests. After initial poll, ongoing
+     * updates rely on push notifications.
      *
      * @private
      * @param {MerossDevice} device - Device to poll
      * @param {Object} subscription - Subscription state object
      */
     async _pollDeviceState(device, subscription) {
-        if (subscription.pushActive && subscription.pushLastSeen) {
-            const timeSincePush = Date.now() - subscription.pushLastSeen;
-            if (timeSincePush < 5000) {
-                return;
-            }
+        const namespace = 'Appliance.System.All';
+        if (this._hasRecentPush(subscription, namespace, 5000)) {
+            return;
         }
 
         const config = subscription.config || this.defaultConfig;
@@ -326,8 +330,9 @@ class ManagerSubscription extends EventEmitter {
     /**
      * Poll electricity metrics for all device channels.
      *
-     * Skips polling when push notifications are active or all channels have fresh
-     * cached data to reduce network traffic.
+     * Electricity metrics require polling as they don't support push notifications.
+     * Skips polling when all channels have fresh cached data (if smartCaching enabled)
+     * to reduce network traffic.
      *
      * @private
      * @param {MerossDevice} device - Device to poll
@@ -335,10 +340,6 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} config - Configuration object with caching settings
      */
     async _pollElectricity(device, subscription, config) {
-        if (subscription.pushActive) {
-            return;
-        }
-
         try {
             if (config.smartCaching && device._channelCachedSamples) {
                 const channels = device.channels || [{ index: 0 }];
@@ -376,8 +377,9 @@ class ManagerSubscription extends EventEmitter {
     /**
      * Poll power consumption data for all device channels.
      *
-     * Skips polling when push notifications are active or all channels have cached
-     * consumption data to reduce network traffic.
+     * Consumption data requires polling as it doesn't support push notifications.
+     * Skips polling when all channels have cached consumption data (if smartCaching enabled)
+     * to reduce network traffic.
      *
      * @private
      * @param {MerossDevice} device - Device to poll
@@ -385,10 +387,6 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} config - Configuration object with caching settings
      */
     async _pollConsumption(device, subscription, config) {
-        if (subscription.pushActive) {
-            return;
-        }
-
         try {
             if (config.smartCaching && device._channelCachedConsumption) {
                 const channels = device.channels || [{ index: 0 }];
@@ -419,27 +417,52 @@ class ManagerSubscription extends EventEmitter {
     }
 
     /**
-     * Mark push notifications as active and reset inactivity timer.
+     * Mark push notifications as active for a specific namespace.
      *
-     * Reduces polling frequency when push notifications are active. Activity
-     * expires after 60 seconds of inactivity to resume normal polling.
+     * Tracks push notification activity per namespace to allow selective polling
+     * skipping. Only namespaces that receive push notifications will skip polling.
      *
      * @private
      * @param {string} deviceUuid - Device UUID that received push notification
+     * @param {string} namespace - Namespace that received the push notification
      */
-    _markPushActive(deviceUuid) {
+    _setPushActive(deviceUuid, namespace) {
         const subscription = this.subscriptions.get(deviceUuid);
         if (!subscription) {
             return;
         }
 
-        subscription.pushActive = true;
-        subscription.pushLastSeen = Date.now();
+        if (!namespace) {
+            return;
+        }
 
-        clearTimeout(subscription.pushInactivityTimer);
-        subscription.pushInactivityTimer = setTimeout(() => {
-            subscription.pushActive = false;
+        const timestamp = Date.now();
+        subscription.pushActiveNamespaces.set(namespace, timestamp);
+
+        const timerKey = `pushInactivityTimer_${namespace}`;
+        clearTimeout(subscription[timerKey]);
+        subscription[timerKey] = setTimeout(() => {
+            subscription.pushActiveNamespaces.delete(namespace);
         }, 60000);
+    }
+
+    /**
+     * Check if a namespace received a recent push notification.
+     *
+     * @private
+     * @param {Object} subscription - Subscription state object
+     * @param {string} namespace - Namespace to check
+     * @param {number} maxAge - Maximum age in milliseconds to consider recent
+     * @returns {boolean} True if namespace received push within maxAge
+     */
+    _hasRecentPush(subscription, namespace, maxAge) {
+        const pushTimestamp = subscription.pushActiveNamespaces.get(namespace);
+        if (!pushTimestamp) {
+            return false;
+        }
+
+        const timeSincePush = Date.now() - pushTimestamp;
+        return timeSincePush < maxAge;
     }
 
     /**
@@ -453,13 +476,13 @@ class ManagerSubscription extends EventEmitter {
      * @param {string} deviceUuid - Device UUID that changed state
      * @param {Object} event - Unified state event from device
      */
-    _handleStateEvent(deviceUuid, event) {
+    _onStateEvent(deviceUuid, event) {
         const subscription = this.subscriptions.get(deviceUuid);
         if (!subscription) {
             return;
         }
 
-        // For refresh events, include full state
+        // Refresh events already represent a full snapshot; distribute without diffing.
         if (event.type === 'refresh') {
             const update = {
                 source: event.source || 'poll',
@@ -473,17 +496,18 @@ class ManagerSubscription extends EventEmitter {
             return;
         }
 
-        // For incremental state changes, track what changed
+        // For non-refresh events, compute a minimal changeset so listeners can avoid
+        // expensive full-state comparisons when they only care about deltas.
         const changes = {};
         if (event.type && event.value !== undefined) {
-            // Handle channel-based features
+            // Keep per-channel features grouped under their event type.
             if (event.channel !== undefined) {
                 if (!changes[event.type]) {
                     changes[event.type] = {};
                 }
                 changes[event.type][event.channel] = event.value;
             } else {
-                // Handle non-channel features (like online status, properties)
+                // Device-level updates (e.g., online status, properties) are not channel-scoped.
                 changes[event.type] = event.value;
             }
         }

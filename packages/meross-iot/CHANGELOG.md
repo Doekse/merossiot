@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-01-21
+
+### Changed
+- Optimized ManagerSubscription polling behavior for better efficiency
+  - Changed default `deviceStateInterval` from 30000ms to 0 (push-only by default after initial state)
+  - Device state is now polled once on initial subscription to establish baseline, then relies on push notifications
+  - Implemented per-namespace push tracking instead of global push active state for more granular control
+  - Removed unnecessary push-active checks from electricity/consumption polling (these features don't support push notifications)
+  - Polling now skips when recent push notifications were received for the specific namespace being polled
+
+### Added
+- Added `pushNotificationReceived` event to MerossDevice that emits the namespace for push activity tracking
+  - Allows subscription manager to track push notifications per-namespace for selective polling optimization
+
+### Fixed
+- Removed default channel initialization for subdevices that could cause incorrect channel setup
+
 ## [0.7.1] - 2026-01-21
 
 ### Fixed

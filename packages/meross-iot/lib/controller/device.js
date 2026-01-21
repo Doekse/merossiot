@@ -1042,7 +1042,9 @@ class MerossDevice extends EventEmitter {
      * Handles push notification messages.
      *
      * Tracks notification activity, parses into typed notification objects, routes to
-     * feature modules, and emits unified state events.
+     * feature modules, and emits unified state events. Also emits a lightweight
+     * `pushNotificationReceived` event so subscription/polling managers can track
+     * push activity by namespace without depending on payload parsing details.
      *
      * @private
      * @param {Object} message - The push notification message object
@@ -1052,6 +1054,8 @@ class MerossDevice extends EventEmitter {
 
         const namespace = message.header?.namespace || '';
         const payload = message.payload || message;
+
+        this.emit('pushNotificationReceived', namespace);
 
         parsePushNotification(namespace, payload, this.uuid);
 
@@ -1406,6 +1410,7 @@ class MerossDevice extends EventEmitter {
 /**
  * @typedef {Object} MerossDeviceEvents
  * @property {Function} state - Emitted when device state changes (unified event for all state changes)
+ * @property {Function} pushNotificationReceived - Emitted on any push notification to track push activity by namespace
  * @property {Function} error - Emitted when an error occurs
  * @property {Function} connected - Emitted when device connects
  * @property {Function} disconnected - Emitted when device disconnects

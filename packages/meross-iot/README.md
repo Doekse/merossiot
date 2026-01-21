@@ -177,14 +177,31 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.7.2] - 2026-01-21
+
+#### Changed
+- Optimized ManagerSubscription polling behavior for better efficiency
+  - Changed default `deviceStateInterval` from 30000ms to 0 (push-only by default after initial state)
+  - Device state is now polled once on initial subscription to establish baseline, then relies on push notifications
+  - Implemented per-namespace push tracking instead of global push active state for more granular control
+  - Removed unnecessary push-active checks from electricity/consumption polling (these features don't support push notifications)
+  - Polling now skips when recent push notifications were received for the specific namespace being polled
+
+#### Added
+- Added `pushNotificationReceived` event to MerossDevice that emits the namespace for push activity tracking
+  - Allows subscription manager to track push notifications per-namespace for selective polling optimization
+
+#### Fixed
+- Removed default channel initialization for subdevices that could cause incorrect channel setup
+
+<details>
+<summary>Older</summary>
+
 ### [0.7.1] - 2026-01-21
 
 #### Fixed
 - Prefer Consumption/ConsumptionX/ConsumptionH in the right order and fallback sequence when fetching usage history
 - Poll electricity via the feature-based API and honor channel cache data in ManagerSubscription
-
-<details>
-<summary>Older</summary>
 
 ### [0.7.0] - 2026-01-20
 

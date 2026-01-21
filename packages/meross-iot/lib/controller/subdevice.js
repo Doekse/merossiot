@@ -61,13 +61,6 @@ class MerossSubDevice extends MerossDevice {
         this.lanIp = hub.lanIp;
 
         this._onlineStatus = OnlineStatus.UNKNOWN;
-
-        // Initialize channels for subdevices (default to channel 0)
-        // This ensures capabilities can be built even if HTTP info isn't available
-        if (!this.channels || this.channels.length === 0) {
-            const ChannelInfo = require('../model/channel-info');
-            this.channels = [new ChannelInfo(0, 'Main channel', null, true)];
-        }
     }
 
     /**
