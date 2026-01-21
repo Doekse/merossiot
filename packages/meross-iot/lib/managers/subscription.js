@@ -252,7 +252,7 @@ class ManagerSubscription extends EventEmitter {
             this._pollDeviceState(device, subscription);
         }
 
-        if (config.electricityInterval > 0 && typeof device.getElectricity === 'function') {
+        if (config.electricityInterval > 0 && device.electricity && typeof device.electricity.get === 'function') {
             const interval = setInterval(async () => {
                 await this._pollElectricity(device, subscription, config);
             }, config.electricityInterval);
@@ -340,12 +340,12 @@ class ManagerSubscription extends EventEmitter {
         }
 
         try {
-            if (config.smartCaching && typeof device.getCachedElectricity === 'function') {
+            if (config.smartCaching && device._channelCachedSamples) {
                 const channels = device.channels || [{ index: 0 }];
                 let allCached = true;
 
                 for (const channel of channels) {
-                    const cached = device.getCachedElectricity(channel.index);
+                    const cached = device._channelCachedSamples.get(channel.index);
                     if (!cached || !cached.sampleTimestamp) {
                         allCached = false;
                         break;
@@ -364,7 +364,7 @@ class ManagerSubscription extends EventEmitter {
 
             const channels = device.channels || [{ index: 0 }];
             for (const channel of channels) {
-                await device.getElectricity({ channel: channel.index });
+                await device.electricity.get({ channel: channel.index });
             }
 
             subscription.lastPollTimes.set('electricity', Date.now());

@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.7.0
+npm install meross-iot@0.7.1
 ```
 
 ## Usage & Documentation
@@ -177,6 +177,15 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.7.1] - 2026-01-21
+
+#### Fixed
+- Prefer Consumption/ConsumptionX/ConsumptionH in the right order and fallback sequence when fetching usage history
+- Poll electricity via the feature-based API and honor channel cache data in ManagerSubscription
+
+<details>
+<summary>Older</summary>
+
 ### [0.7.0] - 2026-01-20
 
 #### Added
@@ -186,9 +195,6 @@ Please create an issue on GitHub and include:
   - Each feature now exports `getCapabilities()` function to provide capability information
   - Capabilities are automatically built when device abilities are updated
   - TypeScript definitions updated with `DeviceCapabilities` interface
-
-<details>
-<summary>Older</summary>
 
 ### [0.6.0] - 2026-01-20
 

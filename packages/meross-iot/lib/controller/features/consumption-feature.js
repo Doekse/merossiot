@@ -46,12 +46,12 @@ function createConsumptionFeature(device) {
             const hasConsumptionX = device.abilities?.['Appliance.Control.ConsumptionX'];
             const hasConsumption = device.abilities?.['Appliance.Control.Consumption'];
 
-            if (hasConsumptionH) {
-                return await this._getConsumptionH(channel);
+            if (hasConsumption) {
+                return await this._getConsumption(channel);
             } else if (hasConsumptionX) {
                 return await this._getConsumptionX(channel);
-            } else if (hasConsumption) {
-                return await this._getConsumption(channel);
+            } else if (hasConsumptionH) {
+                return await this._getConsumptionH(channel);
             } else {
                 return await this._getConsumptionWithFallback(channel);
             }
@@ -161,9 +161,9 @@ function createConsumptionFeature(device) {
          * @private
          */
         async _getConsumptionWithFallback(channel) {
-            const resultH = await this._getConsumptionH(channel);
-            if (resultH) {
-                return resultH;
+            const result = await this._getConsumption(channel);
+            if (result) {
+                return result;
             }
 
             const resultX = await this._getConsumptionX(channel);
@@ -171,7 +171,7 @@ function createConsumptionFeature(device) {
                 return resultX;
             }
 
-            return await this._getConsumption(channel);
+            return await this._getConsumptionH(channel);
         },
 
         /**
