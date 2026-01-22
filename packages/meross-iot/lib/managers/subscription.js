@@ -2,6 +2,7 @@
 
 const EventEmitter = require('events');
 const { MerossErrorValidation } = require('../model/exception');
+const { OnlineStatus } = require('../model/enums');
 
 /**
  * Manages automatic polling and unified update streams for Meross devices.
@@ -305,6 +306,10 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} subscription - Subscription state object
      */
     async _pollDeviceState(device, subscription) {
+        if (device.onlineStatus !== OnlineStatus.ONLINE) {
+            return;
+        }
+
         const namespace = 'Appliance.System.All';
         if (this._hasRecentPush(subscription, namespace, 5000)) {
             return;
@@ -340,6 +345,10 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} config - Configuration object with caching settings
      */
     async _pollElectricity(device, subscription, config) {
+        if (device.onlineStatus !== OnlineStatus.ONLINE) {
+            return;
+        }
+
         try {
             if (config.smartCaching && device._channelCachedSamples) {
                 const channels = device.channels || [{ index: 0 }];
@@ -387,6 +396,10 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} config - Configuration object with caching settings
      */
     async _pollConsumption(device, subscription, config) {
+        if (device.onlineStatus !== OnlineStatus.ONLINE) {
+            return;
+        }
+
         try {
             if (config.smartCaching && device._channelCachedConsumption) {
                 const channels = device.channels || [{ index: 0 }];
@@ -482,7 +495,6 @@ class ManagerSubscription extends EventEmitter {
             return;
         }
 
-        // Refresh events already represent a full snapshot; distribute without diffing.
         if (event.type === 'refresh') {
             const update = {
                 source: event.source || 'poll',
@@ -496,18 +508,14 @@ class ManagerSubscription extends EventEmitter {
             return;
         }
 
-        // For non-refresh events, compute a minimal changeset so listeners can avoid
-        // expensive full-state comparisons when they only care about deltas.
         const changes = {};
         if (event.type && event.value !== undefined) {
-            // Keep per-channel features grouped under their event type.
             if (event.channel !== undefined) {
                 if (!changes[event.type]) {
                     changes[event.type] = {};
                 }
                 changes[event.type][event.channel] = event.value;
             } else {
-                // Device-level updates (e.g., online status, properties) are not channel-scoped.
                 changes[event.type] = event.value;
             }
         }

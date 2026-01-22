@@ -12,7 +12,8 @@ const {
     MerossErrorUnconnected,
     MerossErrorUnknownDeviceType,
     MerossErrorValidation,
-    MerossErrorNotFound
+    MerossErrorNotFound,
+    MerossErrorInitialization
 } = require('../model/exception');
 
 // Import feature factories
@@ -42,6 +43,7 @@ const createSensorHistoryFeature = require('./features/sensor-history-feature');
 const createDigestTimerFeature = require('./features/digest-timer-feature');
 const createDigestTriggerFeature = require('./features/digest-trigger-feature');
 const createControlFeature = require('./features/control-feature');
+const Heartbeat = require('../utilities/heartbeat');
 
 // Import capability getters
 const getToggleCapabilities = require('./features/toggle-feature').getCapabilities;
@@ -182,6 +184,12 @@ class MerossDevice extends EventEmitter {
         this.deviceType = dev.deviceType;
         this.firmwareVersion = dev.fmwareVersion || 'unknown';
         this.hardwareVersion = dev.hdwareVersion || 'unknown';
+        this.chipType = null;
+        this.homekitVersion = null;
+        this.firmwareCompileTime = null;
+        this.wifiEncrypt = null;
+        this.wifiMac = null;
+        this.userId = null;
         this.domain = domain || dev.domain;
 
         if (!MerossDevice._isGetterOnly(this, 'onlineStatus')) {
@@ -194,6 +202,15 @@ class MerossDevice extends EventEmitter {
         this.lanIp = null;
         this.mqttHost = null;
         this.mqttPort = port;
+        this.rssi = null;
+        this.wifiSignal = null;
+        this.wifiSsid = null;
+        this.wifiChannel = null;
+        this.wifiSnr = null;
+        this.wifiLinkStatus = null;
+        this.wifiGatewayMac = null;
+        this.wifiDisconnectCount = null;
+        this.wifiDisconnectDetail = null;
         this.lastFullUpdateTimestamp = null;
         // Lazy initialization avoids registry computation during construction,
         // deferring ID generation until first access
@@ -251,6 +268,15 @@ class MerossDevice extends EventEmitter {
         this._pushNotificationActive = false;
         this._lastPushNotificationTime = null;
         this._pushInactivityTimer = null;
+        // Track device initialization state
+        this._deviceInitializedEmitted = false;
+        this._initializationTimeout = null;
+        this._readyResolve = null;
+        this._readyPromise = new Promise((resolve) => {
+            this._readyResolve = resolve;
+        });
+        // Initialize heartbeat monitoring for online/offline detection
+        this._heartbeat = new Heartbeat(this);
     }
 
     /**
@@ -330,6 +356,13 @@ class MerossDevice extends EventEmitter {
      * @param {Object} abilities - Device abilities object
      */
     updateAbilities(abilities) {
+        // Only update if abilities actually changed to avoid redundant capability building
+        const abilitiesChanged = !this.abilities || JSON.stringify(this.abilities) !== JSON.stringify(abilities);
+
+        if (!abilitiesChanged) {
+            return;
+        }
+
         this.abilities = abilities;
         if (this.encryption && typeof this.encryption._updateAbilitiesWithEncryption === 'function') {
             this.encryption._updateAbilitiesWithEncryption(abilities);
@@ -757,10 +790,14 @@ class MerossDevice extends EventEmitter {
             return;
         }
 
-        // System.All can appear in any message type (responses, push notifications),
-        // so extract it first to update device metadata regardless of message type
+        // Extract System.All from any message type to update device metadata
         if (message.payload?.all) {
             this._handleSystemAllUpdate(message.payload);
+        }
+
+        // Extract System.Online from any message type to update online status
+        if (message.header.namespace === 'Appliance.System.Online' && message.payload?.online) {
+            this._updateOnlineStatus(message.payload.online.status);
         }
 
         if (this.waitingMessageIds[message.header.messageId]) {
@@ -769,7 +806,6 @@ class MerossDevice extends EventEmitter {
             this._handlePushNotification(message);
         }
 
-        // Raw message events removed - use 'state' event instead
     }
 
     /**
@@ -796,79 +832,69 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
+     * Emits the deviceInitialized event if not already emitted.
+     *
+     * @private
+     */
+    _emitDeviceInitialized() {
+        if (this._deviceInitializedEmitted) {
+            return;
+        }
+        this._deviceInitializedEmitted = true;
+        this.emit('deviceInitialized', this.uuid, this);
+        if (this._readyResolve) {
+            this._readyResolve();
+            this._readyResolve = null;
+        }
+    }
+
+    /**
+     * Resolves once the device has received initial System.All data.
+     *
+     * @returns {Promise<void>}
+     */
+    ready() {
+        if (this._deviceInitializedEmitted) {
+            return Promise.resolve();
+        }
+        return this._readyPromise;
+    }
+
+    /**
+     * Finalizes initialization and clears any pending timeout.
+     *
+     * @private
+     */
+    _finalizeInitialization() {
+        if (this._initializationTimeout) {
+            clearTimeout(this._initializationTimeout);
+            this._initializationTimeout = null;
+        }
+        this._emitDeviceInitialized();
+    }
+
+    /**
      * Handles System.All update responses.
      *
-     * Extracts device metadata (abilities, MAC address), network configuration (LAN IP,
-     * MQTT host/port), and routes digest data to feature modules for state updates.
+     * Delegates property extraction to system feature module, then handles device-level
+     * concerns (state emission, initialization, heartbeat tracking).
      *
      * @private
      * @param {Object} payload - Message payload containing System.All data
      */
     _handleSystemAllUpdate(payload) {
-        if (payload.ability) {
-            this.updateAbilities(payload.ability);
-        }
-
         const system = payload.all?.system;
         if (!system) {
+        // System.All was received but system property is missing; finalize initialization
+        // since the device is connected and responding
+            this._finalizeInitialization();
             return;
         }
 
-        // Track if any properties changed by comparing key properties
-        let hasUpdates = false;
-
-        // Check hardware changes
-        const hardware = system.hardware;
-        if (hardware) {
-            if (hardware.type && hardware.type !== this.deviceType) {
-                hasUpdates = true;
-                this.deviceType = hardware.type;
-            }
-            if (hardware.version && hardware.version !== this.hardwareVersion) {
-                hasUpdates = true;
-                this.hardwareVersion = hardware.version;
-            }
-            if (hardware.macAddress && hardware.macAddress !== this.macAddress) {
-                hasUpdates = true;
-                this.updateMacAddress(hardware.macAddress);
-            }
-        }
-
-        // Check firmware changes
-        const firmware = system.firmware;
-        if (firmware) {
-            if (firmware.version && firmware.version !== this.firmwareVersion) {
-                hasUpdates = true;
-                this.firmwareVersion = firmware.version;
-            }
-            if (firmware.innerIp && firmware.innerIp !== this.lanIp) {
-                hasUpdates = true;
-                this.lanIp = firmware.innerIp;
-            }
-            if (firmware.server && firmware.server !== this.mqttHost) {
-                hasUpdates = true;
-                this.mqttHost = firmware.server;
-            }
-            if (firmware.port && firmware.port !== this.mqttPort) {
-                hasUpdates = true;
-                this.mqttPort = firmware.port;
-            }
-            this.lastFullUpdateTimestamp = Date.now();
-        }
-
-        if (system.online) {
-            this._updateOnlineStatus(system.online.status);
-        }
-
-        if (payload.all.digest) {
-            this._routeDigestToFeatures(payload.all.digest);
-        }
-
-        // Emit state event if any properties changed
+        const hasUpdates = this.system.handleSystemAllUpdate(payload);
         if (hasUpdates) {
             this.emit('state', {
                 type: 'properties',
-                channel: 0,
                 value: {
                     macAddress: this.macAddress,
                     lanIp: this.lanIp,
@@ -876,11 +902,24 @@ class MerossDevice extends EventEmitter {
                     mqttPort: this.mqttPort,
                     deviceType: this.deviceType,
                     hardwareVersion: this.hardwareVersion,
-                    firmwareVersion: this.firmwareVersion
+                    firmwareVersion: this.firmwareVersion,
+                    rssi: this.rssi,
+                    wifiSignal: this.wifiSignal,
+                    wifiSsid: this.wifiSsid,
+                    wifiChannel: this.wifiChannel,
+                    wifiSnr: this.wifiSnr,
+                    wifiLinkStatus: this.wifiLinkStatus
                 },
                 source: 'poll',
                 timestamp: Date.now()
             });
+        }
+
+        this._finalizeInitialization();
+
+        // Track System.All response for heartbeat monitoring to detect device connectivity
+        if (this._heartbeat) {
+            this._heartbeat.recordSystemAll();
         }
     }
 
@@ -1027,12 +1066,18 @@ class MerossDevice extends EventEmitter {
 
         if (message.header.method === 'ERROR') {
             const errorPayload = message.payload || {};
+            if (this._heartbeat) {
+                this._heartbeat.recordFailure();
+            }
             pending.reject(new MerossErrorCommand(
                 `Device returned error: ${JSON.stringify(errorPayload)}`,
                 errorPayload,
                 this.uuid
             ));
         } else {
+            if (this._heartbeat) {
+                this._heartbeat.recordResponse();
+            }
             pending.resolve(message.payload || message);
         }
         delete this.waitingMessageIds[messageId];
@@ -1079,13 +1124,11 @@ class MerossDevice extends EventEmitter {
      * @param {Object} payload - Message payload
      */
     _routePushNotificationToFeatures(namespace, payload) {
-        // System.Online updates online status directly
         if (namespace === 'Appliance.System.Online' && payload?.online) {
             this._updateOnlineStatus(payload.online.status);
             return;
         }
 
-        // Route to appropriate update function based on namespace
         if (namespace === 'Appliance.Control.ToggleX' && payload?.togglex) {
             updateToggleState(this, payload.togglex, 'push');
             return;
@@ -1175,6 +1218,7 @@ class MerossDevice extends EventEmitter {
      *
      * Emits 'connected' event immediately to allow test code to proceed. Delays initial
      * state fetch to allow MQTT connection to stabilize before making requests.
+     * Sets a timeout to detect if System.All never arrives and device initialization fails.
      *
      */
     connect() {
@@ -1182,14 +1226,27 @@ class MerossDevice extends EventEmitter {
         setImmediate(() => {
             this.emit('connected');
         });
+        if (this._heartbeat) {
+            this._heartbeat.start();
+        }
         setTimeout(() => {
             if (this.system && typeof this.system.getAllData === 'function') {
                 this.system.getAllData().catch(_err => {
-                    // Ignore initial fetch failures as device may still be initializing
-                    // and will retry on subsequent operations
+                    // Ignore initial fetch failures; device may still be initializing
                 });
             }
         }, 500);
+
+        this._initializationTimeout = setTimeout(() => {
+            if (!this._deviceInitializedEmitted) {
+                this.emit('error', new MerossErrorInitialization(
+                    'Device initialization timeout: System.All not received',
+                    'device',
+                    'System.All timeout'
+                ));
+            }
+            this._initializationTimeout = null;
+        }, 5000);
     }
 
     /**
@@ -1197,6 +1254,13 @@ class MerossDevice extends EventEmitter {
      */
     disconnect() {
         this.deviceConnected = false;
+        if (this._initializationTimeout) {
+            clearTimeout(this._initializationTimeout);
+            this._initializationTimeout = null;
+        }
+        if (this._heartbeat) {
+            this._heartbeat.stop();
+        }
     }
 
     /**
@@ -1254,6 +1318,9 @@ class MerossDevice extends EventEmitter {
                                 namespace,
                                 messageId
                             };
+                            if (this._heartbeat) {
+                                this._heartbeat.recordFailure();
+                            }
                             this.waitingMessageIds[messageId].reject(
                                 new MerossErrorCommandTimeout(
                                     `Command timed out after ${timeoutDuration}ms`,
@@ -1267,8 +1334,10 @@ class MerossDevice extends EventEmitter {
                     }, timeoutDuration)
                 };
 
-                // Raw message events removed - use 'state' event instead
             } catch (error) {
+                if (this._heartbeat) {
+                    this._heartbeat.recordFailure();
+                }
                 reject(error);
             }
         });
@@ -1288,7 +1357,6 @@ class MerossDevice extends EventEmitter {
             this.onlineStatus = status;
             this.emit('state', {
                 type: 'online',
-                channel: 0,
                 value: status,
                 source: 'push',
                 timestamp: Date.now()

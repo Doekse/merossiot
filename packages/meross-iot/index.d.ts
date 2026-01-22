@@ -2531,6 +2531,8 @@ declare module 'meross-iot' {
      * Provides access to alarm events and status.
      */
     export interface AlarmFeature {
+        set(options: { channel?: number, on: boolean, duration?: number }): Promise<any>
+        setConfig(options: { channel?: number, enable: number, volume: number, song: number }): Promise<any>
         get(options?: { channel?: number }): Promise<any>
         getLastEvents(options?: { channel?: number }): Array<{timestamp: number, type: string, data: any}>
     }

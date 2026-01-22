@@ -177,6 +177,44 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.8.0] - 2026-01-22
+
+#### Added
+- Device initialization tracking with `deviceInitialized` event and `ready()` method
+  - Device emits `deviceInitialized` event after receiving System.All data
+  - `device.ready()` returns a promise that resolves when device is fully initialized
+  - Initialization timeout detection with `MerossErrorInitialization` error
+- Heartbeat monitoring utility for online/offline detection
+  - Periodic heartbeat checks to monitor device connectivity
+  - Tracks command responses and failures to detect connectivity issues
+  - Updates device online status when connectivity problems are detected
+  - Uses exponential backoff when device is offline
+- Alarm control methods for alarm devices (e.g., MSH450 Internal Siren)
+  - `alarm.set()` method to control alarm on/off state with optional duration
+  - `alarm.setConfig()` method to configure alarm volume, tone, and enable state
+  - Updated TypeScript definitions for new alarm methods
+- Additional device property tracking
+  - Track chipType, homekitVersion, wifi info, network stats
+  - Extract network properties from System.Debug responses (RSSI, signal, SSID, channel, SNR, etc.)
+  - Property update logic moved to system feature module
+
+#### Changed
+- Moved System.All handling to system feature module
+  - System.All property extraction logic moved from device.js to system feature
+  - System feature handles hardware, firmware, and network property updates
+  - Device delegates System.All updates to system feature module
+- Skip polling for offline devices in subscription manager
+  - Polling methods check online status before making requests
+  - Avoids API calls when devices are known to be offline
+
+#### Fixed
+- DND capability check now uses `Appliance.System.DNDMode` namespace (was incorrectly using `Appliance.Control.DNDMode`)
+- Prevent redundant ability updates when abilities haven't changed
+- Device initialization event now properly emitted by device itself after System.All is received
+
+<details>
+<summary>Older</summary>
+
 ### [0.7.2] - 2026-01-21
 
 #### Changed
@@ -193,9 +231,6 @@ Please create an issue on GitHub and include:
 
 #### Fixed
 - Removed default channel initialization for subdevices that could cause incorrect channel setup
-
-<details>
-<summary>Older</summary>
 
 ### [0.7.1] - 2026-01-21
 

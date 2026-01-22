@@ -19,10 +19,115 @@ function createSystemFeature(device) {
             const response = await device.publishMessage('GET', 'Appliance.System.All', {});
 
             if (response && response.all) {
-                device._handleSystemAllUpdate(response);
+                this.handleSystemAllUpdate(response);
             }
 
             return response;
+        },
+
+        /**
+         * Handles System.All update responses.
+         *
+         * Extracts device metadata (abilities, MAC address), network configuration (LAN IP,
+         * MQTT host/port), hardware and firmware versions, and routes digest data to feature modules.
+         * Called automatically when System.All responses are received.
+         *
+         * @param {Object} payload - Message payload containing System.All data
+         * @returns {boolean} True if any properties were updated
+         */
+        handleSystemAllUpdate(payload) {
+            if (payload.ability) {
+                device.updateAbilities(payload.ability);
+            }
+
+            const system = payload.all?.system;
+            if (!system) {
+                return false;
+            }
+
+            const hardwareUpdates = this._updateHardwareProperties(system.hardware);
+            const firmwareUpdates = this._updateFirmwareProperties(system.firmware);
+
+            if (system.online) {
+                device._updateOnlineStatus(system.online.status);
+            }
+
+            if (payload.all.digest) {
+                device._routeDigestToFeatures(payload.all.digest);
+            }
+
+            return hardwareUpdates || firmwareUpdates;
+        },
+
+        /**
+         * Updates hardware properties from hardware data.
+         *
+         * @private
+         * @param {Object} hardware - Hardware data object
+         * @returns {boolean} True if any properties were updated
+         */
+        _updateHardwareProperties(hardware) {
+            if (!hardware) {
+                return false;
+            }
+
+            const updates = [
+                { source: 'type', target: 'deviceType' },
+                { source: 'subType', target: 'subType' },
+                { source: 'version', target: 'hardwareVersion' },
+                { source: 'chipType', target: 'chipType' }
+            ];
+
+            let hasUpdates = false;
+            for (const { source, target } of updates) {
+                if (hardware[source] !== undefined && hardware[source] !== device[target]) {
+                    hasUpdates = true;
+                    device[target] = hardware[source];
+                }
+            }
+
+            if (hardware.macAddress && hardware.macAddress !== device.macAddress) {
+                hasUpdates = true;
+                device.updateMacAddress(hardware.macAddress);
+            }
+
+            return hasUpdates;
+        },
+
+        /**
+         * Updates firmware properties from firmware data.
+         *
+         * @private
+         * @param {Object} firmware - Firmware data object
+         * @returns {boolean} True if any properties were updated
+         */
+        _updateFirmwareProperties(firmware) {
+            if (!firmware) {
+                return false;
+            }
+
+            const updates = [
+                { source: 'version', target: 'firmwareVersion' },
+                { source: 'homekitVersion', target: 'homekitVersion' },
+                { source: 'compileTime', target: 'firmwareCompileTime' },
+                { source: 'encrypt', target: 'wifiEncrypt' },
+                { source: 'wifiMac', target: 'wifiMac' },
+                { source: 'innerIp', target: 'lanIp' },
+                { source: 'server', target: 'mqttHost' },
+                { source: 'port', target: 'mqttPort' },
+                { source: 'userId', target: 'userId' }
+            ];
+
+            let hasUpdates = false;
+            for (const { source, target } of updates) {
+                if (firmware[source] !== undefined && firmware[source] !== device[target]) {
+                    hasUpdates = true;
+                    device[target] = firmware[source];
+                }
+            }
+
+            device.lastFullUpdateTimestamp = Date.now();
+            return hasUpdates;
         },
 
         /**
@@ -31,7 +136,56 @@ function createSystemFeature(device) {
          * @returns {Promise<Object>} Response containing debug information
          */
         async getDebug() {
-            return await device.publishMessage('GET', 'Appliance.System.Debug', {});
+            const response = await device.publishMessage('GET', 'Appliance.System.Debug', {});
+            if (response && response.debug) {
+                device._systemDebug = response.debug;
+                if (response.debug.network) {
+                    this._updateNetworkProperties(response.debug.network);
+                }
+            }
+            return response;
+        },
+
+        /**
+         * Updates network properties from network data.
+         *
+         * @private
+         * @param {Object} network - Network data object
+         * @returns {boolean} True if any properties were updated
+         */
+        _updateNetworkProperties(network) {
+            const updates = [
+                { source: 'rssi', target: 'rssi' },
+                { source: 'signal', target: 'wifiSignal' },
+                { source: 'ssid', target: 'wifiSsid' },
+                { source: 'channel', target: 'wifiChannel' },
+                { source: 'snr', target: 'wifiSnr' },
+                { source: 'linkStatus', target: 'wifiLinkStatus' },
+                { source: 'gatewayMac', target: 'wifiGatewayMac' },
+                { source: 'wifiDisconnectCount', target: 'wifiDisconnectCount' }
+            ];
+
+            let hasUpdates = false;
+            for (const { source, target } of updates) {
+                if (network[source] !== undefined && network[source] !== device[target]) {
+                    hasUpdates = true;
+                    device[target] = network[source];
+                }
+            }
+
+            // Network innerIp overrides firmware innerIp when present
+            if (network.innerIp && network.innerIp !== device.lanIp) {
+                hasUpdates = true;
+                device.lanIp = network.innerIp;
+            }
+
+            // Store wifiDisconnectDetail object if present
+            if (network.wifiDisconnectDetail && network.wifiDisconnectDetail !== device.wifiDisconnectDetail) {
+                hasUpdates = true;
+                device.wifiDisconnectDetail = network.wifiDisconnectDetail;
+            }
+
+            return hasUpdates;
         },
 
         /**
@@ -120,9 +274,7 @@ function createSystemFeature(device) {
             const response = await device.publishMessage('GET', 'Appliance.System.Hardware', {});
             if (response && response.hardware) {
                 device._systemHardware = response.hardware;
-                if (response.hardware.macAddress) {
-                    device.updateMacAddress(response.hardware.macAddress);
-                }
+                this._updateHardwareProperties(response.hardware);
             }
             return response;
         },
@@ -136,15 +288,7 @@ function createSystemFeature(device) {
             const response = await device.publishMessage('GET', 'Appliance.System.Firmware', {});
             if (response && response.firmware) {
                 device._systemFirmware = response.firmware;
-                if (response.firmware.innerIp) {
-                    device.lanIp = response.firmware.innerIp;
-                }
-                if (response.firmware.server) {
-                    device.mqttHost = response.firmware.server;
-                }
-                if (response.firmware.port) {
-                    device.mqttPort = response.firmware.port;
-                }
+                this._updateFirmwareProperties(response.firmware);
             }
             return response;
         },

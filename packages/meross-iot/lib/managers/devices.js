@@ -284,8 +284,7 @@ class ManagerDevices {
             devicesToInitialize = filteredDevices;
         }
 
-        // Group devices by domain to establish one MQTT connection per domain,
-        // reducing connection overhead when multiple devices share the same domain
+        // Group devices by domain to establish one MQTT connection per domain
         const devicesByDomain = new Map();
         devicesToInitialize.forEach(dev => {
             const domain = dev.domain || this.manager.mqttDomain;
@@ -308,8 +307,7 @@ class ManagerDevices {
         const devicePromises = devicesToInitialize.map(dev => this._enrollDevice(dev));
         const devices = (await Promise.all(devicePromises)).filter(d => d !== null);
 
-        // Enroll subdevices after hubs are enrolled since subdevices require
-        // their parent hub's abilities to determine their own capabilities
+        // Enroll subdevices after hubs; subdevices require parent hub abilities
         for (const device of devices) {
             await this._enrollSubdevicesIfHub(device);
         }
@@ -529,7 +527,7 @@ class ManagerDevices {
 
         const { MerossHubDevice } = require('../controller/hub-device');
 
-        // Capture UUID and domain before any modifications that might affect them
+        // Capture UUID and domain before device modifications
         const deviceUuid = device.uuid;
         const deviceDomain = device.domain || this.manager.mqttDomain;
 
@@ -547,7 +545,7 @@ class ManagerDevices {
             this.manager._requestQueue.clearQueue(deviceUuid);
         }
 
-        // Subdevices share hub's UUID, so they shouldn't be removed from MQTT device list
+        // Subdevices share hub's UUID and MQTT connection
         const isSubdevice = !!(device.subdeviceId || device._subdeviceId) && !!(device.hub || device._hub);
 
         if (isSubdevice) {
@@ -632,7 +630,6 @@ class ManagerDevices {
      * @private
      */
     _cleanupMqttConnection(deviceUuid, deviceDomain, isSubdevice) {
-        // Only remove from list if it's a base device; subdevices share hub's UUID and MQTT connection
         if (!isSubdevice && deviceDomain && deviceUuid && this.manager.mqttConnections[deviceDomain]) {
             const deviceList = this.manager.mqttConnections[deviceDomain].deviceList;
             if (deviceList && Array.isArray(deviceList)) {
@@ -641,7 +638,6 @@ class ManagerDevices {
                     deviceList.splice(index, 1);
                 }
             }
-            // Connection remains open in case devices are added back soon; cleaned up by disconnectAll() if needed
         }
     }
 
@@ -669,6 +665,8 @@ class ManagerDevices {
      *
      * Forwards device events to manager and initializes MQTT connection.
      * Device abilities are already known at this point (queried before device creation).
+     * The deviceInitialized event is emitted by the device itself after it receives
+     * System.All data via MQTT and capabilities are built.
      * The device should already be registered in the device registry before calling this method.
      *
      * @param {MerossDevice|MerossHubDevice} deviceObj - Device instance to connect
@@ -690,10 +688,13 @@ class ManagerDevices {
         deviceObj.on('pushNotificationReceived', (notification) => {
             this.manager.emit('pushNotification', deviceId, notification, deviceObj);
         });
+        deviceObj.on('deviceInitialized', (deviceId, device) => {
+            this.manager.emit('deviceInitialized', deviceId, device);
+        });
 
         if (this.manager._subscriptionManager) {
             deviceObj.on('stateChanged', () => {
-                // Subscription manager handles stateChanged events separately
+                // Subscription manager handles stateChanged events
             });
         }
 
@@ -701,7 +702,6 @@ class ManagerDevices {
             this.manager.emit('connected', deviceId);
 
             // Delay hub state refresh to ensure MQTT connection is fully established
-            // before querying devices, preventing race conditions during connection setup
             if (typeof deviceObj.getSubdevices === 'function') {
                 const subdevices = deviceObj.getSubdevices();
                 if (subdevices.length > 0) {
@@ -718,8 +718,6 @@ class ManagerDevices {
                 }
             }
         });
-
-        this.manager.emit('deviceInitialized', deviceId, deviceObj);
 
         await this.manager.mqtt.init(dev);
 
@@ -741,8 +739,7 @@ class ManagerDevices {
      */
     async _enrollDevice(deviceInfo) {
         try {
-            // Extended timeout accounts for devices that respond slowly during discovery
-            // to avoid false negatives when devices are temporarily slow
+            // Extended timeout accounts for slow-responding devices during discovery
             let abilities = null;
             try {
                 abilities = await this._queryDeviceAbilities(
@@ -759,13 +756,11 @@ class ManagerDevices {
             }
 
             // Device type strings are unreliable; abilities provide consistent hub detection
-            // since hub devices always expose the hub-specific ability namespace
             const { HUB_DISCRIMINATING_ABILITY } = require('../device-factory');
             const isHub = abilities && typeof abilities === 'object' &&
                          HUB_DISCRIMINATING_ABILITY in abilities;
 
-            // Fetch subdevice metadata for hubs but defer creation until after hub enrollment
-            // to ensure the hub is fully initialized before subdevices are created
+            // Fetch subdevice metadata for hubs; defer creation until after hub enrollment
             let subDeviceList = null;
             if (isHub) {
                 try {
@@ -814,8 +809,7 @@ class ManagerDevices {
                 ? subdeviceInfo
                 : HttpSubdeviceInfo.fromDict(subdeviceInfo);
 
-            // Build subdevice using hub's abilities since subdevices don't have their own
-            // ability set and must derive capabilities from the hub
+            // Build subdevice using hub's abilities; subdevices derive capabilities from hub
             const subdevice = buildSubdevice(
                 httpSubdeviceInfo,
                 hubDevice.uuid,

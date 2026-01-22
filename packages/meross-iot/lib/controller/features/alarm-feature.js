@@ -1,16 +1,17 @@
 'use strict';
 
-const { normalizeChannel } = require('../../utilities/options');
+const { normalizeChannel, validateRequired } = require('../../utilities/options');
 
 const MAX_ALARM_EVENTS_MEMORY = 10;
 
 /**
  * Creates an alarm feature object for a device.
  *
- * Handles alarm status queries and maintains a buffer of recent alarm events.
+ * Handles alarm status queries, alarm control (on/off), alarm configuration (volume/tone),
+ * and maintains a buffer of recent alarm events.
  *
  * @param {Object} device - The device instance
- * @returns {Object} Alarm feature object with get() and getLastEvents() methods
+ * @returns {Object} Alarm feature object with set(), setConfig(), get(), and getLastEvents() methods
  */
 function createAlarmFeature(device) {
     /**
@@ -25,6 +26,90 @@ function createAlarmFeature(device) {
     }
 
     return {
+        /**
+         * Sets the alarm state (on/off) for a channel.
+         *
+         * Controls alarm devices like MSH450 Internal Siren using the security field.
+         * Value 1 = Execute (ON), Value 2 = Normal (OFF).
+         *
+         * @param {Object} options - Alarm control options
+         * @param {number} [options.channel=0] - Channel to control (default: 0)
+         * @param {boolean} options.on - True to turn alarm on, false to turn off
+         * @param {number} [options.duration] - Optional duration in seconds
+         * @returns {Promise<Object>} Promise that resolves with the response
+         * @throws {MerossErrorValidation} If required options are missing
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
+         */
+        async set(options = {}) {
+            validateRequired(options, ['on']);
+            const channel = normalizeChannel(options);
+            const value = options.on ? 1 : 2;
+
+            const securityEvent = {
+                value
+            };
+
+            if (options.duration !== undefined) {
+                securityEvent.time = options.duration;
+            }
+
+            const payload = {
+                alarm: [{
+                    channel,
+                    event: {
+                        security: securityEvent
+                    }
+                }]
+            };
+
+            const response = await device.publishMessage('SET', 'Appliance.Control.Alarm', payload);
+
+            if (response && response.alarm) {
+                updateAlarmEvents(device, response.alarm, 'response');
+            }
+
+            return response;
+        },
+
+        /**
+         * Sets alarm configuration (volume, tone, enable) for a channel.
+         *
+         * Requires Appliance.Config.Alarm capability. Used for configuring alarm devices
+         * like MSH450 Internal Siren with volume and ringtone settings.
+         *
+         * @param {Object} options - Alarm configuration options
+         * @param {number} [options.channel=0] - Channel to configure (default: 0)
+         * @param {number} options.enable - Enable state (typically 1 for enabled)
+         * @param {number} options.volume - Volume level (0-100)
+         * @param {number} options.song - Ringtone/song selection (typically 1-7)
+         * @returns {Promise<Object>} Promise that resolves with the response
+         * @throws {MerossErrorValidation} If required options are missing
+         * @throws {MerossErrorUnknownDeviceType} If device does not support Appliance.Config.Alarm
+         * @throws {MerossErrorUnconnected} If device is not connected
+         * @throws {MerossErrorCommandTimeout} If command times out
+         */
+        async setConfig(options = {}) {
+            if (!device.abilities || !device.abilities['Appliance.Config.Alarm']) {
+                const { MerossErrorUnknownDeviceType } = require('../../model/exception');
+                throw new MerossErrorUnknownDeviceType('Device does not support Appliance.Config.Alarm', device.deviceType);
+            }
+
+            validateRequired(options, ['enable', 'volume', 'song']);
+            const channel = normalizeChannel(options);
+
+            const payload = {
+                config: [{
+                    channel,
+                    enable: options.enable,
+                    volume: options.volume,
+                    song: options.song
+                }]
+            };
+
+            return await device.publishMessage('SET', 'Appliance.Config.Alarm', payload);
+        },
+
         /**
          * Gets the current alarm status from the device.
          *
@@ -51,14 +136,19 @@ function createAlarmFeature(device) {
 }
 
 /**
- * Updates the alarm events buffer from push notification data.
+ * Updates the alarm events buffer from push notification or response data.
+ *
+ * Maintains a rolling buffer of recent alarm events for querying without
+ * requiring device communication.
  *
  * @param {Object} device - The device instance
  * @param {Object|Array} alarmData - Alarm data (single object or array)
- * @param {string} [source='push'] - Source of the update
+ * @param {string} [source='push'] - Source of the update ('push', 'response', etc.)
  */
 function updateAlarmEvents(device, alarmData, source = 'push') {
-    if (!alarmData) {return;}
+    if (!alarmData) {
+        return;
+    }
 
     if (!device._lastAlarmEvents) {
         device._lastAlarmEvents = [];
@@ -87,12 +177,16 @@ function updateAlarmEvents(device, alarmData, source = 'push') {
 /**
  * Gets alarm capability information for a device.
  *
+ * Determines which channels support alarm functionality based on device abilities.
+ *
  * @param {Object} device - The device instance
  * @param {Array<number>} channelIds - Array of channel IDs
  * @returns {Object|null} Alarm capability object or null if not supported
  */
 function getAlarmCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Alarm']) {return null;}
+    if (!device.abilities || !device.abilities['Appliance.Control.Alarm']) {
+        return null;
+    }
 
     return {
         supported: true,
