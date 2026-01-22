@@ -178,7 +178,7 @@ async function collectDeleteTimerXParams(methodMetadata, device) {
             console.log(chalk.dim('Fetching existing timers...'));
             const response = await device.timer.get({ channel });
             const items = response && response.timerx && Array.isArray(response.timerx) ? response.timerx : [];
-            
+
             if (items.length > 0) {
                 console.log(chalk.cyan(`\nExisting Timers (Channel ${channel}):`));
                 items.forEach((item, index) => {

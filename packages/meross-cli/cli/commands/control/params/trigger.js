@@ -155,7 +155,7 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
             console.log(chalk.dim('Fetching existing triggers...'));
             const response = await device.trigger.get({ channel });
             const items = response && response.triggerx && Array.isArray(response.triggerx) ? response.triggerx : [];
-            
+
             if (items.length > 0) {
                 console.log(chalk.cyan(`\nExisting Triggers (Channel ${channel}):`));
                 items.forEach((item, index) => {

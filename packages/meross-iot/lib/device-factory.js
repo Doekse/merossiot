@@ -210,30 +210,30 @@ function getCachedDeviceClass(deviceType, hardwareVersion, firmwareVersion) {
 function _buildDynamicClass(typeKey, abilities, BaseClass) {
     const features = new Set();
 
-        features.add(require('./controller/features/system-feature'));
+    features.add(require('./controller/features/system-feature'));
 
-        if (abilities && typeof abilities === 'object') {
-            const hasXVersion = new Set();
-            for (const namespace of Object.keys(abilities)) {
-                if (namespace.endsWith('X')) {
-                    const baseNamespace = namespace.slice(0, -1);
-                    hasXVersion.add(baseNamespace);
-                }
+    if (abilities && typeof abilities === 'object') {
+        const hasXVersion = new Set();
+        for (const namespace of Object.keys(abilities)) {
+            if (namespace.endsWith('X')) {
+                const baseNamespace = namespace.slice(0, -1);
+                hasXVersion.add(baseNamespace);
             }
+        }
 
-            for (const [namespace] of Object.entries(abilities)) {
-                const feature = ABILITY_MATRIX[namespace];
-                if (feature) {
-                    if (namespace.endsWith('X')) {
+        for (const [namespace] of Object.entries(abilities)) {
+            const feature = ABILITY_MATRIX[namespace];
+            if (feature) {
+                if (namespace.endsWith('X')) {
+                    features.add(feature);
+                } else {
+                    if (!hasXVersion.has(namespace)) {
                         features.add(feature);
-                    } else {
-                        if (!hasXVersion.has(namespace)) {
-                            features.add(feature);
-                        }
                     }
                 }
             }
         }
+    }
 
     class DynamicDevice extends BaseClass {}
 

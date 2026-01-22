@@ -78,7 +78,7 @@ class Heartbeat {
         if (wasOffline) {
             this._pollingDelay = Math.floor(this.heartbeatInterval / 2);
         }
-        
+
         this._evaluateStatus();
     }
 
@@ -160,8 +160,8 @@ class Heartbeat {
             return;
         }
 
-        const delay = this.device.onlineStatus === OnlineStatus.OFFLINE 
-            ? this._pollingDelay 
+        const delay = this.device.onlineStatus === OnlineStatus.OFFLINE
+            ? this._pollingDelay
             : this.heartbeatInterval;
 
         this._heartbeatTimer = setTimeout(() => {

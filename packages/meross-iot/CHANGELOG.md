@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-01-22
+
+### Added
+- Signal strength property (`device.signalStrength`) from Appliance.System.Runtime
+  - Provides signal strength percentage (1-100) on production firmware
+  - Automatically updated when runtime data is fetched
+  - Available in TypeScript definitions
+- Runtime polling support in ManagerSubscription
+  - Added `runtimeInterval` option (default: 60000ms) for periodic runtime data polling
+  - Runtime data (signal strength, network type, IoT status) requires polling as it doesn't support push notifications
+  - Respects smart caching configuration to reduce network traffic
+  - Polling automatically skips when device is offline
+
 ## [0.8.0] - 2026-01-22
 
 ### Added

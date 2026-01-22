@@ -204,6 +204,7 @@ class MerossDevice extends EventEmitter {
         this.mqttPort = port;
         this.rssi = null;
         this.wifiSignal = null;
+        this.signalStrength = null;
         this.wifiSsid = null;
         this.wifiChannel = null;
         this.wifiSnr = null;
@@ -905,6 +906,7 @@ class MerossDevice extends EventEmitter {
                     firmwareVersion: this.firmwareVersion,
                     rssi: this.rssi,
                     wifiSignal: this.wifiSignal,
+                    signalStrength: this.signalStrength,
                     wifiSsid: this.wifiSsid,
                     wifiChannel: this.wifiChannel,
                     wifiSnr: this.wifiSnr,

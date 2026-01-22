@@ -159,7 +159,7 @@ async function collectSetLightColorParams(methodMetadata, device) {
     let supportsRgb = false;
     let supportsTemperature = false;
     let supportsLuminance = false;
-    
+
     if (device.light && device.abilities && device.abilities['Appliance.Control.Light']) {
         const lightAbility = device.abilities['Appliance.Control.Light'];
         if (lightAbility && lightAbility.capacity) {

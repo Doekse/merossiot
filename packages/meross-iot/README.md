@@ -177,6 +177,22 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.9.0] - 2026-01-22
+
+#### Added
+- Signal strength property (`device.signalStrength`) from Appliance.System.Runtime
+  - Provides signal strength percentage (1-100) on production firmware
+  - Automatically updated when runtime data is fetched
+  - Available in TypeScript definitions
+- Runtime polling support in ManagerSubscription
+  - Added `runtimeInterval` option (default: 60000ms) for periodic runtime data polling
+  - Runtime data (signal strength, network type, IoT status) requires polling as it doesn't support push notifications
+  - Respects smart caching configuration to reduce network traffic
+  - Polling automatically skips when device is offline
+
+<details>
+<summary>Older</summary>
+
 ### [0.8.0] - 2026-01-22
 
 #### Added
@@ -211,9 +227,6 @@ Please create an issue on GitHub and include:
 - DND capability check now uses `Appliance.System.DNDMode` namespace (was incorrectly using `Appliance.Control.DNDMode`)
 - Prevent redundant ability updates when abilities haven't changed
 - Device initialization event now properly emitted by device itself after System.All is received
-
-<details>
-<summary>Older</summary>
 
 ### [0.7.2] - 2026-01-21
 

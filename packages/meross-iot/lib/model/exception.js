@@ -45,7 +45,7 @@ class MerossError extends Error {
         }
         if (this.isOperational !== undefined) {
             result.isOperational = this.isOperational;
-            }
+        }
         return result;
     }
 }

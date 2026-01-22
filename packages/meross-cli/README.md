@@ -77,6 +77,14 @@ The CLI supports all devices that are supported by the underlying `meross-iot` l
 
 ## Changelog
 
+### [0.6.1] - 2026-01-22
+
+#### Changed
+- Code formatting improvements (removed trailing whitespace)
+
+<details>
+<summary>Older</summary>
+
 ### [0.6.0] - 2026-01-20
 
 #### Added
@@ -84,9 +92,6 @@ The CLI supports all devices that are supported by the underlying `meross-iot` l
   - Displays user-friendly device capabilities using the new `device.capabilities` map
   - Shows channel information and supported features in an organized format
   - Verbose mode support for displaying raw abilities (namespaces) when `MEROSS_VERBOSE=true` is set
-
-<details>
-<summary>Older</summary>
 
 ### [0.5.0] - 2026-01-20
 

@@ -31,6 +31,12 @@ function createRuntimeFeature(device) {
             const result = await device.publishMessage('GET', 'Appliance.System.Runtime', {});
             const data = result && result.runtime ? result.runtime : {};
             device._runtimeInfo = data;
+
+            // Update signalStrength property from runtime data (production firmware)
+            if (data.signal !== undefined) {
+                device.signalStrength = data.signal;
+            }
+
             return data;
         },
 

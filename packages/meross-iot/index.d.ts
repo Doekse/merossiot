@@ -2854,6 +2854,8 @@ declare module 'meross-iot' {
         readonly lanIp: string | null
         readonly mqttHost: string | null
         readonly mqttPort: number | null
+        /** Signal strength percentage (1-100) from Appliance.System.Runtime. Available on production firmware. */
+        readonly signalStrength: number | null
         /** Device capabilities object containing supported features and namespaces */
         readonly abilities: Record<string, any> | null
         /** Normalized device capabilities map for easy feature discovery without namespace knowledge */
