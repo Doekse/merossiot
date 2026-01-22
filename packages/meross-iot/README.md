@@ -26,7 +26,7 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.7.1
+npm install meross-iot@0.9.1
 ```
 
 ## Usage & Documentation
@@ -177,6 +177,14 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+### [0.9.1] - 2026-01-22
+
+#### Fixed
+- Improve heartbeat offline detection by using response silence (≥ heartbeat interval) instead of treating individual command errors/timeouts as offline signals
+
+<details>
+<summary>Older</summary>
+
 ### [0.9.0] - 2026-01-22
 
 #### Added
@@ -189,9 +197,6 @@ Please create an issue on GitHub and include:
   - Runtime data (signal strength, network type, IoT status) requires polling as it doesn't support push notifications
   - Respects smart caching configuration to reduce network traffic
   - Polling automatically skips when device is offline
-
-<details>
-<summary>Older</summary>
 
 ### [0.8.0] - 2026-01-22
 

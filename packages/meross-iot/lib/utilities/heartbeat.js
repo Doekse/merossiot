@@ -3,11 +3,12 @@
 const { OnlineStatus } = require('../model/enums');
 
 /**
- * Manages device online/offline detection using multiple strategies.
+ * Manages device online/offline detection using time-based silence detection.
  *
- * Provides comprehensive connectivity monitoring through periodic heartbeat checks,
- * response tracking, failure counting, and System.All monitoring. Automatically
- * updates device online status when connectivity issues are detected.
+ * Tracks the last response time from the device and marks it offline when no
+ * response is received for the configured timeout period. Uses time-based detection
+ * rather than failure counting to avoid false offline states from transient network
+ * issues or temporary HTTP unavailability when MQTT is still functional.
  *
  * @class Heartbeat
  */
@@ -17,21 +18,18 @@ class Heartbeat {
      *
      * @param {Object} device - MerossDevice instance to monitor
      * @param {Object} [options={}] - Configuration options
-     * @param {number} [options.heartbeatInterval=120000] - Heartbeat interval in milliseconds (120 seconds)
-     * @param {number} [options.consecutiveFailureThreshold=1] - Number of consecutive failures before marking offline
+     * @param {number} [options.heartbeatInterval=295000] - Heartbeat interval in milliseconds (295 seconds)
      * @param {boolean} [options.enabled=true] - Whether heartbeat monitoring is enabled
      */
     constructor(device, options = {}) {
         this.device = device;
-        this.heartbeatInterval = options.heartbeatInterval || 120000;
-        this.consecutiveFailureThreshold = options.consecutiveFailureThreshold || 1;
+        this.heartbeatInterval = options.heartbeatInterval || 295000;
         this.enabled = options.enabled !== false;
 
         this._lastResponseTime = null;
-        this._consecutiveFailures = 0;
         this._heartbeatTimer = null;
         this._isRunning = false;
-        // Exponential backoff: starts at base delay, doubles when offline, capped at heartbeat interval
+        // Start with shorter delay to quickly detect when device comes back online
         this._pollingDelay = Math.floor(this.heartbeatInterval / 2);
     }
 
@@ -53,7 +51,7 @@ class Heartbeat {
     /**
      * Stops heartbeat monitoring and cleans up timers.
      *
-     * Should be called when device disconnects.
+     * Prevents memory leaks by clearing scheduled timers when device disconnects.
      */
     stop() {
         this._isRunning = false;
@@ -66,14 +64,13 @@ class Heartbeat {
     /**
      * Records a successful response from the device.
      *
-     * Updates last response time and resets consecutive failure counter.
-     * Resets polling delay to base interval when device comes back online.
-     * Called whenever any successful response is received.
+     * Updates the last response timestamp to reset the silence timer. Resets polling
+     * delay when device transitions from offline to online to quickly detect if it
+     * goes offline again.
      */
     recordResponse() {
         const wasOffline = this.device.onlineStatus === OnlineStatus.OFFLINE;
         this._lastResponseTime = Date.now();
-        this._consecutiveFailures = 0;
 
         if (wasOffline) {
             this._pollingDelay = Math.floor(this.heartbeatInterval / 2);
@@ -83,21 +80,10 @@ class Heartbeat {
     }
 
     /**
-     * Records a command failure or timeout.
-     *
-     * Increments consecutive failure counter and evaluates if device should
-     * be marked offline. Called when commands fail or timeout.
-     */
-    recordFailure() {
-        this._consecutiveFailures++;
-        this._evaluateStatus();
-    }
-
-    /**
      * Records a System.All response.
      *
-     * System.All responses indicate device is active and responding.
-     * Updates last response time and resets failure counter.
+     * System.All responses are comprehensive state updates that confirm device
+     * connectivity, so they reset the silence timer.
      */
     recordSystemAll() {
         this.recordResponse();
@@ -106,9 +92,8 @@ class Heartbeat {
     /**
      * Evaluates device status and updates if necessary.
      *
-     * Checks multiple conditions to determine if device should be marked offline:
-     * - 1 consecutive failure
-     * - No response for > 2x heartbeat interval (240s) when device was online
+     * Only marks devices offline that are currently online to avoid redundant
+     * status updates and ensure we don't mark already-offline devices offline again.
      *
      * @private
      */
@@ -126,20 +111,18 @@ class Heartbeat {
     }
 
     /**
-     * Determines if device should be marked offline based on tracking data.
+     * Determines if device should be marked offline based on silence timeout.
+     *
+     * Requires device to be currently online to avoid marking already-offline devices.
+     * Requires at least one previous response to have a baseline for silence detection.
      *
      * @private
      * @returns {boolean} True if device should be marked offline
      */
     _shouldBeOffline() {
-        if (this._consecutiveFailures >= this.consecutiveFailureThreshold) {
-            return true;
-        }
-
         if (this._lastResponseTime && this.device.onlineStatus === OnlineStatus.ONLINE) {
             const timeSinceLastResponse = Date.now() - this._lastResponseTime;
-            const maxSilenceInterval = this.heartbeatInterval * 2;
-            if (timeSinceLastResponse > maxSilenceInterval) {
+            if (timeSinceLastResponse >= this.heartbeatInterval) {
                 return true;
             }
         }
@@ -150,8 +133,9 @@ class Heartbeat {
     /**
      * Schedules the next heartbeat check.
      *
-     * Uses exponential backoff delay when device is offline, otherwise uses
-     * heartbeat interval. Checks if heartbeat is needed (conditional triggering).
+     * Uses shorter polling delay when offline to quickly detect when device comes
+     * back online. Uses standard heartbeat interval when online to avoid unnecessary
+     * network traffic when device is actively responding.
      *
      * @private
      */
@@ -172,10 +156,9 @@ class Heartbeat {
     /**
      * Performs a heartbeat check by querying System.Online.
      *
-     * Only performs heartbeat if device has been silent for >= heartbeat interval
-     * (conditional triggering, like meross_lan). On success, the response will be
-     * handled by recordResponse() via the normal message handling flow. On failure,
-     * records a failure and applies exponential backoff when offline.
+     * Skips heartbeat if device responded recently to avoid redundant requests when
+     * device is actively communicating. On failure, increases polling delay when
+     * already offline to reduce network load while waiting for device recovery.
      *
      * @private
      */
@@ -184,7 +167,6 @@ class Heartbeat {
             return;
         }
 
-        // Only perform heartbeat if no response received for >= heartbeat interval
         if (this._lastResponseTime) {
             const timeSinceLastResponse = Date.now() - this._lastResponseTime;
             if (timeSinceLastResponse < this.heartbeatInterval) {
@@ -196,8 +178,8 @@ class Heartbeat {
         try {
             await this.device.system.getOnlineStatus();
         } catch (error) {
-            this.recordFailure();
-
+            // Single heartbeat failure doesn't mark device offline; only extended
+            // silence triggers offline detection to handle transient network issues
             if (this.device.onlineStatus === OnlineStatus.OFFLINE) {
                 this._pollingDelay = Math.min(
                     this._pollingDelay * 2,

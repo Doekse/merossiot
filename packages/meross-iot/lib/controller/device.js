@@ -1068,9 +1068,6 @@ class MerossDevice extends EventEmitter {
 
         if (message.header.method === 'ERROR') {
             const errorPayload = message.payload || {};
-            if (this._heartbeat) {
-                this._heartbeat.recordFailure();
-            }
             pending.reject(new MerossErrorCommand(
                 `Device returned error: ${JSON.stringify(errorPayload)}`,
                 errorPayload,
@@ -1320,9 +1317,6 @@ class MerossDevice extends EventEmitter {
                                 namespace,
                                 messageId
                             };
-                            if (this._heartbeat) {
-                                this._heartbeat.recordFailure();
-                            }
                             this.waitingMessageIds[messageId].reject(
                                 new MerossErrorCommandTimeout(
                                     `Command timed out after ${timeoutDuration}ms`,
@@ -1337,9 +1331,6 @@ class MerossDevice extends EventEmitter {
                 };
 
             } catch (error) {
-                if (this._heartbeat) {
-                    this._heartbeat.recordFailure();
-                }
                 reject(error);
             }
         });
