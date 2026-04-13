@@ -13,7 +13,7 @@ const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exce
  * @param {Object} device - The device instance
  * @returns {Object} Trigger feature object with set(), get(), and other methods
  */
-function createTriggerFeature(device) {
+function createTriggerAbility(device) {
     return {
         /**
          * Gets trigger information for a specific channel.
@@ -232,6 +232,7 @@ function createTriggerFeature(device) {
  * @param {string} [source='response'] - Source of the update
  */
 function updateTriggerXState(device, triggerxData, source = 'response') {
+    if (!device._triggerxStateByChannel) {return;}
     if (!triggerxData) {return;}
 
     const triggerArray = Array.isArray(triggerxData) ? triggerxData : [triggerxData];
@@ -292,7 +293,7 @@ function getTriggerCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createTriggerFeature;
+module.exports = createTriggerAbility;
 module.exports._updateTriggerXState = updateTriggerXState;
 module.exports.getCapabilities = getTriggerCapabilities;
 

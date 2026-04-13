@@ -10,7 +10,7 @@ const { normalizeChannel } = require('../../utilities/options');
  * @param {Object} device - The device instance
  * @returns {Object} Screen feature object with set() and get() methods
  */
-function createScreenFeature(device) {
+function createScreenAbility(device) {
     return {
         /**
          * Gets the screen brightness configuration from the device.
@@ -81,5 +81,5 @@ function getScreenCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createScreenFeature;
+module.exports = createScreenAbility;
 module.exports.getCapabilities = getScreenCapabilities;

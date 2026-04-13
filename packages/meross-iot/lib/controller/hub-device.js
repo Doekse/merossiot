@@ -1,8 +1,8 @@
 'use strict';
 
 const { MerossDevice } = require('./device');
-const createHubFeature = require('./features/hub-feature');
-const { handlePushNotification } = require('./features/hub-feature');
+const createHubAbility = require('./abilities/hub-ability');
+const { handlePushNotification } = require('./abilities/hub-ability');
 
 /**
  * Hub device class that manages subdevices connected through a Meross hub.
@@ -46,7 +46,7 @@ class MerossHubDevice extends MerossDevice {
         this.subDeviceList = subDeviceList || [];
 
         // Initialize hub feature
-        this.hub = createHubFeature(this);
+        this.hub = createHubAbility(this);
 
         // Assign handlePushNotification to instance so device.js can call it
         this.handlePushNotification = (namespace, data) => {

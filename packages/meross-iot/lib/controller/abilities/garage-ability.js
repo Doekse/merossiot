@@ -12,7 +12,7 @@ const { MerossErrorValidation } = require('../../model/exception');
  * @param {Object} device - The device instance
  * @returns {Object} Garage door feature object with set(), get(), and convenience methods
  */
-function createGarageFeature(device) {
+function createGarageAbility(device) {
     return {
         /**
          * Sets the garage door state (open/close).
@@ -215,6 +215,7 @@ function createGarageFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateGarageDoorState(device, stateData, source = 'response') {
+    if (!device._garageDoorStateByChannel) {return;}
     if (!stateData) {return;}
 
     const stateArray = Array.isArray(stateData) ? stateData : [stateData];
@@ -293,6 +294,6 @@ function getGarageCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createGarageFeature;
+module.exports = createGarageAbility;
 module.exports._updateGarageDoorState = updateGarageDoorState;
 module.exports.getCapabilities = getGarageCapabilities;

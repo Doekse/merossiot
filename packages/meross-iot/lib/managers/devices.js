@@ -773,7 +773,7 @@ class ManagerDevices {
             const { buildDevice } = require('../device-factory');
             const device = buildDevice(deviceInfo, abilities, this.manager, subDeviceList);
 
-            device.updateAbilities(abilities);
+            device._updateAbilities(abilities);
 
             this.manager._deviceRegistry.registerDevice(device);
             await this.connect(device, deviceInfo);
@@ -823,7 +823,7 @@ class ManagerDevices {
             if (subdevice && subdevice.type) {
                 const subdeviceAbilities = getSubdeviceAbilities(subdevice.type, hubDevice.abilities);
                 if (Object.keys(subdeviceAbilities).length > 0) {
-                    subdevice.updateAbilities(subdeviceAbilities);
+                    subdevice._updateAbilities(subdeviceAbilities);
                 }
             }
 

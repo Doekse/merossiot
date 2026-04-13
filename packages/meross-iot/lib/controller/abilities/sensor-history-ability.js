@@ -10,7 +10,7 @@ const { normalizeChannel, validateRequired } = require('../../utilities/options'
  * @param {Object} device - The device instance
  * @returns {Object} Sensor history feature object with get() and delete() methods
  */
-function createSensorHistoryFeature(device) {
+function createSensorHistoryAbility(device) {
     return {
         /**
          * Gets sensor history data from the device.
@@ -78,5 +78,5 @@ function getSensorHistoryCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createSensorHistoryFeature;
+module.exports = createSensorHistoryAbility;
 module.exports.getCapabilities = getSensorHistoryCapabilities;

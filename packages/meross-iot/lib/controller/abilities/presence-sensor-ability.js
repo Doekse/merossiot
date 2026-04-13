@@ -12,7 +12,7 @@ const { buildStateChanges } = require('../../utilities/state-changes');
  * @param {Object} device - The device instance
  * @returns {Object} Presence sensor feature object with get() and convenience methods
  */
-function createPresenceSensorFeature(device) {
+function createPresenceSensorAbility(device) {
     return {
         /**
          * Gets the current presence sensor state for a channel.
@@ -211,6 +211,7 @@ function createPresenceSensorFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updatePresenceState(device, latestData, source = 'response') {
+    if (!device._presenceSensorStateByChannel) {return;}
     if (!latestData) {return;}
 
     const latestArray = Array.isArray(latestData) ? latestData : [latestData];
@@ -303,6 +304,6 @@ function getPresenceSensorCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createPresenceSensorFeature;
+module.exports = createPresenceSensorAbility;
 module.exports._updatePresenceState = updatePresenceState;
 module.exports.getCapabilities = getPresenceSensorCapabilities;

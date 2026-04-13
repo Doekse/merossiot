@@ -58,7 +58,7 @@ function handlePushNotification(device, namespace, data) {
  * @param {Object} device - The device instance
  * @returns {Object} Hub feature object with various hub methods
  */
-function createHubFeature(device) {
+function createHubAbility(device) {
     /**
      * Collects subdevice IDs, separating sensors from MTS100 thermostats.
      *
@@ -714,7 +714,7 @@ function getSensorCapabilities(device, channelIds) {
     return null;
 }
 
-module.exports = createHubFeature;
+module.exports = createHubAbility;
 module.exports.handlePushNotification = handlePushNotification;
 module.exports.getCapabilities = getHubCapabilities;
 module.exports.getSensorCapabilities = getSensorCapabilities;

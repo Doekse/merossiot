@@ -10,7 +10,7 @@ const { normalizeChannel } = require('../../utilities/options');
  * @param {Object} device - The device instance
  * @returns {Object} Child lock feature object with set() and get() methods
  */
-function createChildLockFeature(device) {
+function createChildLockAbility(device) {
     return {
         /**
          * Gets the child lock status from the device.
@@ -77,5 +77,5 @@ function getChildLockCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createChildLockFeature;
+module.exports = createChildLockAbility;
 module.exports.getCapabilities = getChildLockCapabilities;

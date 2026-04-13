@@ -8,7 +8,7 @@
  * @param {Object} device - The device instance
  * @returns {Object} Runtime feature object with get() and refreshState() methods
  */
-function createRuntimeFeature(device) {
+function createRuntimeAbility(device) {
     /**
      * Initializes runtime info storage.
      *
@@ -83,5 +83,5 @@ function getRuntimeCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createRuntimeFeature;
+module.exports = createRuntimeAbility;
 module.exports.getCapabilities = getRuntimeCapabilities;

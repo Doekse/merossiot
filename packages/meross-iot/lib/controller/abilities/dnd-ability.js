@@ -10,7 +10,7 @@ const { DNDMode } = require('../../model/enums');
  * @param {Object} device - The device instance
  * @returns {Object} DND feature object with set() and get() methods
  */
-function createDNDFeature(device) {
+function createDNDAbility(device) {
     return {
         /**
          * Gets the do-not-disturb mode from the device.
@@ -92,5 +92,5 @@ function getDNDCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createDNDFeature;
+module.exports = createDNDAbility;
 module.exports.getCapabilities = getDNDCapabilities;

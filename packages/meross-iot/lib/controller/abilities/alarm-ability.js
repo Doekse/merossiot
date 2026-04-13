@@ -13,7 +13,7 @@ const MAX_ALARM_EVENTS_MEMORY = 10;
  * @param {Object} device - The device instance
  * @returns {Object} Alarm feature object with set(), setConfig(), get(), and getLastEvents() methods
  */
-function createAlarmFeature(device) {
+function createAlarmAbility(device) {
     /**
      * Initializes alarm events storage.
      *
@@ -194,6 +194,6 @@ function getAlarmCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createAlarmFeature;
+module.exports = createAlarmAbility;
 module.exports._updateAlarmEvents = updateAlarmEvents;
 module.exports.getCapabilities = getAlarmCapabilities;

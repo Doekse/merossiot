@@ -8,7 +8,7 @@
  * @param {Object} device - The device instance
  * @returns {Object} System feature object with various getter methods
  */
-function createSystemFeature(device) {
+function createSystemAbility(device) {
     return {
         /**
          * Gets all system data from the device.
@@ -37,7 +37,7 @@ function createSystemFeature(device) {
          */
         handleSystemAllUpdate(payload) {
             if (payload.ability) {
-                device.updateAbilities(payload.ability);
+                device._updateAbilities(payload.ability);
             }
 
             const system = payload.all?.system;
@@ -196,7 +196,7 @@ function createSystemFeature(device) {
         async getAbilities() {
             const response = await device.publishMessage('GET', 'Appliance.System.Ability', {});
             if (response && response.ability) {
-                device.updateAbilities(response.ability);
+                device._updateAbilities(response.ability);
             }
             return response;
         },
@@ -353,4 +353,4 @@ function createSystemFeature(device) {
     };
 }
 
-module.exports = createSystemFeature;
+module.exports = createSystemAbility;

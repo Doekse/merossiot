@@ -11,7 +11,7 @@ const { buildStateChanges } = require('../../utilities/state-changes');
  * @param {Object} device - The device instance
  * @returns {Object} Electricity feature object with get() and other methods
  */
-function createElectricityFeature(device) {
+function createElectricityAbility(device) {
     /**
      * Initializes electricity metrics cache.
      *
@@ -146,6 +146,6 @@ function getElectricityCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createElectricityFeature;
+module.exports = createElectricityAbility;
 module.exports._updateElectricityState = updateElectricityState;
 module.exports.getCapabilities = getElectricityCapabilities;

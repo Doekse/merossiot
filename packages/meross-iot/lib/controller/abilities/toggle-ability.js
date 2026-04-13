@@ -12,7 +12,7 @@ const { normalizeChannel, validateRequired } = require('../../utilities/options'
  * @param {Object} device - The device instance
  * @returns {Object} Toggle feature object with set(), get(), and isOn() methods
  */
-function createToggleFeature(device) {
+function createToggleAbility(device) {
     return {
         /**
          * Sets the toggle state (on/off) for a channel.
@@ -128,6 +128,7 @@ function createToggleFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateToggleState(device, toggleData, source = 'response') {
+    if (!device._toggleStateByChannel) {return;}
     if (!toggleData) {return;}
 
     const toggleArray = Array.isArray(toggleData) ? toggleData : [toggleData];
@@ -182,7 +183,7 @@ function getToggleCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createToggleFeature;
+module.exports = createToggleAbility;
 module.exports._updateToggleState = updateToggleState;
 module.exports.getCapabilities = getToggleCapabilities;
 

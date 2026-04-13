@@ -10,7 +10,7 @@ const { MerossErrorValidation } = require('../../model/exception');
  * @param {Object} device - The device instance
  * @returns {Object} Config feature object with get() and set() methods
  */
-function createConfigFeature(device) {
+function createConfigAbility(device) {
     return {
         /**
          * Gets the over-temperature protection configuration from the device.
@@ -72,5 +72,5 @@ function getConfigCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createConfigFeature;
+module.exports = createConfigAbility;
 module.exports.getCapabilities = getConfigCapabilities;

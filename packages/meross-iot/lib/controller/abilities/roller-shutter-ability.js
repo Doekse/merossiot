@@ -12,7 +12,7 @@ const { MerossErrorValidation } = require('../../model/exception');
  * @param {Object} device - The device instance
  * @returns {Object} Roller shutter feature object with set(), get(), and convenience methods
  */
-function createRollerShutterFeature(device) {
+function createRollerShutterAbility(device) {
     return {
         /**
          * Sets the roller shutter position.
@@ -183,6 +183,7 @@ function createRollerShutterFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateRollerShutterState(device, stateData, source = 'response') {
+    if (!device._rollerShutterStateByChannel) {return;}
     if (!stateData) {return;}
 
     const stateArray = Array.isArray(stateData) ? stateData : [stateData];
@@ -236,6 +237,7 @@ function updateRollerShutterState(device, stateData, source = 'response') {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateRollerShutterPosition(device, positionData, source = 'response') {
+    if (!device._rollerShutterPositionByChannel || !device._rollerShutterStateByChannel) {return;}
     if (!positionData) {return;}
 
     const positionArray = Array.isArray(positionData) ? positionData : [positionData];
@@ -326,7 +328,7 @@ function getRollerShutterCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createRollerShutterFeature;
+module.exports = createRollerShutterAbility;
 module.exports._updateRollerShutterState = updateRollerShutterState;
 module.exports._updateRollerShutterPosition = updateRollerShutterPosition;
 module.exports.getCapabilities = getRollerShutterCapabilities;

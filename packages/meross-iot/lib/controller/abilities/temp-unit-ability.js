@@ -10,7 +10,7 @@ const { normalizeChannel } = require('../../utilities/options');
  * @param {Object} device - The device instance
  * @returns {Object} Temperature unit feature object with set() and get() methods
  */
-function createTempUnitFeature(device) {
+function createTempUnitAbility(device) {
     return {
         /**
          * Gets the temperature unit configuration from the device.
@@ -70,5 +70,5 @@ function getTempUnitCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createTempUnitFeature;
+module.exports = createTempUnitAbility;
 module.exports.getCapabilities = getTempUnitCapabilities;

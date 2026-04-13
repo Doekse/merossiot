@@ -11,134 +11,134 @@
  */
 const ABILITY_MATRIX = {
     // Power plugs abilities
-    'Appliance.Control.ToggleX': require('./controller/features/toggle-feature'),
-    'Appliance.Control.Toggle': require('./controller/features/toggle-feature'),
-    'Appliance.Control.ConsumptionH': require('./controller/features/consumption-feature'),
-    'Appliance.Control.ConsumptionX': require('./controller/features/consumption-feature'),
-    'Appliance.Control.Consumption': require('./controller/features/consumption-feature'),
-    'Appliance.Control.Electricity': require('./controller/features/electricity-feature'),
-    'Appliance.Control.Alarm': require('./controller/features/alarm-feature'),
+    'Appliance.Control.ToggleX': require('./controller/abilities/toggle-ability'),
+    'Appliance.Control.Toggle': require('./controller/abilities/toggle-ability'),
+    'Appliance.Control.ConsumptionH': require('./controller/abilities/consumption-ability'),
+    'Appliance.Control.ConsumptionX': require('./controller/abilities/consumption-ability'),
+    'Appliance.Control.Consumption': require('./controller/abilities/consumption-ability'),
+    'Appliance.Control.Electricity': require('./controller/abilities/electricity-ability'),
+    'Appliance.Control.Alarm': require('./controller/abilities/alarm-ability'),
 
     // Timer and Trigger
-    'Appliance.Control.TimerX': require('./controller/features/timer-feature'),
-    'Appliance.Digest.TimerX': require('./controller/features/digest-timer-feature'),
-    'Appliance.Control.TriggerX': require('./controller/features/trigger-feature'),
-    'Appliance.Digest.TriggerX': require('./controller/features/digest-trigger-feature'),
+    'Appliance.Control.TimerX': require('./controller/abilities/timer-ability'),
+    'Appliance.Digest.TimerX': require('./controller/abilities/digest-timer-ability'),
+    'Appliance.Control.TriggerX': require('./controller/abilities/trigger-ability'),
+    'Appliance.Digest.TriggerX': require('./controller/abilities/digest-trigger-ability'),
 
     // Light abilities
-    'Appliance.Control.Light': require('./controller/features/light-feature'),
+    'Appliance.Control.Light': require('./controller/abilities/light-ability'),
 
     // Garage opener
-    'Appliance.GarageDoor.State': require('./controller/features/garage-feature'),
+    'Appliance.GarageDoor.State': require('./controller/abilities/garage-ability'),
 
     // Roller shutter
-    'Appliance.RollerShutter.State': require('./controller/features/roller-shutter-feature'),
+    'Appliance.RollerShutter.State': require('./controller/abilities/roller-shutter-ability'),
 
     // Spray/Humidifier
-    'Appliance.Control.Spray': require('./controller/features/spray-feature'),
+    'Appliance.Control.Spray': require('./controller/abilities/spray-ability'),
 
     // Diffuser
-    'Appliance.Control.Diffuser.Light': require('./controller/features/diffuser-feature'),
-    'Appliance.Control.Diffuser.Spray': require('./controller/features/diffuser-feature'),
+    'Appliance.Control.Diffuser.Light': require('./controller/abilities/diffuser-ability'),
+    'Appliance.Control.Diffuser.Spray': require('./controller/abilities/diffuser-ability'),
 
     // Thermostat
-    'Appliance.Control.Thermostat.Mode': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.ModeB': require('./controller/features/thermostat-feature'),
+    'Appliance.Control.Thermostat.Mode': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.ModeB': require('./controller/abilities/thermostat-ability'),
 
     // System (always included via buildDevice, but listed here for completeness)
-    'Appliance.System.All': require('./controller/features/system-feature'),
-    'Appliance.System.Online': require('./controller/features/system-feature'),
-    'Appliance.System.Hardware': require('./controller/features/system-feature'),
-    'Appliance.System.Firmware': require('./controller/features/system-feature'),
-    'Appliance.System.Time': require('./controller/features/system-feature'),
-    'Appliance.System.Clock': require('./controller/features/system-feature'),
-    'Appliance.System.Position': require('./controller/features/system-feature'),
-    'Appliance.System.Ability': require('./controller/features/system-feature'),
-    'Appliance.System.Report': require('./controller/features/system-feature'),
-    'Appliance.System.Debug': require('./controller/features/system-feature'),
-    'Appliance.System.Factory': require('./controller/features/system-feature'),
-    'Appliance.System.LedMode': require('./controller/features/system-feature'),
-    'Appliance.Mcu.Firmware': require('./controller/features/system-feature'),
+    'Appliance.System.All': require('./controller/abilities/system-ability'),
+    'Appliance.System.Online': require('./controller/abilities/system-ability'),
+    'Appliance.System.Hardware': require('./controller/abilities/system-ability'),
+    'Appliance.System.Firmware': require('./controller/abilities/system-ability'),
+    'Appliance.System.Time': require('./controller/abilities/system-ability'),
+    'Appliance.System.Clock': require('./controller/abilities/system-ability'),
+    'Appliance.System.Position': require('./controller/abilities/system-ability'),
+    'Appliance.System.Ability': require('./controller/abilities/system-ability'),
+    'Appliance.System.Report': require('./controller/abilities/system-ability'),
+    'Appliance.System.Debug': require('./controller/abilities/system-ability'),
+    'Appliance.System.Factory': require('./controller/abilities/system-ability'),
+    'Appliance.System.LedMode': require('./controller/abilities/system-ability'),
+    'Appliance.Mcu.Firmware': require('./controller/abilities/system-ability'),
 
     // Encryption
-    'Appliance.Encrypt.Suite': require('./controller/features/encryption-feature'),
-    'Appliance.Encrypt.ECDHE': require('./controller/features/encryption-feature'),
+    'Appliance.Encrypt.Suite': require('./controller/abilities/encryption-ability'),
+    'Appliance.Encrypt.ECDHE': require('./controller/abilities/encryption-ability'),
 
     // DND
-    'Appliance.System.DNDMode': require('./controller/features/dnd-feature'),
+    'Appliance.System.DNDMode': require('./controller/abilities/dnd-ability'),
 
     // Runtime
-    'Appliance.System.Runtime': require('./controller/features/runtime-feature'),
+    'Appliance.System.Runtime': require('./controller/abilities/runtime-ability'),
 
     // Hub functionality (all hub features combined in single file)
-    'Appliance.Hub.Online': require('./controller/features/hub-feature'),
-    'Appliance.Hub.ToggleX': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Battery': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.WaterLeak': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.All': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.TempHum': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.Alert': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.Smoke': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.Adjust': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Sensor.DoorWindow': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.All': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.Mode': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.Temperature': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.Adjust': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.SuperCtl': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.ScheduleB': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Mts100.Config': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Exception': require('./controller/features/hub-feature'),
-    'Appliance.Hub.Report': require('./controller/features/hub-feature'),
-    'Appliance.Hub.PairSubDev': require('./controller/features/hub-feature'),
-    'Appliance.Hub.SubDevice.Beep': require('./controller/features/hub-feature'),
-    'Appliance.Hub.SubDevice.MotorAdjust': require('./controller/features/hub-feature'),
-    'Appliance.Hub.SubDevice.Version': require('./controller/features/hub-feature'),
+    'Appliance.Hub.Online': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.ToggleX': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Battery': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.WaterLeak': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.All': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.TempHum': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.Alert': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.Smoke': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.Adjust': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Sensor.DoorWindow': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.All': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.Mode': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.Temperature': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.Adjust': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.SuperCtl': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.ScheduleB': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Mts100.Config': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Exception': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.Report': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.PairSubDev': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.SubDevice.Beep': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.SubDevice.MotorAdjust': require('./controller/abilities/hub-ability'),
+    'Appliance.Hub.SubDevice.Version': require('./controller/abilities/hub-ability'),
 
     // Roller Shutter
-    'Appliance.RollerShutter.Position': require('./controller/features/roller-shutter-feature'),
-    'Appliance.RollerShutter.Config': require('./controller/features/roller-shutter-feature'),
-    'Appliance.RollerShutter.Adjust': require('./controller/features/roller-shutter-feature'),
+    'Appliance.RollerShutter.Position': require('./controller/abilities/roller-shutter-ability'),
+    'Appliance.RollerShutter.Config': require('./controller/abilities/roller-shutter-ability'),
+    'Appliance.RollerShutter.Adjust': require('./controller/abilities/roller-shutter-ability'),
 
     // Thermostat additional namespaces
-    'Appliance.Control.Thermostat.Schedule': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.Timer': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.Alarm': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.WindowOpened': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.HoldAction': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.Overheat': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.DeadZone': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.Calibration': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.Sensor': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.SummerMode': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.Frost': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.AlarmConfig': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.CompressorDelay': require('./controller/features/thermostat-feature'),
-    'Appliance.Control.Thermostat.CtlRange': require('./controller/features/thermostat-feature'),
+    'Appliance.Control.Thermostat.Schedule': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.Timer': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.Alarm': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.WindowOpened': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.HoldAction': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.Overheat': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.DeadZone': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.Calibration': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.Sensor': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.SummerMode': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.Frost': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.AlarmConfig': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.CompressorDelay': require('./controller/abilities/thermostat-ability'),
+    'Appliance.Control.Thermostat.CtlRange': require('./controller/abilities/thermostat-ability'),
 
     // Config namespaces
-    'Appliance.Config.OverTemp': require('./controller/features/config-feature'),
+    'Appliance.Config.OverTemp': require('./controller/abilities/config-ability'),
 
     // Control namespaces
-    'Appliance.Control.Multiple': require('./controller/features/control-feature'),
-    'Appliance.Control.Upgrade': require('./controller/features/control-feature'),
-    'Appliance.Control.OverTemp': require('./controller/features/control-feature'),
-    'Appliance.Control.ConsumptionConfig': require('./controller/features/consumption-feature'),
-    'Appliance.Control.Diffuser.Sensor': require('./controller/features/diffuser-feature'),
-    'Appliance.Control.PhysicalLock': require('./controller/features/child-lock-feature'),
-    'Appliance.Control.Screen.Brightness': require('./controller/features/screen-feature'),
-    'Appliance.Control.Sensor.History': require('./controller/features/sensor-history-feature'),
-    'Appliance.Control.Sensor.LatestX': require('./controller/features/presence-sensor-feature'),
-    'Appliance.Control.Smoke.Config': require('./controller/features/smoke-config-feature'),
-    'Appliance.Control.TempUnit': require('./controller/features/temp-unit-feature'),
+    'Appliance.Control.Multiple': require('./controller/abilities/control-ability'),
+    'Appliance.Control.Upgrade': require('./controller/abilities/control-ability'),
+    'Appliance.Control.OverTemp': require('./controller/abilities/control-ability'),
+    'Appliance.Control.ConsumptionConfig': require('./controller/abilities/consumption-ability'),
+    'Appliance.Control.Diffuser.Sensor': require('./controller/abilities/diffuser-ability'),
+    'Appliance.Control.PhysicalLock': require('./controller/abilities/child-lock-ability'),
+    'Appliance.Control.Screen.Brightness': require('./controller/abilities/screen-ability'),
+    'Appliance.Control.Sensor.History': require('./controller/abilities/sensor-history-ability'),
+    'Appliance.Control.Sensor.LatestX': require('./controller/abilities/presence-sensor-ability'),
+    'Appliance.Control.Smoke.Config': require('./controller/abilities/smoke-config-ability'),
+    'Appliance.Control.TempUnit': require('./controller/abilities/temp-unit-ability'),
 
     // Presence sensor
-    'Appliance.Control.Presence.Config': require('./controller/features/presence-sensor-feature'),
-    'Appliance.Control.Presence.Study': require('./controller/features/presence-sensor-feature'),
+    'Appliance.Control.Presence.Config': require('./controller/abilities/presence-sensor-ability'),
+    'Appliance.Control.Presence.Study': require('./controller/abilities/presence-sensor-ability'),
 
     // Garage door additional namespaces
-    'Appliance.GarageDoor.MultipleConfig': require('./controller/features/garage-feature'),
-    'Appliance.GarageDoor.Config': require('./controller/features/garage-feature')
+    'Appliance.GarageDoor.MultipleConfig': require('./controller/abilities/garage-ability'),
+    'Appliance.GarageDoor.Config': require('./controller/abilities/garage-ability')
 };
 
 /**
@@ -210,7 +210,7 @@ function getCachedDeviceClass(deviceType, hardwareVersion, firmwareVersion) {
 function _buildDynamicClass(typeKey, abilities, BaseClass) {
     const features = new Set();
 
-    features.add(require('./controller/features/system-feature'));
+    features.add(require('./controller/abilities/system-ability'));
 
     if (abilities && typeof abilities === 'object') {
         const hasXVersion = new Set();

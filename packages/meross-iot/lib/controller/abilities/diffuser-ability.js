@@ -14,7 +14,7 @@ const { MerossErrorValidation } = require('../../model/exception');
  * @param {Object} device - The device instance
  * @returns {Object} Diffuser feature object with set(), get(), and sensor methods
  */
-function createDiffuserFeature(device) {
+function createDiffuserAbility(device) {
     return {
         /**
          * Sets the diffuser light or spray settings.
@@ -167,6 +167,7 @@ function createDiffuserFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateDiffuserLightState(device, lightData, source = 'response') {
+    if (!device._diffuserLightStateByChannel) {return;}
     if (!lightData) {return;}
 
     const lightArray = Array.isArray(lightData) ? lightData : [lightData];
@@ -221,6 +222,7 @@ function updateDiffuserLightState(device, lightData, source = 'response') {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateDiffuserSprayState(device, sprayData, source = 'response') {
+    if (!device._diffuserSprayStateByChannel) {return;}
     if (!sprayData) {return;}
 
     const sprayArray = Array.isArray(sprayData) ? sprayData : [sprayData];
@@ -281,7 +283,7 @@ function getDiffuserCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createDiffuserFeature;
+module.exports = createDiffuserAbility;
 module.exports._updateDiffuserLightState = updateDiffuserLightState;
 module.exports._updateDiffuserSprayState = updateDiffuserSprayState;
 module.exports.getCapabilities = getDiffuserCapabilities;

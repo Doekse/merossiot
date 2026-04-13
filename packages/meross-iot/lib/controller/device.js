@@ -17,78 +17,225 @@ const {
 } = require('../model/exception');
 
 // Import feature factories
-const createSystemFeature = require('./features/system-feature');
-const createEncryptionFeature = require('./features/encryption-feature');
-const createToggleFeature = require('./features/toggle-feature');
-const createLightFeature = require('./features/light-feature');
-const createThermostatFeature = require('./features/thermostat-feature');
-const createRollerShutterFeature = require('./features/roller-shutter-feature');
-const createGarageFeature = require('./features/garage-feature');
-const createDiffuserFeature = require('./features/diffuser-feature');
-const createSprayFeature = require('./features/spray-feature');
-const createConsumptionFeature = require('./features/consumption-feature');
-const createElectricityFeature = require('./features/electricity-feature');
-const createTimerFeature = require('./features/timer-feature');
-const createTriggerFeature = require('./features/trigger-feature');
-const createPresenceSensorFeature = require('./features/presence-sensor-feature');
-const createAlarmFeature = require('./features/alarm-feature');
-const createChildLockFeature = require('./features/child-lock-feature');
-const createScreenFeature = require('./features/screen-feature');
-const createRuntimeFeature = require('./features/runtime-feature');
-const createConfigFeature = require('./features/config-feature');
-const createDNDFeature = require('./features/dnd-feature');
-const createTempUnitFeature = require('./features/temp-unit-feature');
-const createSmokeConfigFeature = require('./features/smoke-config-feature');
-const createSensorHistoryFeature = require('./features/sensor-history-feature');
-const createDigestTimerFeature = require('./features/digest-timer-feature');
-const createDigestTriggerFeature = require('./features/digest-trigger-feature');
-const createControlFeature = require('./features/control-feature');
+const createSystemAbility = require('./abilities/system-ability');
+const createEncryptionAbility = require('./abilities/encryption-ability');
+const createToggleAbility = require('./abilities/toggle-ability');
+const createLightAbility = require('./abilities/light-ability');
+const createThermostatAbility = require('./abilities/thermostat-ability');
+const createRollerShutterAbility = require('./abilities/roller-shutter-ability');
+const createGarageAbility = require('./abilities/garage-ability');
+const createDiffuserAbility = require('./abilities/diffuser-ability');
+const createSprayAbility = require('./abilities/spray-ability');
+const createConsumptionAbility = require('./abilities/consumption-ability');
+const createElectricityAbility = require('./abilities/electricity-ability');
+const createTimerAbility = require('./abilities/timer-ability');
+const createTriggerAbility = require('./abilities/trigger-ability');
+const createPresenceSensorAbility = require('./abilities/presence-sensor-ability');
+const createAlarmAbility = require('./abilities/alarm-ability');
+const createChildLockAbility = require('./abilities/child-lock-ability');
+const createScreenAbility = require('./abilities/screen-ability');
+const createRuntimeAbility = require('./abilities/runtime-ability');
+const createConfigAbility = require('./abilities/config-ability');
+const createDNDAbility = require('./abilities/dnd-ability');
+const createTempUnitAbility = require('./abilities/temp-unit-ability');
+const createSmokeConfigAbility = require('./abilities/smoke-config-ability');
+const createSensorHistoryAbility = require('./abilities/sensor-history-ability');
+const createDigestTimerAbility = require('./abilities/digest-timer-ability');
+const createDigestTriggerAbility = require('./abilities/digest-trigger-ability');
+const createControlAbility = require('./abilities/control-ability');
 const Heartbeat = require('../utilities/heartbeat');
 
 // Import capability getters
-const getToggleCapabilities = require('./features/toggle-feature').getCapabilities;
-const getLightCapabilities = require('./features/light-feature').getCapabilities;
-const getThermostatCapabilities = require('./features/thermostat-feature').getCapabilities;
-const getRollerShutterCapabilities = require('./features/roller-shutter-feature').getCapabilities;
-const getGarageCapabilities = require('./features/garage-feature').getCapabilities;
-const getDiffuserCapabilities = require('./features/diffuser-feature').getCapabilities;
-const getSprayCapabilities = require('./features/spray-feature').getCapabilities;
-const getConsumptionCapabilities = require('./features/consumption-feature').getCapabilities;
-const getElectricityCapabilities = require('./features/electricity-feature').getCapabilities;
-const getTimerCapabilities = require('./features/timer-feature').getCapabilities;
-const getTriggerCapabilities = require('./features/trigger-feature').getCapabilities;
-const getPresenceSensorCapabilities = require('./features/presence-sensor-feature').getCapabilities;
-const getAlarmCapabilities = require('./features/alarm-feature').getCapabilities;
-const getChildLockCapabilities = require('./features/child-lock-feature').getCapabilities;
-const getScreenCapabilities = require('./features/screen-feature').getCapabilities;
-const getRuntimeCapabilities = require('./features/runtime-feature').getCapabilities;
-const getConfigCapabilities = require('./features/config-feature').getCapabilities;
-const getDNDCapabilities = require('./features/dnd-feature').getCapabilities;
-const getTempUnitCapabilities = require('./features/temp-unit-feature').getCapabilities;
-const getSmokeConfigCapabilities = require('./features/smoke-config-feature').getCapabilities;
-const getSensorHistoryCapabilities = require('./features/sensor-history-feature').getCapabilities;
-const getDigestTimerCapabilities = require('./features/digest-timer-feature').getCapabilities;
-const getDigestTriggerCapabilities = require('./features/digest-trigger-feature').getCapabilities;
-const getControlCapabilities = require('./features/control-feature').getCapabilities;
-const getHubCapabilities = require('./features/hub-feature').getCapabilities;
-const getSensorCapabilities = require('./features/hub-feature').getSensorCapabilities;
+const getToggleCapabilities = require('./abilities/toggle-ability').getCapabilities;
+const getLightCapabilities = require('./abilities/light-ability').getCapabilities;
+const getThermostatCapabilities = require('./abilities/thermostat-ability').getCapabilities;
+const getRollerShutterCapabilities = require('./abilities/roller-shutter-ability').getCapabilities;
+const getGarageCapabilities = require('./abilities/garage-ability').getCapabilities;
+const getDiffuserCapabilities = require('./abilities/diffuser-ability').getCapabilities;
+const getSprayCapabilities = require('./abilities/spray-ability').getCapabilities;
+const getConsumptionCapabilities = require('./abilities/consumption-ability').getCapabilities;
+const getElectricityCapabilities = require('./abilities/electricity-ability').getCapabilities;
+const getTimerCapabilities = require('./abilities/timer-ability').getCapabilities;
+const getTriggerCapabilities = require('./abilities/trigger-ability').getCapabilities;
+const getPresenceSensorCapabilities = require('./abilities/presence-sensor-ability').getCapabilities;
+const getAlarmCapabilities = require('./abilities/alarm-ability').getCapabilities;
+const getChildLockCapabilities = require('./abilities/child-lock-ability').getCapabilities;
+const getScreenCapabilities = require('./abilities/screen-ability').getCapabilities;
+const getRuntimeCapabilities = require('./abilities/runtime-ability').getCapabilities;
+const getConfigCapabilities = require('./abilities/config-ability').getCapabilities;
+const getDNDCapabilities = require('./abilities/dnd-ability').getCapabilities;
+const getTempUnitCapabilities = require('./abilities/temp-unit-ability').getCapabilities;
+const getSmokeConfigCapabilities = require('./abilities/smoke-config-ability').getCapabilities;
+const getSensorHistoryCapabilities = require('./abilities/sensor-history-ability').getCapabilities;
+const getDigestTimerCapabilities = require('./abilities/digest-timer-ability').getCapabilities;
+const getDigestTriggerCapabilities = require('./abilities/digest-trigger-ability').getCapabilities;
+const getControlCapabilities = require('./abilities/control-ability').getCapabilities;
+const getHubCapabilities = require('./abilities/hub-ability').getCapabilities;
+const getSensorCapabilities = require('./abilities/hub-ability').getSensorCapabilities;
 
 // Import update functions
-const updateToggleState = require('./features/toggle-feature')._updateToggleState;
-const updateLightState = require('./features/light-feature')._updateLightState;
-const updateThermostatMode = require('./features/thermostat-feature')._updateThermostatMode;
-const updateThermostatModeB = require('./features/thermostat-feature')._updateThermostatModeB;
-const updateRollerShutterState = require('./features/roller-shutter-feature')._updateRollerShutterState;
-const updateRollerShutterPosition = require('./features/roller-shutter-feature')._updateRollerShutterPosition;
-const updateGarageDoorState = require('./features/garage-feature')._updateGarageDoorState;
-const updateGarageDoorConfig = require('./features/garage-feature').updateGarageDoorConfig;
-const updateDiffuserLightState = require('./features/diffuser-feature')._updateDiffuserLightState;
-const updateDiffuserSprayState = require('./features/diffuser-feature')._updateDiffuserSprayState;
-const updateSprayState = require('./features/spray-feature')._updateSprayState;
-const updateTimerXState = require('./features/timer-feature')._updateTimerXState;
-const updateTriggerXState = require('./features/trigger-feature')._updateTriggerXState;
-const updatePresenceState = require('./features/presence-sensor-feature')._updatePresenceState;
-const updateAlarmEvents = require('./features/alarm-feature')._updateAlarmEvents;
+const updateToggleState = require('./abilities/toggle-ability')._updateToggleState;
+const updateLightState = require('./abilities/light-ability')._updateLightState;
+const updateThermostatMode = require('./abilities/thermostat-ability')._updateThermostatMode;
+const updateThermostatModeB = require('./abilities/thermostat-ability')._updateThermostatModeB;
+const updateRollerShutterState = require('./abilities/roller-shutter-ability')._updateRollerShutterState;
+const updateRollerShutterPosition = require('./abilities/roller-shutter-ability')._updateRollerShutterPosition;
+const updateGarageDoorState = require('./abilities/garage-ability')._updateGarageDoorState;
+const updateGarageDoorConfig = require('./abilities/garage-ability').updateGarageDoorConfig;
+const updateDiffuserLightState = require('./abilities/diffuser-ability')._updateDiffuserLightState;
+const updateDiffuserSprayState = require('./abilities/diffuser-ability')._updateDiffuserSprayState;
+const updateSprayState = require('./abilities/spray-ability')._updateSprayState;
+const updateTimerXState = require('./abilities/timer-ability')._updateTimerXState;
+const updateTriggerXState = require('./abilities/trigger-ability')._updateTriggerXState;
+const updatePresenceState = require('./abilities/presence-sensor-ability')._updatePresenceState;
+const updateAlarmEvents = require('./abilities/alarm-ability')._updateAlarmEvents;
+
+const ABILITY_MAP = [
+    {
+        key: 'toggle',
+        namespaces: ['Appliance.Control.ToggleX', 'Appliance.Control.Toggle'],
+        create: createToggleAbility,
+        caches: ['_toggleStateByChannel']
+    },
+    {
+        key: 'light',
+        namespaces: ['Appliance.Control.Light'],
+        create: createLightAbility,
+        caches: ['_lightStateByChannel']
+    },
+    {
+        key: 'thermostat',
+        namespaces: ['Appliance.Control.Thermostat.Mode', 'Appliance.Control.Thermostat.ModeB'],
+        create: createThermostatAbility,
+        caches: ['_thermostatStateByChannel']
+    },
+    {
+        key: 'rollerShutter',
+        namespaces: ['Appliance.RollerShutter.State', 'Appliance.RollerShutter.Position'],
+        create: createRollerShutterAbility,
+        caches: ['_rollerShutterStateByChannel', '_rollerShutterPositionByChannel', '_rollerShutterConfigByChannel']
+    },
+    {
+        key: 'garage',
+        namespaces: ['Appliance.GarageDoor.State'],
+        create: createGarageAbility,
+        caches: ['_garageDoorStateByChannel', '_garageDoorConfigByChannel']
+    },
+    {
+        key: 'diffuser',
+        namespaces: ['Appliance.Control.Diffuser.Light', 'Appliance.Control.Diffuser.Spray'],
+        create: createDiffuserAbility,
+        caches: ['_diffuserLightStateByChannel', '_diffuserSprayStateByChannel']
+    },
+    {
+        key: 'spray',
+        namespaces: ['Appliance.Control.Spray'],
+        create: createSprayAbility,
+        caches: ['_sprayStateByChannel']
+    },
+    {
+        key: 'consumption',
+        namespaces: ['Appliance.Control.ConsumptionH', 'Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption'],
+        create: createConsumptionAbility,
+        caches: []
+    },
+    {
+        key: 'electricity',
+        namespaces: ['Appliance.Control.Electricity'],
+        create: createElectricityAbility,
+        caches: []
+    },
+    {
+        key: 'timer',
+        namespaces: ['Appliance.Control.TimerX', 'Appliance.Control.Timer'],
+        create: createTimerAbility,
+        caches: ['_timerxStateByChannel']
+    },
+    {
+        key: 'trigger',
+        namespaces: ['Appliance.Control.TriggerX', 'Appliance.Control.Trigger'],
+        create: createTriggerAbility,
+        caches: ['_triggerxStateByChannel']
+    },
+    {
+        key: 'presence',
+        namespaces: ['Appliance.Control.Sensor.LatestX', 'Appliance.Control.Presence.Config', 'Appliance.Control.Presence.Study'],
+        create: createPresenceSensorAbility,
+        caches: ['_presenceSensorStateByChannel']
+    },
+    {
+        key: 'alarm',
+        namespaces: ['Appliance.Control.Alarm'],
+        create: createAlarmAbility,
+        caches: []
+    },
+    {
+        key: 'childLock',
+        namespaces: ['Appliance.Control.PhysicalLock', 'Appliance.Control.ChildLock'],
+        create: createChildLockAbility,
+        caches: []
+    },
+    {
+        key: 'screen',
+        namespaces: ['Appliance.Control.Screen.Brightness'],
+        create: createScreenAbility,
+        caches: []
+    },
+    {
+        key: 'runtime',
+        namespaces: ['Appliance.System.Runtime', 'Appliance.Control.Runtime'],
+        create: createRuntimeAbility,
+        caches: []
+    },
+    {
+        key: 'config',
+        namespaces: ['Appliance.Config.OverTemp'],
+        create: createConfigAbility,
+        caches: []
+    },
+    {
+        key: 'dnd',
+        namespaces: ['Appliance.System.DNDMode'],
+        create: createDNDAbility,
+        caches: []
+    },
+    {
+        key: 'tempUnit',
+        namespaces: ['Appliance.Control.TempUnit'],
+        create: createTempUnitAbility,
+        caches: []
+    },
+    {
+        key: 'smokeConfig',
+        namespaces: ['Appliance.Control.Smoke.Config'],
+        create: createSmokeConfigAbility,
+        caches: []
+    },
+    {
+        key: 'sensorHistory',
+        namespaces: ['Appliance.Control.Sensor.History', 'Appliance.Control.Sensor.HistoryX'],
+        create: createSensorHistoryAbility,
+        caches: []
+    },
+    {
+        key: 'digestTimer',
+        namespaces: ['Appliance.Digest.TimerX', 'Appliance.Digest.Timer'],
+        create: createDigestTimerAbility,
+        caches: []
+    },
+    {
+        key: 'digestTrigger',
+        namespaces: ['Appliance.Digest.TriggerX', 'Appliance.Digest.Trigger'],
+        create: createDigestTriggerAbility,
+        caches: []
+    },
+    {
+        key: 'control',
+        namespaces: ['Appliance.Control.Multiple', 'Appliance.Control.Upgrade'],
+        create: createControlAbility,
+        caches: []
+    }
+];
 
 /**
  * Base class for all Meross cloud devices.
@@ -130,33 +277,9 @@ class MerossDevice extends EventEmitter {
         this._initializeConnectionState(cloudInstance);
         this._initializeHttpInfo(dev);
 
-        // Initialize feature objects
-        this.system = createSystemFeature(this);
-        this.encryption = createEncryptionFeature(this);
-        this.toggle = createToggleFeature(this);
-        this.light = createLightFeature(this);
-        this.thermostat = createThermostatFeature(this);
-        this.rollerShutter = createRollerShutterFeature(this);
-        this.garage = createGarageFeature(this);
-        this.diffuser = createDiffuserFeature(this);
-        this.spray = createSprayFeature(this);
-        this.consumption = createConsumptionFeature(this);
-        this.electricity = createElectricityFeature(this);
-        this.timer = createTimerFeature(this);
-        this.trigger = createTriggerFeature(this);
-        this.presence = createPresenceSensorFeature(this);
-        this.alarm = createAlarmFeature(this);
-        this.childLock = createChildLockFeature(this);
-        this.screen = createScreenFeature(this);
-        this.runtime = createRuntimeFeature(this);
-        this.config = createConfigFeature(this);
-        this.dnd = createDNDFeature(this);
-        this.tempUnit = createTempUnitFeature(this);
-        this.smokeConfig = createSmokeConfigFeature(this);
-        this.sensorHistory = createSensorHistoryFeature(this);
-        this.digestTimer = createDigestTimerFeature(this);
-        this.digestTrigger = createDigestTriggerFeature(this);
-        this.control = createControlFeature(this);
+        // Initialize always-present abilities
+        this.system = createSystemAbility(this);
+        this.encryption = createEncryptionAbility(this);
     }
 
     /**
@@ -251,6 +374,40 @@ class MerossDevice extends EventEmitter {
         this._timerxStateByChannel = new Map();
         this._triggerxStateByChannel = new Map();
         this._presenceSensorStateByChannel = new Map();
+    }
+
+    /**
+     * Initializes ability handlers and their dependent state caches from abilities.
+     *
+     * Device abilities may arrive after construction (e.g., after System.All), so this
+     * method keeps ability wiring idempotent and creates only handlers/caches needed
+     * for namespaces declared by the device.
+     *
+     * @private
+     * @param {Object} abilities - Device abilities keyed by namespace
+     */
+    _initializeAbilities(abilities) {
+        if (!abilities || typeof abilities !== 'object') {
+            return;
+        }
+
+        for (const { key, namespaces, create, caches } of ABILITY_MAP) {
+            if (this[key]) {
+                continue;
+            }
+
+            const hasAbility = namespaces.some((namespace) => namespace in abilities);
+            if (!hasAbility) {
+                continue;
+            }
+
+            this[key] = create(this);
+            for (const cache of caches) {
+                if (!this[cache]) {
+                    this[cache] = new Map();
+                }
+            }
+        }
     }
 
     /**
@@ -356,7 +513,7 @@ class MerossDevice extends EventEmitter {
      *
      * @param {Object} abilities - Device abilities object
      */
-    updateAbilities(abilities) {
+    _updateAbilities(abilities) {
         // Only update if abilities actually changed to avoid redundant capability building
         const abilitiesChanged = !this.abilities || JSON.stringify(this.abilities) !== JSON.stringify(abilities);
 
@@ -365,6 +522,7 @@ class MerossDevice extends EventEmitter {
         }
 
         this.abilities = abilities;
+        this._initializeAbilities(abilities);
         if (this.encryption && typeof this.encryption._updateAbilitiesWithEncryption === 'function') {
             this.encryption._updateAbilitiesWithEncryption(abilities);
         }

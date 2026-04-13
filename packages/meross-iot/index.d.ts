@@ -2160,7 +2160,7 @@ declare module 'meross-iot' {
      * 
      * Provides control over device on/off state.
      */
-    export interface ToggleFeature {
+    export interface ToggleAbility {
         /**
          * Sets the toggle state (on/off) for a channel.
          * 
@@ -2202,7 +2202,7 @@ declare module 'meross-iot' {
      * 
      * Provides control over light settings including color, brightness, temperature.
      */
-    export interface LightFeature {
+    export interface LightAbility {
         /**
          * Sets the light color, brightness, temperature, and on/off state.
          * 
@@ -2313,7 +2313,7 @@ declare module 'meross-iot' {
      *
      * Provides access to device system information.
      */
-    export interface SystemFeature {
+    export interface SystemAbility {
         getAllData(): Promise<any>
         getDebug(): Promise<any>
         getAbilities(): Promise<any>
@@ -2330,7 +2330,7 @@ declare module 'meross-iot' {
      *
      * Provides encryption-related functionality.
      */
-    export interface EncryptionFeature {
+    export interface EncryptionAbility {
         supportEncryption(): boolean
         isEncryptionKeySet(): boolean
         setEncryptionKey(uuid: string, mrskey: string, mac: string): void
@@ -2343,7 +2343,7 @@ declare module 'meross-iot' {
      *
      * Provides control over thermostat mode, temperature settings, and schedules.
      */
-    export interface ThermostatFeature {
+    export interface ThermostatAbility {
         set(options?: {
             channel?: number;
             mode?: number;
@@ -2366,7 +2366,7 @@ declare module 'meross-iot' {
      *
      * Provides control over roller shutter/blind position and movement.
      */
-    export interface RollerShutterFeature {
+    export interface RollerShutterAbility {
         set(options: { channel?: number; position: number }): Promise<any>
         get(options?: { channel?: number }): Promise<RollerShutterState | undefined>
         open(options?: { channel?: number }): Promise<any>
@@ -2382,7 +2382,7 @@ declare module 'meross-iot' {
      *
      * Provides control over garage door open/close state and configuration.
      */
-    export interface GarageFeature {
+    export interface GarageAbility {
         set(options: { channel?: number; open: boolean }): Promise<any>
         get(options?: { channel?: number }): Promise<GarageDoorState | undefined>
         isOpen(options?: { channel?: number }): boolean | undefined
@@ -2406,7 +2406,7 @@ declare module 'meross-iot' {
      *
      * Provides control over diffuser light and spray settings.
      */
-    export interface DiffuserFeature {
+    export interface DiffuserAbility {
         set(options?: {
             channel?: number;
             type?: 'light' | 'spray';
@@ -2427,7 +2427,7 @@ declare module 'meross-iot' {
      *
      * Provides control over spray mode.
      */
-    export interface SprayFeature {
+    export interface SprayAbility {
         set(options: { channel?: number; mode: SprayMode | number }): Promise<any>
         get(options?: { channel?: number }): Promise<any>
         getMode(options?: { channel?: number }): number | undefined
@@ -2439,7 +2439,7 @@ declare module 'meross-iot' {
      *
      * Provides access to power consumption data.
      */
-    export interface ConsumptionFeature {
+    export interface ConsumptionAbility {
         get(options?: { channel?: number }): Promise<Array<{date: Date, totalConsumptionKwh: number}>>
         getRaw(options?: { channel?: number }): Promise<any>
         getX(options?: { channel?: number }): Promise<Array<{date: Date, totalConsumptionKwh: number}>>
@@ -2452,7 +2452,7 @@ declare module 'meross-iot' {
      *
      * Provides access to real-time electricity metrics.
      */
-    export interface ElectricityFeature {
+    export interface ElectricityAbility {
         get(options?: { channel?: number }): Promise<{amperage: number, voltage: number, wattage: number, sampleTimestamp: Date}>
         getRaw(options?: { channel?: number }): Promise<any>
     }
@@ -2462,7 +2462,7 @@ declare module 'meross-iot' {
      *
      * Provides control over device timers.
      */
-    export interface TimerFeature {
+    export interface TimerAbility {
         set(options: {
             channel?: number;
             timerId?: string;
@@ -2488,7 +2488,7 @@ declare module 'meross-iot' {
      *
      * Provides control over device triggers.
      */
-    export interface TriggerFeature {
+    export interface TriggerAbility {
         set(options: {
             channel?: number;
             triggerId?: string;
@@ -2513,7 +2513,7 @@ declare module 'meross-iot' {
      *
      * Provides access to presence detection and light sensor data.
      */
-    export interface PresenceSensorFeature {
+    export interface PresenceSensorAbility {
         get(options?: { channel?: number; dataTypes?: string[] }): Promise<PresenceSensorState | undefined>
         getPresence(options?: { channel?: number }): { value: number; isPresent: boolean; state: number; distance: number; distanceRaw: number; timestamp: number; times: number } | null
         isPresent(options?: { channel?: number }): boolean | null
@@ -2530,7 +2530,7 @@ declare module 'meross-iot' {
      *
      * Provides access to alarm events and status.
      */
-    export interface AlarmFeature {
+    export interface AlarmAbility {
         set(options: { channel?: number, on: boolean, duration?: number }): Promise<any>
         setConfig(options: { channel?: number, enable: number, volume: number, song: number }): Promise<any>
         get(options?: { channel?: number }): Promise<any>
@@ -2542,7 +2542,7 @@ declare module 'meross-iot' {
      *
      * Provides control over child lock settings.
      */
-    export interface ChildLockFeature {
+    export interface ChildLockAbility {
         set(options: { lockData: any }): Promise<any>
         get(): Promise<any>
     }
@@ -2552,7 +2552,7 @@ declare module 'meross-iot' {
      *
      * Provides control over device screen settings.
      */
-    export interface ScreenFeature {
+    export interface ScreenAbility {
         set(options: { screenData: any }): Promise<any>
         get(): Promise<any>
     }
@@ -2562,7 +2562,7 @@ declare module 'meross-iot' {
      *
      * Provides access to device runtime information.
      */
-    export interface RuntimeFeature {
+    export interface RuntimeAbility {
         get(): Promise<any>
         refreshState(): Promise<void>
     }
@@ -2572,7 +2572,7 @@ declare module 'meross-iot' {
      *
      * Provides access to device configuration.
      */
-    export interface ConfigFeature {
+    export interface ConfigAbility {
         set(options: { configData: any }): Promise<any>
         get(_options?: { channel?: number }): Promise<any>
     }
@@ -2582,7 +2582,7 @@ declare module 'meross-iot' {
      *
      * Provides control over DND mode.
      */
-    export interface DNDFeature {
+    export interface DNDAbility {
         set(options: { mode: boolean | number }): Promise<any>
         get(_options?: { channel?: number }): Promise<any>
         getRaw(_options?: { channel?: number }): Promise<any>
@@ -2593,7 +2593,7 @@ declare module 'meross-iot' {
      *
      * Provides control over temperature unit settings.
      */
-    export interface TempUnitFeature {
+    export interface TempUnitAbility {
         set(options: { unit: number }): Promise<any>
         get(): Promise<any>
     }
@@ -2603,7 +2603,7 @@ declare module 'meross-iot' {
      *
      * Provides access to smoke sensor configuration.
      */
-    export interface SmokeConfigFeature {
+    export interface SmokeConfigAbility {
         set(options: { channel?: number; subId?: string; configData: any }): Promise<any>
         get(options?: { channel?: number; subId?: string }): Promise<any>
     }
@@ -2613,7 +2613,7 @@ declare module 'meross-iot' {
      *
      * Provides access to sensor history data.
      */
-    export interface SensorHistoryFeature {
+    export interface SensorHistoryAbility {
         get(options: { channel?: number; capacity: number }): Promise<any>
         delete(options: { channel?: number; capacity: number }): Promise<any>
     }
@@ -2623,7 +2623,7 @@ declare module 'meross-iot' {
      *
      * Provides access to timer digest information.
      */
-    export interface DigestTimerFeature {
+    export interface DigestTimerAbility {
         get(): Promise<any>
     }
 
@@ -2632,7 +2632,7 @@ declare module 'meross-iot' {
      *
      * Provides access to trigger digest information.
      */
-    export interface DigestTriggerFeature {
+    export interface DigestTriggerAbility {
         get(): Promise<any>
     }
 
@@ -2641,7 +2641,7 @@ declare module 'meross-iot' {
      *
      * Provides various control functions.
      */
-    export interface ControlFeature {
+    export interface ControlAbility {
         setMultiple(options: { channel?: number; payload: any }): Promise<any>
         acknowledgeOverTemp(options: { channel?: number }): Promise<any>
         setUpgrade(options: { channel?: number; upgradeData: any }): Promise<any>
@@ -2653,7 +2653,7 @@ declare module 'meross-iot' {
      *
      * Provides functionality for hub devices including sensor management and MTS100 thermostat control.
      */
-    export interface HubFeature {
+    export interface HubAbility {
         refreshState(): Promise<void>
         getBattery(): Promise<any>
         /**
@@ -2839,7 +2839,7 @@ declare module 'meross-iot' {
          * 
          * @param abilities - Abilities object containing supported features
          */
-        updateAbilities(abilities: Record<string, any>): void
+        _updateAbilities(abilities: Record<string, any>): void
         
         /**
          * Updates the device MAC address.
@@ -2894,32 +2894,32 @@ declare module 'meross-iot' {
          * Each feature provides methods to control specific device capabilities.
          * Features are only available if the device supports them.
          */
-        readonly system: SystemFeature
-        readonly encryption: EncryptionFeature
-        readonly toggle: ToggleFeature
-        readonly light: LightFeature
-        readonly thermostat: ThermostatFeature
-        readonly rollerShutter: RollerShutterFeature
-        readonly garage: GarageFeature
-        readonly diffuser: DiffuserFeature
-        readonly spray: SprayFeature
-        readonly consumption: ConsumptionFeature
-        readonly electricity: ElectricityFeature
-        readonly timer: TimerFeature
-        readonly trigger: TriggerFeature
-        readonly presence: PresenceSensorFeature
-        readonly alarm: AlarmFeature
-        readonly childLock: ChildLockFeature
-        readonly screen: ScreenFeature
-        readonly runtime: RuntimeFeature
-        readonly config: ConfigFeature
-        readonly dnd: DNDFeature
-        readonly tempUnit: TempUnitFeature
-        readonly smokeConfig: SmokeConfigFeature
-        readonly sensorHistory: SensorHistoryFeature
-        readonly digestTimer: DigestTimerFeature
-        readonly digestTrigger: DigestTriggerFeature
-        readonly control: ControlFeature
+        readonly system: SystemAbility
+        readonly encryption: EncryptionAbility
+        readonly toggle?: ToggleAbility
+        readonly light?: LightAbility
+        readonly thermostat?: ThermostatAbility
+        readonly rollerShutter?: RollerShutterAbility
+        readonly garage?: GarageAbility
+        readonly diffuser?: DiffuserAbility
+        readonly spray?: SprayAbility
+        readonly consumption?: ConsumptionAbility
+        readonly electricity?: ElectricityAbility
+        readonly timer?: TimerAbility
+        readonly trigger?: TriggerAbility
+        readonly presence?: PresenceSensorAbility
+        readonly alarm?: AlarmAbility
+        readonly childLock?: ChildLockAbility
+        readonly screen?: ScreenAbility
+        readonly runtime?: RuntimeAbility
+        readonly config?: ConfigAbility
+        readonly dnd?: DNDAbility
+        readonly tempUnit?: TempUnitAbility
+        readonly smokeConfig?: SmokeConfigAbility
+        readonly sensorHistory?: SensorHistoryAbility
+        readonly digestTimer?: DigestTimerAbility
+        readonly digestTrigger?: DigestTriggerAbility
+        readonly control?: ControlAbility
         
         /**
          * Looks up channel information by ID or name.
@@ -3037,7 +3037,7 @@ declare module 'meross-iot' {
 
     export class HubThermostatValve extends MerossSubDevice {
         /**
-         * Note: This class inherits a `toggle` property (ToggleFeature) from MerossDevice.
+         * Note: This class inherits a `toggle` property (ToggleAbility) from MerossDevice.
          * The runtime implementation also has a `toggle()` convenience method, but it's not
          * available in TypeScript due to the property/method conflict. Use `toggle.set()` instead.
          */
@@ -3078,7 +3078,7 @@ declare module 'meross-iot' {
         /**
          * Hub feature for hub-specific functionality.
          */
-        readonly hub: HubFeature
+        readonly hub: HubAbility
         
         getSubdevices(): MerossSubDevice[]
         getSubdevice(subdeviceId: string): MerossSubDevice | null

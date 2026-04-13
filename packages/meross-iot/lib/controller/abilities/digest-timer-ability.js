@@ -8,7 +8,7 @@
  * @param {Object} device - The device instance
  * @returns {Object} Timer digest feature object with get() method
  */
-function createDigestTimerFeature(device) {
+function createDigestTimerAbility(device) {
     return {
         /**
          * Gets timer digest (summary) information.
@@ -41,5 +41,5 @@ function getDigestTimerCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createDigestTimerFeature;
+module.exports = createDigestTimerAbility;
 module.exports.getCapabilities = getDigestTimerCapabilities;

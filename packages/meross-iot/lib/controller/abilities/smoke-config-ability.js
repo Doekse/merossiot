@@ -10,7 +10,7 @@ const { normalizeChannel } = require('../../utilities/options');
  * @param {Object} device - The device instance
  * @returns {Object} Smoke config feature object with set() and get() methods
  */
-function createSmokeConfigFeature(device) {
+function createSmokeConfigAbility(device) {
     return {
         /**
          * Gets the smoke sensor configuration from the device.
@@ -79,5 +79,5 @@ function getSmokeConfigCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createSmokeConfigFeature;
+module.exports = createSmokeConfigAbility;
 module.exports.getCapabilities = getSmokeConfigCapabilities;

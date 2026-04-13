@@ -73,7 +73,7 @@ function _decrypt(encryptedData, key) {
  * @param {Object} device - The device instance
  * @returns {Object} Encryption feature object with encryption methods
  */
-function createEncryptionFeature(device) {
+function createEncryptionAbility(device) {
     /**
      * Initializes encryption support state.
      *
@@ -176,4 +176,4 @@ function createEncryptionFeature(device) {
     };
 }
 
-module.exports = createEncryptionFeature;
+module.exports = createEncryptionAbility;

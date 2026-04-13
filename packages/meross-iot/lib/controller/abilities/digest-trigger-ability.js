@@ -8,7 +8,7 @@
  * @param {Object} device - The device instance
  * @returns {Object} Trigger digest feature object with get() method
  */
-function createDigestTriggerFeature(device) {
+function createDigestTriggerAbility(device) {
     return {
         /**
          * Gets trigger digest (summary) information.
@@ -41,5 +41,5 @@ function getDigestTriggerCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createDigestTriggerFeature;
+module.exports = createDigestTriggerAbility;
 module.exports.getCapabilities = getDigestTriggerCapabilities;

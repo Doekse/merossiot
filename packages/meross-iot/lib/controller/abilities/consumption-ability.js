@@ -11,7 +11,7 @@ const { normalizeChannel } = require('../../utilities/options');
  * @param {Object} device - The device instance
  * @returns {Object} Consumption feature object with get() and other methods
  */
-function createConsumptionFeature(device) {
+function createConsumptionAbility(device) {
     /**
      * Initializes consumption cache.
      *
@@ -274,6 +274,6 @@ function getConsumptionCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createConsumptionFeature;
+module.exports = createConsumptionAbility;
 module.exports._updateConsumptionState = updateConsumptionState;
 module.exports.getCapabilities = getConsumptionCapabilities;

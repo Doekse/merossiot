@@ -13,7 +13,7 @@ const { MerossErrorValidation, MerossErrorCommand } = require('../../model/excep
  * @param {Object} device - The device instance
  * @returns {Object} Thermostat feature object with set(), get(), and configuration methods
  */
-function createThermostatFeature(device) {
+function createThermostatAbility(device) {
     /**
      * Aligns temperature value to device units and validates range.
      *
@@ -594,6 +594,7 @@ function createThermostatFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateThermostatMode(device, modeData, source = 'response') {
+    if (!device._thermostatStateByChannel) {return;}
     if (!modeData || !Array.isArray(modeData)) {return;}
 
     for (const channelData of modeData) {
@@ -644,6 +645,7 @@ function updateThermostatMode(device, modeData, source = 'response') {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateThermostatModeB(device, modeData, source = 'response') {
+    if (!device._thermostatStateByChannel) {return;}
     if (!modeData || !Array.isArray(modeData)) {return;}
 
     for (const channelData of modeData) {
@@ -716,7 +718,7 @@ function getThermostatCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createThermostatFeature;
+module.exports = createThermostatAbility;
 module.exports._updateThermostatMode = updateThermostatMode;
 module.exports._updateThermostatModeB = updateThermostatModeB;
 module.exports.getCapabilities = getThermostatCapabilities;

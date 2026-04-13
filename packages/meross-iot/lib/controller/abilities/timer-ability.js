@@ -13,7 +13,7 @@ const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exce
  * @param {Object} device - The device instance
  * @returns {Object} Timer feature object with set(), get(), and other methods
  */
-function createTimerFeature(device) {
+function createTimerAbility(device) {
     return {
         /**
          * Gets timer information for a specific timer ID or all timers for a channel.
@@ -416,6 +416,7 @@ function createTimerFeature(device) {
  * @param {string} [source='response'] - Source of the update
  */
 function updateTimerXState(device, timerxData, source = 'response') {
+    if (!device._timerxStateByChannel) {return;}
     if (!timerxData) {return;}
 
     const timerArray = Array.isArray(timerxData) ? timerxData : [timerxData];
@@ -476,7 +477,7 @@ function getTimerCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createTimerFeature;
+module.exports = createTimerAbility;
 module.exports._updateTimerXState = updateTimerXState;
 module.exports.getCapabilities = getTimerCapabilities;
 

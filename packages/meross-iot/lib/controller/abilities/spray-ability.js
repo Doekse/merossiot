@@ -13,7 +13,7 @@ const { MerossErrorValidation } = require('../../model/exception');
  * @param {Object} device - The device instance
  * @returns {Object} Spray feature object with set(), get(), and convenience methods
  */
-function createSprayFeature(device) {
+function createSprayAbility(device) {
     return {
         /**
          * Sets the spray mode.
@@ -126,6 +126,7 @@ function createSprayFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateSprayState(device, sprayData, source = 'response') {
+    if (!device._sprayStateByChannel) {return;}
     if (!sprayData) {return;}
 
     const sprayArray = Array.isArray(sprayData) ? sprayData : [sprayData];
@@ -176,6 +177,6 @@ function getSprayCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createSprayFeature;
+module.exports = createSprayAbility;
 module.exports._updateSprayState = updateSprayState;
 module.exports.getCapabilities = getSprayCapabilities;

@@ -14,7 +14,7 @@ const { buildStateChanges } = require('../../utilities/state-changes');
  * @param {Object} device - The device instance
  * @returns {Object} Light feature object with set(), get(), and convenience methods
  */
-function createLightFeature(device) {
+function createLightAbility(device) {
     /**
      * Checks if the device supports a specific light mode for the given channel.
      *
@@ -272,6 +272,7 @@ function createLightFeature(device) {
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
  */
 function updateLightState(device, lightData, source = 'response') {
+    if (!device._lightStateByChannel) {return;}
     if (!lightData) {return;}
 
     const lightArray = Array.isArray(lightData) ? lightData : [lightData];
@@ -337,6 +338,6 @@ function getLightCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createLightFeature;
+module.exports = createLightAbility;
 module.exports._updateLightState = updateLightState;
 module.exports.getCapabilities = getLightCapabilities;

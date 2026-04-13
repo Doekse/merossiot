@@ -247,6 +247,10 @@ async function handleDeviceCommands(meross) {
     meross.on('deviceInitialized', (deviceId, device) => {
         device.on('connected', async () => {
             try {
+                if (!device.toggle || typeof device.toggle.set !== 'function') {
+                    console.error(`Toggle ability is not available on device ${deviceId}`);
+                    return;
+                }
                 await device.toggle.set({ channel: 1, on: true });
                 console.log('✓ Command succeeded');
             } catch (error) {

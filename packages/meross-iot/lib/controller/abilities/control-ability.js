@@ -8,7 +8,7 @@
  * @param {Object} device - The device instance
  * @returns {Object} Control feature object with setMultiple(), acknowledgeOverTemp(), and setUpgrade() methods
  */
-function createControlFeature(device) {
+function createControlAbility(device) {
     return {
         /**
          * Executes multiple commands simultaneously.
@@ -80,5 +80,5 @@ function getControlCapabilities(device, channelIds) {
     };
 }
 
-module.exports = createControlFeature;
+module.exports = createControlAbility;
 module.exports.getCapabilities = getControlCapabilities;

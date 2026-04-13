@@ -41,26 +41,32 @@ async function executeControlCommand(manager, uuid, methodName, params) {
         );
     }
 
-    const [featureName, action] = parts;
-    const feature = device[featureName];
+    const [abilityName, action] = parts;
+    const ability = device[abilityName];
+    const availableAbilities = Object.keys(device).filter(key => {
+        const candidate = device[key];
+        return candidate && typeof candidate === 'object' && typeof candidate.get === 'function';
+    });
 
-    if (!feature) {
+    if (!ability || typeof ability !== 'object') {
         throw new ManagerMeross.MerossErrorUnsupported(
-            `Feature '${featureName}' not available on this device`,
+            `Ability '${abilityName}' is not available on this device`,
             methodName,
-            `Device does not support ${featureName} feature`
+            availableAbilities.length > 0
+                ? `Available abilities: ${availableAbilities.join(', ')}`
+                : 'Device has no callable abilities available'
         );
     }
 
-    if (typeof feature[action] !== 'function') {
+    if (typeof ability[action] !== 'function') {
         throw new ManagerMeross.MerossErrorUnsupported(
-            `Action '${action}' not available on feature '${featureName}'`,
+            `Action '${action}' not available on ability '${abilityName}'`,
             methodName,
-            `Feature ${featureName} does not support ${action} action`
+            `Ability ${abilityName} does not support ${action} action`
         );
     }
 
-    return await feature[action](params);
+    return await ability[action](params);
 }
 
 module.exports = { executeControlCommand };
