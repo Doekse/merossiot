@@ -150,7 +150,7 @@ function updateSprayState(device, sprayData, source = 'response') {
 
         const newValue = { mode: state.mode };
         if (oldValue === undefined || oldValue.mode !== state.mode) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'spray',
                 channel: channelIndex,
                 value: newValue,

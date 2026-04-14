@@ -242,7 +242,7 @@ function updateConsumptionState(device, consumptionData, source = 'response') {
     }
 
     if (hasChanges) {
-        device.emit('state', {
+        device.emit('stateChange', {
             type: 'consumption',
             channel: channelIndex,
             value: parsedData,

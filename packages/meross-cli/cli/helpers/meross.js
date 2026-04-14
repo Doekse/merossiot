@@ -55,20 +55,21 @@ async function createMerossInstance(optionsOrEmail, password, mfaCode, transport
         logger: finalVerbose ? console.log : null
     });
 
-    instance.on('deviceInitialized', (deviceId) => {
+    instance.on('deviceReady', (device) => {
         if (finalVerbose) {
-            console.log(`Device initialized: ${deviceId}`);
+            console.log(`Device ready: ${device?.uuid || 'unknown'}`);
         }
     });
 
-    instance.on('connected', (deviceId) => {
+    instance.on('connected', (device) => {
         if (finalVerbose) {
-            console.log(`Device connected: ${deviceId}`);
+            console.log(`Device connected: ${device?.uuid || 'unknown'}`);
         }
     });
 
-    instance.on('error', (error, deviceId) => {
+    instance.on('error', (error, device) => {
         if (finalVerbose) {
+            const deviceId = device?.uuid || null;
             console.error(`Error${deviceId ? ` (${deviceId})` : ''}: ${error.message}`);
         }
     });

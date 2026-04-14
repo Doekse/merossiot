@@ -492,18 +492,10 @@ class ManagerMeross extends EventEmitter {
  * @property {Function} error - Emitted when an error occurs
  *   @param {string} deviceId - Device UUID (or null for manager-level errors)
  *   @param {Error|string} error - Error object or error message
- * @property {Function} reconnect - Emitted when a device reconnects
- *   @param {string} deviceId - Device UUID
- * @property {Function} data - Emitted when data is received from a device
- *   @param {string} deviceId - Device UUID
- *   @param {Object} payload - Data payload
  * @property {Function} pushNotification - Emitted when a push notification is received
  *   @param {string} deviceId - Device UUID
  *   @param {GenericPushNotification} notification - Push notification object
  *   @param {MerossDevice|MerossHubDevice} device - Device instance
- * @property {Function} rawData - Emitted with raw message data (for debugging)
- *   @param {string} deviceId - Device UUID
- *   @param {Object} message - Raw message object
  */
 
 module.exports = ManagerMeross;

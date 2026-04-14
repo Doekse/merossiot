@@ -81,7 +81,7 @@ async function runTests(context) {
             }
         };
         
-        testDevice.on('state', onStateChange);
+        testDevice.on('stateChange', onStateChange);
         
         // Trigger the opening
         if (testDevice.rollerShutter && typeof testDevice.rollerShutter.open === 'function') {
@@ -97,7 +97,7 @@ async function runTests(context) {
         }
         
         if (!stateOpening) {
-            testDevice.removeListener('state', onStateChange);
+            testDevice.removeListener('stateChange', onStateChange);
             results.push({
                 name: 'should open roller shutter',
                 passed: false,
@@ -113,7 +113,7 @@ async function runTests(context) {
         }
         
         if (!stateIdle) {
-            testDevice.removeListener('state', onStateChange);
+            testDevice.removeListener('stateChange', onStateChange);
             results.push({
                 name: 'should open roller shutter',
                 passed: false,
@@ -128,7 +128,7 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        testDevice.removeListener('state', onStateChange);
+        testDevice.removeListener('stateChange', onStateChange);
         
         if (!positionOpened) {
             results.push({
@@ -193,7 +193,7 @@ async function runTests(context) {
             }
         };
         
-        testDevice.on('state', onStateChange);
+        testDevice.on('stateChange', onStateChange);
         
         // Trigger the closing
         if (testDevice.rollerShutter && typeof testDevice.rollerShutter.close === 'function') {
@@ -209,7 +209,7 @@ async function runTests(context) {
         }
         
         if (!stateClosing) {
-            testDevice.removeListener('state', onStateChange);
+            testDevice.removeListener('stateChange', onStateChange);
             results.push({
                 name: 'should close roller shutter',
                 passed: false,
@@ -225,7 +225,7 @@ async function runTests(context) {
         }
         
         if (!stateIdle) {
-            testDevice.removeListener('state', onStateChange);
+            testDevice.removeListener('stateChange', onStateChange);
             results.push({
                 name: 'should close roller shutter',
                 passed: false,
@@ -240,7 +240,7 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        testDevice.removeListener('state', onStateChange);
+        testDevice.removeListener('stateChange', onStateChange);
         
         if (!positionClosed) {
             results.push({

@@ -239,7 +239,7 @@ function updateGarageDoorState(device, stateData, source = 'response') {
 
         const newValue = { isOpen: state.isOpen };
         if (oldValue === undefined || oldValue.isOpen !== state.isOpen) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'garageDoor',
                 channel: channelIndex,
                 value: newValue,

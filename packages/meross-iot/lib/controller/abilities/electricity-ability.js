@@ -119,7 +119,7 @@ function updateElectricityState(device, electricityData, source = 'response') {
     if (Object.keys(newValue).length > 0) {
         const valueToEmit = oldValue === undefined ? powerInfo : { ...newValue, sampleTimestamp: powerInfo.sampleTimestamp };
 
-        device.emit('state', {
+        device.emit('stateChange', {
             type: 'electricity',
             channel: channelIndex,
             value: valueToEmit,

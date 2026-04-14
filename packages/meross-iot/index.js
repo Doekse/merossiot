@@ -5,7 +5,6 @@ const ManagerMeross = require('./lib/manager');
 const enums = require('./lib/model/enums');
 const errors = require('./lib/model/exception');
 const states = require('./lib/model/states');
-const push = require('./lib/model/push');
 
 // Export main class
 module.exports = ManagerMeross;
@@ -78,36 +77,6 @@ const HttpSubdeviceInfo = require('./lib/model/http/subdevice');
 module.exports.ChannelInfo = ChannelInfo;
 module.exports.HttpDeviceInfo = HttpDeviceInfo;
 module.exports.HttpSubdeviceInfo = HttpSubdeviceInfo;
-
-// Export push notification classes
-module.exports.GenericPushNotification = push.GenericPushNotification;
-module.exports.OnlinePushNotification = push.OnlinePushNotification;
-module.exports.AlarmPushNotification = push.AlarmPushNotification;
-module.exports.BindPushNotification = push.BindPushNotification;
-module.exports.UnbindPushNotification = push.UnbindPushNotification;
-module.exports.WaterLeakPushNotification = push.WaterLeakPushNotification;
-module.exports.HubOnlinePushNotification = push.HubOnlinePushNotification;
-module.exports.HubToggleXPushNotification = push.HubToggleXPushNotification;
-module.exports.HubBatteryPushNotification = push.HubBatteryPushNotification;
-module.exports.HubSensorAllPushNotification = push.HubSensorAllPushNotification;
-module.exports.HubSensorTempHumPushNotification = push.HubSensorTempHumPushNotification;
-module.exports.HubSensorAlertPushNotification = push.HubSensorAlertPushNotification;
-module.exports.HubSensorSmokePushNotification = push.HubSensorSmokePushNotification;
-module.exports.HubMts100AllPushNotification = push.HubMts100AllPushNotification;
-module.exports.HubMts100ModePushNotification = push.HubMts100ModePushNotification;
-module.exports.HubMts100TemperaturePushNotification = push.HubMts100TemperaturePushNotification;
-module.exports.HubSubdeviceListPushNotification = push.HubSubdeviceListPushNotification;
-module.exports.SensorLatestXPushNotification = push.SensorLatestXPushNotification;
-module.exports.TimerXPushNotification = push.TimerXPushNotification;
-module.exports.TriggerXPushNotification = push.TriggerXPushNotification;
-module.exports.ToggleXPushNotification = push.ToggleXPushNotification;
-module.exports.PresenceStudyPushNotification = push.PresenceStudyPushNotification;
-module.exports.DiffuserLightPushNotification = push.DiffuserLightPushNotification;
-module.exports.DiffuserSprayPushNotification = push.DiffuserSprayPushNotification;
-module.exports.HardwareInfo = push.HardwareInfo;
-module.exports.FirmwareInfo = push.FirmwareInfo;
-module.exports.TimeInfo = push.TimeInfo;
-module.exports.parsePushNotification = push.parsePushNotification;
 
 // Export timer utilities
 module.exports.TimerUtils = require('./lib/utilities/timer');

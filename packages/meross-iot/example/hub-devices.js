@@ -26,10 +26,10 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        meross.on('deviceInitialized', (deviceId, device) => {
+        meross.on('deviceReady', (device) => {
             // Hub devices have getSubdevices method; regular devices do not
             if (device.getSubdevices) {
-                console.log(`\n[Hub Device] ${device.name} (${deviceId})`);
+                console.log(`\n[Hub Device] ${device.name} (${device.uuid})`);
                 console.log(`  Type: ${device.deviceType}`);
 
                 device.on('connected', async () => {
@@ -82,7 +82,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
                         console.log(`\n  [Subdevice Connected] ${subdevice.name}`);
                     });
 
-                    subdevice.on('state', (event) => {
+                    subdevice.on('stateChange', (event) => {
                         console.log(`\n  [Subdevice State] ${subdevice.name}:`);
                         console.log(`    Type: ${event.type}`);
                         console.log(`    Channel: ${event.channel}`);
@@ -95,7 +95,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             }
                 });
             } else {
-                console.log(`\n[Regular Device] ${device.name} (${deviceId})`);
+                console.log(`\n[Regular Device] ${device.name} (${device.uuid})`);
             }
         });
 

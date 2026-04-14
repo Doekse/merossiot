@@ -89,20 +89,21 @@ Examples:
         const manager = new ManagerMeross(options);
 
         // Handle device events
-        manager.on('deviceInitialized', (deviceId) => {
+        manager.on('deviceReady', (device) => {
             if (config.verbose) {
-                console.log(`Device initialized: ${deviceId}`);
+                console.log(`Device ready: ${device?.uuid || 'unknown'}`);
             }
         });
 
-        manager.on('connected', (deviceId) => {
+        manager.on('connected', (device) => {
             if (config.verbose) {
-                console.log(`Device connected: ${deviceId}`);
+                console.log(`Device connected: ${device?.uuid || 'unknown'}`);
             }
         });
 
-        manager.on('error', (error, deviceId) => {
+        manager.on('error', (error, device) => {
             if (config.verbose) {
+                const deviceId = device?.uuid || null;
                 console.error(chalk.red(`Error${deviceId ? ` (${deviceId})` : ''}: ${error.message}`));
             }
         });

@@ -262,7 +262,7 @@ function updateTriggerXState(device, triggerxData, source = 'response') {
         }
 
         const newTriggers = [...channelTriggers];
-        device.emit('state', {
+        device.emit('stateChange', {
             type: 'trigger',
             channel: channelIndex,
             value: newTriggers,

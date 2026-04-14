@@ -426,6 +426,11 @@ class MerossDevice extends EventEmitter {
         this._pushNotificationActive = false;
         this._lastPushNotificationTime = null;
         this._pushInactivityTimer = null;
+        this._pushActiveNamespaces = new Map();
+        this._pushNamespaceInactivityTimers = new Map();
+        this._metricsPollingIntervals = new Map();
+        this._metricsPollingConfig = null;
+        this._metricsLastPollTimes = new Map();
         // Track device initialization state
         this._deviceInitializedEmitted = false;
         this._initializationTimeout = null;
@@ -643,7 +648,7 @@ class MerossDevice extends EventEmitter {
         if (this.system && typeof this.system.getAllData === 'function') {
             await this.system.getAllData();
 
-            this.emit('state', {
+            this.emit('stateChange', {
                 type: 'refresh',
                 timestamp: this.lastFullUpdateTimestamp || Date.now(),
                 value: this.getUnifiedState()
@@ -898,7 +903,7 @@ class MerossDevice extends EventEmitter {
      *
      * @private
      */
-    _pushNotificationReceived() {
+    _pushNotificationReceived(namespace = null) {
         this._lastPushNotificationTime = Date.now();
         this._pushNotificationActive = true;
 
@@ -906,6 +911,25 @@ class MerossDevice extends EventEmitter {
         this._pushInactivityTimer = setTimeout(() => {
             this._pushNotificationActive = false;
         }, 60000);
+
+        if (!namespace) {
+            return;
+        }
+
+        const now = Date.now();
+        this._pushActiveNamespaces.set(namespace, now);
+
+        const existingTimer = this._pushNamespaceInactivityTimers.get(namespace);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+        }
+
+        const timer = setTimeout(() => {
+            this._pushActiveNamespaces.delete(namespace);
+            this._pushNamespaceInactivityTimers.delete(namespace);
+        }, 60000);
+
+        this._pushNamespaceInactivityTimers.set(namespace, timer);
     }
 
     /**
@@ -927,6 +951,216 @@ class MerossDevice extends EventEmitter {
 
         const timeSinceLastPush = Date.now() - this._lastPushNotificationTime;
         return timeSinceLastPush < 60000;
+    }
+
+    /**
+     * Checks whether a namespace received a recent push update.
+     *
+     * Namespace-level activity tracking prevents redundant polling for data that
+     * is already being refreshed by push notifications.
+     *
+     * @param {string} namespace - Namespace to check
+     * @param {number} [maxAge=5000] - Maximum age in milliseconds for push freshness
+     * @returns {boolean} True if namespace has recent push activity
+     */
+    hasRecentPushForNamespace(namespace, maxAge = 5000) {
+        if (!namespace) {
+            return false;
+        }
+
+        const pushTimestamp = this._pushActiveNamespaces.get(namespace);
+        if (!pushTimestamp) {
+            return false;
+        }
+
+        return (Date.now() - pushTimestamp) < maxAge;
+    }
+
+    /**
+     * Starts periodic polling for metrics that do not reliably push updates.
+     *
+     * Polling remains opt-in because these requests trade additional network traffic
+     * for fresher telemetry when devices do not emit relevant push notifications.
+     *
+     * @param {Object} [config={}] - Metrics polling configuration
+     * @param {number} [config.electricityInterval=30000] - Electricity polling interval in ms (0 to disable)
+     * @param {number} [config.consumptionInterval=60000] - Consumption polling interval in ms (0 to disable)
+     * @param {number} [config.runtimeInterval=60000] - Runtime polling interval in ms (0 to disable)
+     * @param {boolean} [config.smartCaching=true] - Skip polling when cache data is fresh
+     * @param {number} [config.cacheMaxAge=10000] - Maximum cache age in ms before polling
+     */
+    startMetricsPolling(config = {}) {
+        this.stopMetricsPolling();
+
+        this._metricsPollingConfig = {
+            electricityInterval: config.electricityInterval !== undefined ? config.electricityInterval : 30000,
+            consumptionInterval: config.consumptionInterval !== undefined ? config.consumptionInterval : 60000,
+            runtimeInterval: config.runtimeInterval !== undefined ? config.runtimeInterval : 60000,
+            smartCaching: config.smartCaching !== false,
+            cacheMaxAge: config.cacheMaxAge || 10000
+        };
+
+        const pollingConfig = this._metricsPollingConfig;
+
+        if (pollingConfig.electricityInterval > 0 && this.electricity && typeof this.electricity.get === 'function') {
+            const interval = setInterval(() => {
+                this._pollElectricityMetrics().catch(() => {});
+            }, pollingConfig.electricityInterval);
+            this._metricsPollingIntervals.set('electricity', interval);
+        }
+
+        if (pollingConfig.consumptionInterval > 0 && this.consumption && typeof this.consumption.get === 'function') {
+            const interval = setInterval(() => {
+                this._pollConsumptionMetrics().catch(() => {});
+            }, pollingConfig.consumptionInterval);
+            this._metricsPollingIntervals.set('consumption', interval);
+        }
+
+        if (pollingConfig.runtimeInterval > 0 && this.runtime && typeof this.runtime.get === 'function') {
+            const interval = setInterval(() => {
+                this._pollRuntimeMetrics().catch(() => {});
+            }, pollingConfig.runtimeInterval);
+            this._metricsPollingIntervals.set('runtime', interval);
+        }
+
+        this._pollElectricityMetrics().catch(() => {});
+        this._pollConsumptionMetrics().catch(() => {});
+        this._pollRuntimeMetrics().catch(() => {});
+    }
+
+    /**
+     * Stops all metrics polling intervals for this device.
+     *
+     * This avoids stale timers when subscriptions are removed or the manager shuts down.
+     */
+    stopMetricsPolling() {
+        this._metricsPollingIntervals.forEach((interval) => {
+            clearInterval(interval);
+        });
+
+        this._metricsPollingIntervals.clear();
+        this._metricsPollingConfig = null;
+    }
+
+    /**
+     * Polls electricity data for all channels when cache/push data is stale.
+     *
+     * @private
+     * @returns {Promise<void>}
+     */
+    async _pollElectricityMetrics() {
+        if (!this._metricsPollingConfig || this.onlineStatus !== OnlineStatus.ONLINE) {
+            return;
+        }
+
+        if (!this.electricity || typeof this.electricity.get !== 'function') {
+            return;
+        }
+
+        const config = this._metricsPollingConfig;
+        if (config.smartCaching && this._channelCachedSamples) {
+            const channels = this.channels || [{ index: 0 }];
+            let allCached = true;
+
+            for (const channel of channels) {
+                const cached = this._channelCachedSamples.get(channel.index);
+                if (!cached || !cached.sampleTimestamp) {
+                    allCached = false;
+                    break;
+                }
+                const age = Date.now() - cached.sampleTimestamp.getTime();
+                if (age >= config.cacheMaxAge) {
+                    allCached = false;
+                    break;
+                }
+            }
+
+            if (allCached) {
+                return;
+            }
+        }
+
+        const channels = this.channels || [{ index: 0 }];
+        for (const channel of channels) {
+            await this.electricity.get({ channel: channel.index });
+        }
+
+        this._metricsLastPollTimes.set('electricity', Date.now());
+    }
+
+    /**
+     * Polls consumption data for all channels when cache data is stale.
+     *
+     * @private
+     * @returns {Promise<void>}
+     */
+    async _pollConsumptionMetrics() {
+        if (!this._metricsPollingConfig || this.onlineStatus !== OnlineStatus.ONLINE) {
+            return;
+        }
+
+        if (!this.consumption || typeof this.consumption.get !== 'function') {
+            return;
+        }
+
+        const config = this._metricsPollingConfig;
+        if (config.smartCaching && this._channelCachedConsumption) {
+            const channels = this.channels || [{ index: 0 }];
+            let allCached = true;
+
+            for (const channel of channels) {
+                const cached = this._channelCachedConsumption.get(channel.index);
+                if (!cached) {
+                    allCached = false;
+                    break;
+                }
+            }
+
+            if (allCached) {
+                return;
+            }
+        }
+
+        const channels = this.channels || [{ index: 0 }];
+        for (const channel of channels) {
+            await this.consumption.get({ channel: channel.index });
+        }
+
+        this._metricsLastPollTimes.set('consumption', Date.now());
+    }
+
+    /**
+     * Polls runtime info when push activity is stale.
+     *
+     * @private
+     * @returns {Promise<void>}
+     */
+    async _pollRuntimeMetrics() {
+        if (!this._metricsPollingConfig || this.onlineStatus !== OnlineStatus.ONLINE) {
+            return;
+        }
+
+        if (!this.runtime || typeof this.runtime.get !== 'function') {
+            return;
+        }
+
+        const config = this._metricsPollingConfig;
+        if (this.hasRecentPushForNamespace('Appliance.System.Runtime', 5000)) {
+            return;
+        }
+
+        if (config.smartCaching && this._runtimeInfo) {
+            const cached = this.runtime.getCached();
+            if (cached && Object.keys(cached).length > 0) {
+                const cacheAge = Date.now() - (this._metricsLastPollTimes.get('runtime') || 0);
+                if (cacheAge < config.cacheMaxAge) {
+                    return;
+                }
+            }
+        }
+
+        await this.runtime.get();
+        this._metricsLastPollTimes.set('runtime', Date.now());
     }
 
     /**
@@ -991,7 +1225,10 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
-     * Emits the deviceInitialized event if not already emitted.
+     * Emits the ready event exactly once after initial device bootstrap.
+     *
+     * This aligns the event name with the `ready()` promise API so consumers
+     * can use one mental model for initialization completion.
      *
      * @private
      */
@@ -1000,7 +1237,7 @@ class MerossDevice extends EventEmitter {
             return;
         }
         this._deviceInitializedEmitted = true;
-        this.emit('deviceInitialized', this.uuid, this);
+        this.emit('ready');
         if (this._readyResolve) {
             this._readyResolve();
             this._readyResolve = null;
@@ -1052,7 +1289,7 @@ class MerossDevice extends EventEmitter {
 
         const hasUpdates = this.system.handleSystemAllUpdate(payload);
         if (hasUpdates) {
-            this.emit('state', {
+            this.emit('stateChange', {
                 type: 'properties',
                 value: {
                     macAddress: this.macAddress,
@@ -1252,9 +1489,8 @@ class MerossDevice extends EventEmitter {
      * @param {Object} message - The push notification message object
      */
     _handlePushNotification(message) {
-        this._pushNotificationReceived();
-
         const namespace = message.header?.namespace || '';
+        this._pushNotificationReceived(namespace);
         const payload = message.payload || message;
 
         this.emit('pushNotificationReceived', namespace);
@@ -1411,10 +1647,18 @@ class MerossDevice extends EventEmitter {
      */
     disconnect() {
         this.deviceConnected = false;
+        this.stopMetricsPolling();
         if (this._initializationTimeout) {
             clearTimeout(this._initializationTimeout);
             this._initializationTimeout = null;
         }
+        if (this._pushInactivityTimer) {
+            clearTimeout(this._pushInactivityTimer);
+            this._pushInactivityTimer = null;
+        }
+        this._pushNamespaceInactivityTimers.forEach((timer) => clearTimeout(timer));
+        this._pushNamespaceInactivityTimers.clear();
+        this._pushActiveNamespaces.clear();
         if (this._heartbeat) {
             this._heartbeat.stop();
         }
@@ -1506,7 +1750,7 @@ class MerossDevice extends EventEmitter {
         const oldStatus = this.onlineStatus;
         if (oldStatus !== status) {
             this.onlineStatus = status;
-            this.emit('state', {
+            this.emit('stateChange', {
                 type: 'online',
                 value: status,
                 source: 'push',

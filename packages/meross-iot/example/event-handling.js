@@ -27,44 +27,39 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         });
 
         // Manager-level events apply to all devices
-        meross.on('deviceInitialized', (deviceId, device) => {
-            console.log(`\n[Manager] Device initialized: ${device.name} (${deviceId})`);
+        meross.on('deviceReady', (device) => {
+            console.log(`\n[Manager] Device ready: ${device.name} (${device.uuid})`);
         });
 
-        meross.on('connected', (deviceId) => {
-            console.log(`\n[Manager] Device connected: ${deviceId}`);
+        meross.on('connected', (device) => {
+            console.log(`\n[Manager] Device connected: ${device.uuid}`);
         });
 
-        meross.on('close', (deviceId, error) => {
-            console.log(`\n[Manager] Device closed: ${deviceId}${error ? ` - ${error}` : ''}`);
+        meross.on('disconnected', (device, reason) => {
+            console.log(`\n[Manager] Device disconnected: ${device.uuid}${reason ? ` - ${reason}` : ''}`);
         });
 
-        meross.on('error', (error, deviceId) => {
-            if (deviceId) {
-                console.error(`\n[Manager] Device error (${deviceId}): ${error.message}`);
+        meross.on('error', (error, device) => {
+            if (device) {
+                console.error(`\n[Manager] Device error (${device.uuid}): ${error.message}`);
             } else {
                 console.error(`\n[Manager] System error: ${error.message}`);
             }
         });
 
-        meross.on('reconnect', (deviceId) => {
-            console.log(`\n[Manager] Device reconnected: ${deviceId}`);
+        meross.on('reconnected', (device) => {
+            console.log(`\n[Manager] Device reconnected: ${device.uuid}`);
         });
 
-        meross.on('pushNotification', (deviceId, notification, device) => {
-            console.log(`\n[Manager] Push notification from ${deviceId}:`);
-            console.log(`  Namespace: ${notification.namespace}`);
-            console.log(`  Data: ${JSON.stringify(notification.rawData, null, 2)}`);
-        });
-
-        meross.on('rawData', (deviceId, message) => {
-            console.log(`\n[Manager] Raw data from ${deviceId}`);
-            // Uncomment to see raw messages:
-            // console.log(`  Message: ${JSON.stringify(message, null, 2)}`);
+        meross.on('deviceUpdate', (device, change) => {
+            console.log(`\n[Manager] Device update from ${device.uuid}:`);
+            console.log(`  Type: ${change.type}`);
+            console.log(`  Source: ${change.source}`);
+            console.log(`  Value: ${JSON.stringify(change.value, null, 2)}`);
         });
 
         // Device-level events are specific to individual devices
-        meross.on('deviceInitialized', (deviceId, device) => {
+        meross.on('deviceReady', (device) => {
             device.on('connected', () => {
                 console.log(`\n[Device] ${device.name} connected`);
             });
@@ -84,14 +79,9 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             // Track previous status to show changes
             let previousStatus = device.onlineStatus;
             
-            // Unified state event handles all state changes
-            device.on('state', (event) => {
-                if (event.type === 'notification') {
-                    const notification = event.value;
-                    console.log(`\n[Device] ${device.name} push notification:`);
-                    console.log(`  Namespace: ${notification.namespace}`);
-                    console.log(`  Data: ${JSON.stringify(notification.rawData, null, 2)}`);
-                } else if (event.type === 'online') {
+            // Unified stateChange event handles all state changes
+            device.on('stateChange', (event) => {
+                if (event.type === 'online') {
                     const statusNames = {
                         0: 'Not Online',
                         1: 'Online',

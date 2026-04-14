@@ -244,11 +244,11 @@ async function connectWithMFA(email, password, mfaCode) {
 
 // Example: Handling device command errors
 async function handleDeviceCommands(meross) {
-    meross.on('deviceInitialized', (deviceId, device) => {
+    meross.on('deviceReady', (device) => {
         device.on('connected', async () => {
             try {
                 if (!device.toggle || typeof device.toggle.set !== 'function') {
-                    console.error(`Toggle ability is not available on device ${deviceId}`);
+                    console.error(`Toggle ability is not available on device ${device.uuid}`);
                     return;
                 }
                 await device.toggle.set({ channel: 1, on: true });

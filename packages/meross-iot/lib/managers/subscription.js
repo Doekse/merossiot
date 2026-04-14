@@ -2,16 +2,13 @@
 
 const EventEmitter = require('events');
 const { MerossErrorValidation } = require('../model/exception');
-const { OnlineStatus } = require('../model/enums');
 
 /**
  * Manages automatic polling and unified update streams for Meross devices.
  *
- * Coordinates push notifications and targeted polling to provide a single event stream for
- * device state changes. Device state is polled once on initial subscription to establish a
- * baseline for listeners, then typically relies on push notifications for ongoing updates.
- * Some features (electricity, consumption, runtime) require periodic polling because they do not
- * emit push notifications.
+ * Coordinates device state updates and optional HTTP device list polling to provide a
+ * unified event stream for consumers. Device-level metrics polling is delegated to
+ * MerossDevice to keep push tracking and polling logic close to the data source.
  *
  * Push notifications reduce latency and network traffic compared to frequent polling.
  * Periodic polling is intended for features without push support (electricity, consumption, runtime)
@@ -96,7 +93,7 @@ class ManagerSubscription extends EventEmitter {
         }
 
         const subscription = this.subscriptions.get(deviceUuid);
-        const isNewSubscription = !subscription.pollingIntervals || subscription.pollingIntervals.size === 0;
+        const isNewSubscription = !subscription.pollingStarted;
 
         if (isNewSubscription) {
             const getConfigValue = (key) => config[key] !== undefined ? config[key] : this.defaultConfig[key];
@@ -112,6 +109,7 @@ class ManagerSubscription extends EventEmitter {
             };
 
             this._startPolling(device, subscription);
+            subscription.pollingStarted = true;
 
             if (subscription.config.pushOnly) {
                 this._emitCachedState(device, subscription);
@@ -209,19 +207,15 @@ class ManagerSubscription extends EventEmitter {
         const subscription = {
             device,
             config: null,
+            pollingStarted: false,
             pollingIntervals: new Map(),
             lastPollTimes: new Map(),
-            lastUpdate: null,
-            pushActiveNamespaces: new Map()
+            lastUpdate: null
         };
 
         this.subscriptions.set(device.uuid, subscription);
 
-        device.on('pushNotificationReceived', (namespace) => {
-            this._setPushActive(device.uuid, namespace);
-        });
-
-        device.on('state', (event) => {
+        device.on('stateChange', (event) => {
             this._onStateEvent(device.uuid, event);
         });
     }
@@ -242,38 +236,13 @@ class ManagerSubscription extends EventEmitter {
         const config = subscription.config || this.defaultConfig;
 
         this._pollDeviceState(device, subscription);
-
-        if (config.deviceStateInterval > 0) {
-            const interval = setInterval(async () => {
-                await this._pollDeviceState(device, subscription);
-            }, config.deviceStateInterval);
-
-            subscription.pollingIntervals.set('deviceState', interval);
-        }
-
-        if (config.electricityInterval > 0 && device.electricity && typeof device.electricity.get === 'function') {
-            const interval = setInterval(async () => {
-                await this._pollElectricity(device, subscription, config);
-            }, config.electricityInterval);
-
-            subscription.pollingIntervals.set('electricity', interval);
-        }
-
-        if (config.consumptionInterval > 0 && device.consumption) {
-            const interval = setInterval(async () => {
-                await this._pollConsumption(device, subscription, config);
-            }, config.consumptionInterval);
-
-            subscription.pollingIntervals.set('consumption', interval);
-        }
-
-        if (config.runtimeInterval > 0 && device.runtime && typeof device.runtime.get === 'function') {
-            const interval = setInterval(async () => {
-                await this._pollRuntime(device, subscription, config);
-            }, config.runtimeInterval);
-
-            subscription.pollingIntervals.set('runtime', interval);
-        }
+        device.startMetricsPolling({
+            electricityInterval: config.electricityInterval,
+            consumptionInterval: config.consumptionInterval,
+            runtimeInterval: config.runtimeInterval,
+            smartCaching: config.smartCaching,
+            cacheMaxAge: config.cacheMaxAge
+        });
     }
 
     /**
@@ -288,11 +257,13 @@ class ManagerSubscription extends EventEmitter {
             return;
         }
 
+        subscription.device.stopMetricsPolling();
         subscription.pollingIntervals.forEach((interval) => {
             clearInterval(interval);
         });
 
         subscription.pollingIntervals.clear();
+        subscription.pollingStarted = false;
     }
 
     /**
@@ -308,12 +279,7 @@ class ManagerSubscription extends EventEmitter {
      * @param {Object} subscription - Subscription state object
      */
     async _pollDeviceState(device, subscription) {
-        if (device.onlineStatus !== OnlineStatus.ONLINE) {
-            return;
-        }
-
-        const namespace = 'Appliance.System.All';
-        if (this._hasRecentPush(subscription, namespace, 5000)) {
+        if (!device.isOnline) {
             return;
         }
 
@@ -332,192 +298,6 @@ class ManagerSubscription extends EventEmitter {
         } catch (error) {
             this.logger(`Error polling device state for ${device.uuid}: ${error.message}`);
         }
-    }
-
-    /**
-     * Poll electricity metrics for all device channels.
-     *
-     * Electricity metrics require polling as they don't support push notifications.
-     * Skips polling when all channels have fresh cached data (if smartCaching enabled)
-     * to reduce network traffic.
-     *
-     * @private
-     * @param {MerossDevice} device - Device to poll
-     * @param {Object} subscription - Subscription state object
-     * @param {Object} config - Configuration object with caching settings
-     */
-    async _pollElectricity(device, subscription, config) {
-        if (device.onlineStatus !== OnlineStatus.ONLINE) {
-            return;
-        }
-
-        try {
-            if (config.smartCaching && device._channelCachedSamples) {
-                const channels = device.channels || [{ index: 0 }];
-                let allCached = true;
-
-                for (const channel of channels) {
-                    const cached = device._channelCachedSamples.get(channel.index);
-                    if (!cached || !cached.sampleTimestamp) {
-                        allCached = false;
-                        break;
-                    }
-                    const age = Date.now() - cached.sampleTimestamp.getTime();
-                    if (age >= config.cacheMaxAge) {
-                        allCached = false;
-                        break;
-                    }
-                }
-
-                if (allCached) {
-                    return;
-                }
-            }
-
-            const channels = device.channels || [{ index: 0 }];
-            for (const channel of channels) {
-                await device.electricity.get({ channel: channel.index });
-            }
-
-            subscription.lastPollTimes.set('electricity', Date.now());
-        } catch (error) {
-            this.logger(`Error polling electricity for ${device.uuid}: ${error.message}`);
-        }
-    }
-
-    /**
-     * Poll power consumption data for all device channels.
-     *
-     * Consumption data requires polling as it doesn't support push notifications.
-     * Skips polling when all channels have cached consumption data (if smartCaching enabled)
-     * to reduce network traffic.
-     *
-     * @private
-     * @param {MerossDevice} device - Device to poll
-     * @param {Object} subscription - Subscription state object
-     * @param {Object} config - Configuration object with caching settings
-     */
-    async _pollConsumption(device, subscription, config) {
-        if (device.onlineStatus !== OnlineStatus.ONLINE) {
-            return;
-        }
-
-        try {
-            if (config.smartCaching && device._channelCachedConsumption) {
-                const channels = device.channels || [{ index: 0 }];
-                let allCached = true;
-
-                for (const channel of channels) {
-                    const cached = device._channelCachedConsumption.get(channel.index);
-                    if (!cached) {
-                        allCached = false;
-                        break;
-                    }
-                }
-
-                if (allCached) {
-                    return;
-                }
-            }
-
-            const channels = device.channels || [{ index: 0 }];
-            for (const channel of channels) {
-                await device.consumption.get({ channel: channel.index });
-            }
-
-            subscription.lastPollTimes.set('consumption', Date.now());
-        } catch (error) {
-            this.logger(`Error polling consumption for ${device.uuid}: ${error.message}`);
-        }
-    }
-
-    /**
-     * Poll runtime information from the device.
-     *
-     * Runtime data (signal strength, network type, IoT status) requires polling as it
-     * doesn't support push notifications. Skips polling when cached runtime data is fresh
-     * (if smartCaching enabled) to reduce network traffic.
-     *
-     * @private
-     * @param {MerossDevice} device - Device to poll
-     * @param {Object} subscription - Subscription state object
-     * @param {Object} config - Configuration object with caching settings
-     */
-    async _pollRuntime(device, subscription, config) {
-        if (device.onlineStatus !== OnlineStatus.ONLINE) {
-            return;
-        }
-
-        const namespace = 'Appliance.System.Runtime';
-        if (this._hasRecentPush(subscription, namespace, 5000)) {
-            return;
-        }
-
-        try {
-            if (config.smartCaching && device._runtimeInfo) {
-                const cached = device.runtime.getCached();
-                if (cached && Object.keys(cached).length > 0) {
-                    const cacheAge = Date.now() - (subscription.lastPollTimes.get('runtime') || 0);
-                    if (cacheAge < config.cacheMaxAge) {
-                        return;
-                    }
-                }
-            }
-
-            await device.runtime.get();
-            subscription.lastPollTimes.set('runtime', Date.now());
-        } catch (error) {
-            this.logger(`Error polling runtime for ${device.uuid}: ${error.message}`);
-        }
-    }
-
-    /**
-     * Mark push notifications as active for a specific namespace.
-     *
-     * Tracks push notification activity per namespace to allow selective polling
-     * skipping. Only namespaces that receive push notifications will skip polling.
-     *
-     * @private
-     * @param {string} deviceUuid - Device UUID that received push notification
-     * @param {string} namespace - Namespace that received the push notification
-     */
-    _setPushActive(deviceUuid, namespace) {
-        const subscription = this.subscriptions.get(deviceUuid);
-        if (!subscription) {
-            return;
-        }
-
-        if (!namespace) {
-            return;
-        }
-
-        const timestamp = Date.now();
-        subscription.pushActiveNamespaces.set(namespace, timestamp);
-
-        const timerKey = `pushInactivityTimer_${namespace}`;
-        clearTimeout(subscription[timerKey]);
-        subscription[timerKey] = setTimeout(() => {
-            subscription.pushActiveNamespaces.delete(namespace);
-        }, 60000);
-    }
-
-    /**
-     * Check if a namespace received a recent push notification.
-     *
-     * @private
-     * @param {Object} subscription - Subscription state object
-     * @param {string} namespace - Namespace to check
-     * @param {number} maxAge - Maximum age in milliseconds to consider recent
-     * @returns {boolean} True if namespace received push within maxAge
-     */
-    _hasRecentPush(subscription, namespace, maxAge) {
-        const pushTimestamp = subscription.pushActiveNamespaces.get(namespace);
-        if (!pushTimestamp) {
-            return false;
-        }
-
-        const timeSincePush = Date.now() - pushTimestamp;
-        return timeSincePush < maxAge;
     }
 
     /**

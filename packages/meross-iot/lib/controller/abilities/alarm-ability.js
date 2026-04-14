@@ -164,7 +164,7 @@ function updateAlarmEvents(device, alarmData, source = 'push') {
         }
 
         const channel = alarmEvent.channel !== undefined ? alarmEvent.channel : 0;
-        device.emit('state', {
+        device.emit('stateChange', {
             type: 'alarm',
             channel,
             value: alarmEvent,

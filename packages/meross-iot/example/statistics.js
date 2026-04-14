@@ -33,7 +33,7 @@ const { createDebugUtils } = require('../lib/utilities/debug');
 
         const debug = createDebugUtils(meross);
 
-        meross.on('deviceInitialized', (deviceId, device) => {
+        meross.on('deviceReady', (device) => {
             device.on('connected', async () => {
                 console.log(`\n[Connected] ${device.name}`);
 

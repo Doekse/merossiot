@@ -5,11 +5,10 @@
 'use strict';
 
 /**
- * ManagerSubscription Example
+ * Unified Device Updates Example
  *
- * Demonstrates how to use ManagerSubscription for automatic polling and
- * unified update streams. ManagerSubscription combines push notifications
- * with periodic polling to provide a single event stream for device updates.
+ * Demonstrates how to consume the unified event model with manager-level
+ * `deviceUpdate` events plus optional ManagerSubscription polling.
  */
 
 const { ManagerMeross, MerossHttpClient } = require('../index.js');
@@ -43,64 +42,27 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
 
         console.log('=== Example 1: Device Updates ===\n');
 
-        meross.on('deviceInitialized', (deviceId, device) => {
-            console.log(`Device found: ${device.name} (${deviceId})`);
+        meross.on('deviceReady', (device) => {
+            console.log(`Device found: ${device.name} (${device.uuid})`);
 
             subscriptionManager.subscribe(device, {
                 deviceStateInterval: 30000,
                 smartCaching: true
             });
 
-            const eventName = `deviceUpdate:${deviceId}`;
-
-            subscriptionManager.on(eventName, (update) => {
-                console.log(`\n[Update] ${device.name}:`);
-                console.log(`  Source: ${update.source}`);
-                console.log(`  Timestamp: ${new Date(update.timestamp).toISOString()}`);
-
-                if (update.changes.toggle) {
-                    for (const [channel, onoff] of Object.entries(update.changes.toggle)) {
-                        const isOn = onoff === 1;
-                        console.log(`  Toggle channel ${channel}: ${isOn ? 'ON' : 'OFF'}`);
-                    }
-                }
-
-                if (update.changes.light) {
-                    for (const [channel, lightState] of Object.entries(update.changes.light)) {
-                        if (lightState.onoff !== undefined) {
-                            console.log(`  Light channel ${channel}: ${lightState.onoff === 1 ? 'ON' : 'OFF'}`);
-                        }
-                        if (lightState.brightness !== undefined) {
-                            console.log(`  Brightness channel ${channel}: ${lightState.brightness}%`);
-                        }
-                    }
-                }
-
-                if (update.changes.electricity) {
-                    for (const [channel, electricity] of Object.entries(update.changes.electricity)) {
-                        if (electricity.power !== undefined) {
-                            console.log(`  Power channel ${channel}: ${electricity.power.toFixed(2)} W`);
-                        }
-                        if (electricity.voltage !== undefined) {
-                            console.log(`  Voltage channel ${channel}: ${electricity.voltage.toFixed(1)} V`);
-                        }
-                    }
-                }
-
-                // Full state refresh occurs when no specific changes are detected
-                if (Object.keys(update.changes).length === 0) {
-                    console.log(`  Full state refresh`);
-                    if (update.state.toggle) {
-                        console.log(`  Current toggle states:`, update.state.toggle);
-                    }
-                }
-            });
-
             subscriptionManager.on('error', (error, context) => {
-                if (context === deviceId) {
+                if (context === device.uuid) {
                     console.error(`[Error] ${device.name}: ${error.message}`);
                 }
             });
+        });
+
+        meross.on('deviceUpdate', (device, change) => {
+            console.log(`\n[Update] ${device.name}:`);
+            console.log(`  Type: ${change.type}`);
+            console.log(`  Source: ${change.source}`);
+            console.log(`  Timestamp: ${new Date(change.timestamp).toISOString()}`);
+            console.log(`  Value: ${JSON.stringify(change.value, null, 2)}`);
         });
 
         console.log('\n=== Example 2: Device List Updates ===\n');
@@ -135,29 +97,37 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         if (devices.length > 0) {
             const firstDevice = devices[0];
             subscriptionManager.subscribe(firstDevice);
-            const eventName = `deviceUpdate:${firstDevice.uuid}`;
-
-            subscriptionManager.on(eventName, (update) => {
+            const listener1 = (device, change) => {
+                if (device.uuid !== firstDevice.uuid) {
+                    return;
+                }
                 console.log(`[Listener 1] Device ${firstDevice.name} updated`);
-            });
+            };
 
-            subscriptionManager.on(eventName, (update) => {
-                if (update.changes.toggle) {
+            const listener2 = (device, change) => {
+                if (device.uuid !== firstDevice.uuid) {
+                    return;
+                }
+                if (change.type === 'toggle') {
                     console.log(`[Listener 2] Toggle state changed`);
                 }
-            });
+            };
+
+            meross.on('deviceUpdate', listener1);
+            meross.on('deviceUpdate', listener2);
 
             console.log(`Added multiple listeners to ${firstDevice.name}`);
-            console.log(`Total listeners: ${subscriptionManager.listenerCount(eventName)}`);
+            console.log(`Total listeners: ${meross.listenerCount('deviceUpdate')}`);
         }
 
         console.log('\n=== Example 4: One-Time Events ===\n');
 
         if (devices.length > 0) {
             const firstDevice = devices[0];
-            const eventName = `deviceUpdate:${firstDevice.uuid}`;
-
-            subscriptionManager.once(eventName, (update) => {
+            meross.once('deviceUpdate', (device, update) => {
+                if (device.uuid !== firstDevice.uuid) {
+                    return;
+                }
                 console.log(`[One-Time] Received first update from ${firstDevice.name}`);
                 console.log(`  This listener will be removed after this event`);
             });
@@ -168,11 +138,10 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         setTimeout(() => {
             if (devices.length > 0) {
                 const firstDevice = devices[0];
-                const eventName = `deviceUpdate:${firstDevice.uuid}`;
-                const listenerCount = subscriptionManager.listenerCount(eventName);
+                const listenerCount = meross.listenerCount('deviceUpdate');
 
                 console.log(`Removing all listeners from ${firstDevice.name}`);
-                subscriptionManager.removeAllListeners(eventName);
+                meross.removeAllListeners('deviceUpdate');
 
                 subscriptionManager.unsubscribe(firstDevice.uuid);
                 console.log(`Unsubscribed from ${firstDevice.name}`);

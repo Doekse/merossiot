@@ -446,7 +446,7 @@ function updateTimerXState(device, timerxData, source = 'response') {
         }
 
         const newTimers = [...channelTimers];
-        device.emit('state', {
+        device.emit('stateChange', {
             type: 'timer',
             channel: channelIndex,
             value: newTimers,

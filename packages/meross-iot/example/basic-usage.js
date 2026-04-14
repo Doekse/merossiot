@@ -26,8 +26,8 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        meross.on('deviceInitialized', (deviceId, device) => {
-            console.log(`Device found: ${device.name} (${deviceId})`);
+        meross.on('deviceReady', (device) => {
+            console.log(`Device found: ${device.name} (${device.uuid})`);
             console.log(`  Type: ${device.deviceType}`);
             console.log(`  Status: ${device.onlineStatus === 1 ? 'Online' : 'Offline'}`);
         });

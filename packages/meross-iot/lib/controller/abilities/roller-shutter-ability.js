@@ -215,7 +215,7 @@ function updateRollerShutterState(device, stateData, source = 'response') {
         }
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'rollerShutter',
                 channel: channelIndex,
                 value: newValue,
@@ -272,7 +272,7 @@ function updateRollerShutterPosition(device, positionData, source = 'response') 
         }
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'rollerShutter',
                 channel: channelIndex,
                 value: newValue,

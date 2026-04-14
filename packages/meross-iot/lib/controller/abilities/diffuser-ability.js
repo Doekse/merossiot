@@ -200,7 +200,7 @@ function updateDiffuserLightState(device, lightData, source = 'response') {
         }, ['rgb']);
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'diffuserLight',
                 channel: channelIndex,
                 value: newValue,
@@ -249,7 +249,7 @@ function updateDiffuserSprayState(device, sprayData, source = 'response') {
         });
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'diffuserSpray',
                 channel: channelIndex,
                 value: newValue,

@@ -47,21 +47,25 @@ function waitForDevices(manager, timeout = 5000) {
         const deviceIds = new Set();
         let timeoutId = null;
         
-        const onDeviceInitialized = (deviceId, device) => {
+        const onDeviceReady = (device) => {
+            const deviceId = device?.subdeviceId
+                ? `${device.uuid}:${device.subdeviceId}`
+                : device?.uuid;
+            if (!deviceId) {return;}
             if (!deviceIds.has(deviceId)) {
                 deviceIds.add(deviceId);
                 devices.push(device);
             }
         };
         
-        manager.on('deviceInitialized', onDeviceInitialized);
+        manager.on('deviceReady', onDeviceReady);
         
         timeoutId = setTimeout(() => {
-            manager.removeListener('deviceInitialized', onDeviceInitialized);
+            manager.removeListener('deviceReady', onDeviceReady);
             resolve(devices);
         }, timeout);
         
-        // Periodic check handles cases where deviceInitialized event was missed
+        // Periodic check handles cases where deviceReady event was missed
         // (e.g., devices initialized before event handler was attached)
         const checkInterval = setInterval(() => {
             const currentDevices = manager.devices.list();
@@ -70,7 +74,7 @@ function waitForDevices(manager, timeout = 5000) {
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                 }
-                manager.removeListener('deviceInitialized', onDeviceInitialized);
+                manager.removeListener('deviceReady', onDeviceReady);
                 
                 for (const device of currentDevices) {
                     const deviceId = device.subdeviceId 
@@ -257,19 +261,19 @@ function waitForDeviceConnection(device, timeout = 10000) {
 function waitForPushNotification(device, namespace, timeout = 10000) {
     return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-            device.removeListener('data', onData);
+            device.removeListener('stateChange', onData);
             reject(new Error(`Timeout waiting for push notification: ${namespace}`));
         }, timeout);
         
         const onData = (ns, payload) => {
             if (ns === namespace) {
                 clearTimeout(timeoutId);
-                device.removeListener('data', onData);
+                device.removeListener('stateChange', onData);
                 resolve(payload);
             }
         };
         
-        device.on('state', onData);
+        device.on('stateChange', onData);
     });
 }
 

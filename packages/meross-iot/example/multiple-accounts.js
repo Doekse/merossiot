@@ -43,16 +43,16 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             transportMode: ManagerMeross.TransportMode.MQTT_ONLY
         });
 
-        account1.on('deviceInitialized', (deviceId, device) => {
-            console.log(`\n[Account 1] Device initialized: ${device.name} (${deviceId})`);
+        account1.on('deviceReady', (device) => {
+            console.log(`\n[Account 1] Device ready: ${device.name} (${device.uuid})`);
 
             device.on('connected', async () => {
                 console.log(`[Account 1] Device connected: ${device.name}`);
             });
         });
 
-        account2.on('deviceInitialized', (deviceId, device) => {
-            console.log(`\n[Account 2] Device initialized: ${device.name} (${deviceId})`);
+        account2.on('deviceReady', (device) => {
+            console.log(`\n[Account 2] Device ready: ${device.name} (${device.uuid})`);
 
             device.on('connected', async () => {
                 console.log(`[Account 2] Device connected: ${device.name}`);

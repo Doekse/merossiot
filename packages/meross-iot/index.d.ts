@@ -1285,15 +1285,25 @@ declare module 'meross-iot' {
     export type Callback<T> = (error: Error | null, data: T) => void
     /** @deprecated Use Promise-based methods instead */
     export type ErrorCallback = (error: Error | null) => void
-    export type DeviceInitializedEvent = 'deviceInitialized'
-
-    export type DeviceInitializedCallback = (deviceId: string, device: MerossDevice) => void
-
-    export type PushNotificationEvent = 'pushNotification'
-    export type PushNotificationCallback = (deviceId: string, notification: GenericPushNotification, device: MerossDevice) => void
-
+    export interface StateChange {
+        type: 'toggle' | 'light' | 'thermostat' | 'rollerShutter' | 'garageDoor' | 'spray' | 'diffuserLight' | 'diffuserSpray' | 'timer' | 'trigger' | 'presence' | 'alarm' | 'electricity' | 'consumption' | 'online' | 'properties' | 'refresh'
+        channel?: number
+        value: any
+        source: 'push' | 'poll' | 'response'
+        timestamp: number
+    }
+    export type DeviceUpdateEvent = 'deviceUpdate'
+    export type DeviceUpdateCallback = (device: MerossDevice, change: StateChange) => void
+    export type DeviceReadyEvent = 'deviceReady'
+    export type DeviceReadyCallback = (device: MerossDevice) => void
+    export type ConnectedEvent = 'connected'
+    export type ConnectedCallback = (device: MerossDevice) => void
+    export type DisconnectedEvent = 'disconnected'
+    export type DisconnectedCallback = (device: MerossDevice, reason?: string) => void
+    export type ReconnectedEvent = 'reconnected'
+    export type ReconnectedCallback = (device: MerossDevice) => void
     export type ErrorEvent = 'error'
-    export type CloudErrorCallback = (error: Error, deviceId: string | null) => void
+    export type CloudErrorCallback = (error: Error, device?: MerossDevice) => void
 
     /**
      * Filter options for finding devices.
@@ -1681,8 +1691,8 @@ declare module 'meross-iot' {
      * const manager = new ManagerMeross({ httpClient });
      * await manager.connect();
      * 
-     * manager.on('deviceInitialized', (deviceId, device) => {
-     *   console.log(`Device ${deviceId} initialized: ${device.name}`);
+     * manager.on('deviceReady', (device) => {
+     *   console.log(`Device initialized: ${device.name}`);
      * });
      * 
      * const devices = manager.devices.list();
@@ -1920,22 +1930,49 @@ declare module 'meross-iot' {
         login(): Promise<number>
         
         /**
-         * Registers a handler for device initialization events.
+         * Registers a handler for device update events.
          * 
-         * @param name - Event name ('deviceInitialized')
+         * @param name - Event name ('deviceUpdate')
          * @param handler - Callback function
          * @returns This instance for method chaining
          */
-        on(name: DeviceInitializedEvent, handler: DeviceInitializedCallback): this
+        on(name: DeviceUpdateEvent, handler: DeviceUpdateCallback): this
         
         /**
-         * Registers a handler for push notification events.
+         * Registers a handler for device ready events.
          * 
-         * @param name - Event name ('pushNotification')
+         * @param name - Event name ('deviceReady')
          * @param handler - Callback function
          * @returns This instance for method chaining
          */
-        on(name: PushNotificationEvent, handler: PushNotificationCallback): this
+        on(name: DeviceReadyEvent, handler: DeviceReadyCallback): this
+
+        /**
+         * Registers a handler for device connected events.
+         *
+         * @param name - Event name ('connected')
+         * @param handler - Callback function
+         * @returns This instance for method chaining
+         */
+        on(name: ConnectedEvent, handler: ConnectedCallback): this
+
+        /**
+         * Registers a handler for device disconnected events.
+         *
+         * @param name - Event name ('disconnected')
+         * @param handler - Callback function
+         * @returns This instance for method chaining
+         */
+        on(name: DisconnectedEvent, handler: DisconnectedCallback): this
+        
+        /**
+         * Registers a handler for device reconnected events.
+         *
+         * @param name - Event name ('reconnected')
+         * @param handler - Callback function
+         * @returns This instance for method chaining
+         */
+        on(name: ReconnectedEvent, handler: ReconnectedCallback): this
         
         /**
          * Registers a handler for error events.
@@ -2685,7 +2722,7 @@ declare module 'meross-iot' {
      *   console.log('Device connected');
      * });
      * 
-     * device.on('state', (event) => {
+     * device.on('stateChange', (event) => {
      *   if (event.type === 'toggle') {
      *     console.log('Toggle state changed:', event.value);
      *   }
@@ -2696,22 +2733,27 @@ declare module 'meross-iot' {
      */
     export class MerossDevice extends EventEmitter {
         /**
-         * Registers a handler for state events.
+         * Registers a handler for state change events.
          * 
          * Unified event emitted for all device state changes (toggle, light, thermostat, etc.).
          * Use this instead of feature-specific events for consistent state handling.
          * 
-         * @param event - Event name ('state')
+         * @param event - Event name ('stateChange')
          * @param listener - Callback function receiving state change event
          * @returns This instance for method chaining
          */
-        on(event: 'state', listener: (event: {
-            type: string;
-            channel: number;
-            value: any;
-            source: string;
-            timestamp: number;
-        }) => void): this;
+        on(event: 'stateChange', listener: (event: StateChange) => void): this;
+        
+        /**
+         * Registers a handler for ready events.
+         * 
+         * Emitted once initial device setup and synchronization are complete.
+         * 
+         * @param event - Event name ('ready')
+         * @param listener - Callback function
+         * @returns This instance for method chaining
+         */
+        on(event: 'ready', listener: () => void): this;
         
         /**
          * Registers a handler for connected events.
@@ -2969,21 +3011,23 @@ declare module 'meross-iot' {
          */
         on(event: 'subdeviceNotification', listener: (namespace: string, data: any) => void): this;
         /**
-         * Registers a handler for state events.
+         * Registers a handler for state change events.
          * 
          * Unified event for all device state changes (toggle, light, thermostat, etc.).
          * 
-         * @param event - Event name ('state')
+         * @param event - Event name ('stateChange')
          * @param listener - Callback function receiving state change event
          * @returns This instance for method chaining
          */
-        on(event: 'state', listener: (event: {
-            type: string;
-            channel: number;
-            value: any;
-            source: string;
-            timestamp: number;
-        }) => void): this;
+        on(event: 'stateChange', listener: (event: StateChange) => void): this;
+        /**
+         * Registers a handler for ready events.
+         * 
+         * @param event - Event name ('ready')
+         * @param listener - Callback function
+         * @returns This instance for method chaining
+         */
+        on(event: 'ready', listener: () => void): this;
         /**
          * Registers a handler for connected events.
          * 

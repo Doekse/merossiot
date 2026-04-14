@@ -26,9 +26,9 @@ node example/device-control.js
 
 ### `event-handling.js`
 Shows how to handle various events emitted by the library:
-- Device initialization
-- Connection/disconnection events
-- Push notifications
+- Device readiness
+- Connection/disconnection/reconnection events
+- Unified device updates (`deviceUpdate` and `stateChange`)
 - Online status changes
 - Error events
 
@@ -134,9 +134,9 @@ node example/timer-usage.js
 ```
 
 ### `subscription-manager.js`
-Demonstrates how to use ManagerSubscription for automatic polling and unified update streams:
-- Subscribing to device updates with automatic polling
-- Listening to device state changes via EventEmitter
+Demonstrates how to use ManagerSubscription with unified manager events:
+- Subscribing devices for automatic polling
+- Listening to device state changes via `meross.on('deviceUpdate', ...)`
 - Monitoring device list changes (additions, removals)
 - Multiple listeners per device
 - One-time event listeners
@@ -252,9 +252,11 @@ meross.subscription.subscribe(device, {
   deviceStateInterval: 5000
 });
 
-// Listen for updates
-meross.subscription.on(`deviceUpdate:${device.uuid}`, (data) => {
-  console.log('Device update:', data);
+// Listen for updates from all devices
+meross.on('deviceUpdate', (device, change) => {
+  if (device.uuid === 'device-uuid') {
+    console.log('Device update:', change);
+  }
 });
 
 // Unsubscribe

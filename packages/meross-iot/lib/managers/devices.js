@@ -665,7 +665,7 @@ class ManagerDevices {
      *
      * Forwards device events to manager and initializes MQTT connection.
      * Device abilities are already known at this point (queried before device creation).
-     * The deviceInitialized event is emitted by the device itself after it receives
+     * The ready event is emitted by the device itself after it receives
      * System.All data via MQTT and capabilities are built.
      * The device should already be registered in the device registry before calling this method.
      *
@@ -677,29 +677,20 @@ class ManagerDevices {
         const deviceId = deviceObj.uuid;
 
         deviceObj.on('disconnected', (error) => {
-            this.manager.emit('close', deviceId, error);
+            this.manager.emit('disconnected', deviceObj, error);
         });
         deviceObj.on('error', (error) => {
             this.manager.emit('error', error, deviceId);
         });
-        deviceObj.on('rawMessageSent', (message) => {
-            this.manager.emit('rawData', deviceId, message);
+        deviceObj.on('stateChange', (change) => {
+            this.manager.emit('deviceUpdate', deviceObj, change);
         });
-        deviceObj.on('pushNotificationReceived', (notification) => {
-            this.manager.emit('pushNotification', deviceId, notification, deviceObj);
+        deviceObj.on('ready', () => {
+            this.manager.emit('deviceReady', deviceObj);
         });
-        deviceObj.on('deviceInitialized', (deviceId, device) => {
-            this.manager.emit('deviceInitialized', deviceId, device);
-        });
-
-        if (this.manager._subscriptionManager) {
-            deviceObj.on('stateChanged', () => {
-                // Subscription manager handles stateChanged events
-            });
-        }
 
         deviceObj.on('connected', () => {
-            this.manager.emit('connected', deviceId);
+            this.manager.emit('connected', deviceObj);
 
             // Delay hub state refresh to ensure MQTT connection is fully established
             if (typeof deviceObj.getSubdevices === 'function') {
@@ -717,6 +708,9 @@ class ManagerDevices {
                     }, 2000);
                 }
             }
+        });
+        deviceObj.on('reconnected', () => {
+            this.manager.emit('reconnected', deviceObj);
         });
 
         await this.manager.mqtt.init(dev);

@@ -305,7 +305,7 @@ function updateLightState(device, lightData, source = 'response') {
         }, ['rgb']);
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'light',
                 channel: channelIndex,
                 value: newValue,

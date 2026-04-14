@@ -265,7 +265,7 @@ function updatePresenceState(device, latestData, source = 'response') {
         });
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'presence',
                 channel,
                 value: newValue,

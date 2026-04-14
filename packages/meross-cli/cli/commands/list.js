@@ -2,7 +2,7 @@
 
 const chalk = require('chalk');
 const ora = require('ora');
-const { MerossHubDevice, MerossSubDevice, OnlineStatus, parsePushNotification } = require('meross-iot');
+const { MerossHubDevice, MerossSubDevice, OnlineStatus } = require('meross-iot');
 const { formatDevice } = require('../utils/display');
 
 async function listDevices(manager) {
@@ -27,10 +27,10 @@ async function listDevices(manager) {
                         if (typeof hub.getHubOnline === 'function') {
                             const onlineResponse = await hub.getHubOnline();
                             if (onlineResponse && onlineResponse.online) {
-                                // Parse and route the online status notification to subdevices
-                                const notification = parsePushNotification('Appliance.Hub.Online', onlineResponse, hub.uuid);
-                                if (notification && typeof notification.routeToSubdevices === 'function') {
-                                    notification.routeToSubdevices(hub);
+                                // Route online status through hub notification handling
+                                // so subdevice online/offline state is synchronized.
+                                if (typeof hub.handlePushNotification === 'function') {
+                                    hub.handlePushNotification('Appliance.Hub.Online', onlineResponse);
                                 }
                             }
                         }

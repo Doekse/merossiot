@@ -150,7 +150,7 @@ function updateToggleState(device, toggleData, source = 'response') {
 
         const newValue = state.isOn;
         if (oldValue !== newValue) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'toggle',
                 channel: channelIndex,
                 value: newValue,

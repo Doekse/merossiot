@@ -67,9 +67,9 @@ async function runTests(context) {
         // Wait for push notification after SET (as per API spec: "PUSH after SET")
         let timerIdFromPush = null;
         const pushNotificationPromise = new Promise((resolve) => {
-            const handler = (notification) => {
-                if (notification.namespace === 'Appliance.Control.TimerX' && notification.timerxData) {
-                    const timerData = Array.isArray(notification.timerxData) ? notification.timerxData : [notification.timerxData];
+            const handler = (event) => {
+                if (event.type === 'timer' && event.value) {
+                    const timerData = Array.isArray(event.value) ? event.value : [event.value];
                     const createdTimer = timerData.find(t => 
                         t.channel === 0 && 
                         t.alias === 'Test Timer - CLI Test' &&
@@ -77,16 +77,16 @@ async function runTests(context) {
                     );
                     if (createdTimer && createdTimer.id) {
                         timerIdFromPush = createdTimer.id;
-                        testDevice.removeListener('pushNotification', handler);
+                        testDevice.removeListener('stateChange', handler);
                         resolve();
                     }
                 }
             };
-            testDevice.on('pushNotificationReceived', handler);
+            testDevice.on('stateChange', handler);
             
             // Timeout after 5 seconds if no push notification arrives
             setTimeout(() => {
-                testDevice.removeListener('pushNotification', handler);
+                testDevice.removeListener('stateChange', handler);
                 resolve();
             }, 5000);
         });

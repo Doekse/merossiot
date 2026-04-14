@@ -29,7 +29,7 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
             logger: console.log
         });
 
-        meross.on('deviceInitialized', (deviceId, device) => {
+        meross.on('deviceReady', (device) => {
             device.on('connected', async () => {
                 console.log(`\n[Connected] ${device.name}`);
 

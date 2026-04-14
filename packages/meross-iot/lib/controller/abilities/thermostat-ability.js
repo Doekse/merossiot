@@ -623,7 +623,7 @@ function updateThermostatMode(device, modeData, source = 'response') {
         });
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'thermostat',
                 channel: channelIndex,
                 value: newValue,
@@ -676,7 +676,7 @@ function updateThermostatModeB(device, modeData, source = 'response') {
         });
 
         if (Object.keys(newValue).length > 0) {
-            device.emit('state', {
+            device.emit('stateChange', {
                 type: 'thermostat',
                 channel: channelIndex,
                 value: newValue,
