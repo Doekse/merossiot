@@ -9,13 +9,28 @@ const ManagerMeross = require('meross-iot');
  * This allows dynamic command execution without hardcoding device-specific logic.
  *
  * @param {Object} manager - ManagerMeross instance
- * @param {string} uuid - Device UUID
- * @param {string} methodName - Method name in format "feature.action" (e.g., "toggle.set", "light.set")
- * @param {Object} params - Parameters to pass to the feature method
+ * @param {string} uuid - Device UUID (hub UUID when controlling a subdevice)
+ * @param {string|null|undefined} [subdeviceIdOrMethodName] - Subdevice ID for hub children, or method name when omitted (4-arg form)
+ * @param {string|Object} [methodNameOrParams] - Method name (`feature.action`) or params object in 4-arg form
+ * @param {Object} [params] - Parameters to pass to the feature method (5-arg form only)
  * @returns {Promise<*>} Result from the feature method
  */
-async function executeControlCommand(manager, uuid, methodName, params) {
-    const device = manager.devices.get(uuid);
+async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, methodNameOrParams, params) {
+    let subdeviceId = null;
+    let methodName;
+    let callParams;
+    if (params !== undefined) {
+        subdeviceId = subdeviceIdOrMethodName;
+        methodName = methodNameOrParams;
+        callParams = params;
+    } else {
+        methodName = subdeviceIdOrMethodName;
+        callParams = methodNameOrParams;
+    }
+
+    const device = subdeviceId
+        ? manager.devices.get({ hubUuid: uuid, id: subdeviceId })
+        : manager.devices.get(uuid);
 
     if (!device) {
         throw new ManagerMeross.MerossErrorNotFound(
@@ -32,7 +47,7 @@ async function executeControlCommand(manager, uuid, methodName, params) {
         );
     }
 
-    const parts = methodName.split('.');
+    const parts = String(methodName).split('.');
     if (parts.length !== 2) {
         throw new ManagerMeross.MerossErrorUnsupported(
             `Invalid method name format: ${methodName}. Expected format: "feature.action" (e.g., "toggle.set")`,
@@ -66,7 +81,7 @@ async function executeControlCommand(manager, uuid, methodName, params) {
         );
     }
 
-    return await ability[action](params);
+    return await ability[action](callParams);
 }
 
 module.exports = { executeControlCommand };
