@@ -3,7 +3,7 @@
 const TriggerState = require('../../model/states/trigger-state');
 const { normalizeChannel } = require('../../utilities/options');
 const triggerUtils = require('../../utilities/trigger');
-const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a trigger feature object for a device.
@@ -95,7 +95,7 @@ function createTriggerAbility(device) {
          */
         async delete(options = {}) {
             if (!options.triggerId) {
-                throw new MerossErrorValidation('triggerId is required', 'triggerId');
+                throw new MerossDeviceError('triggerId is required', 'VALIDATION_ERROR', { field: 'triggerId' });
             }
             const channel = normalizeChannel(options);
             const payload = {
@@ -128,7 +128,7 @@ function createTriggerAbility(device) {
          */
         async findTriggerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const response = await this.get({ channel });
@@ -143,29 +143,29 @@ function createTriggerAbility(device) {
 
         async deleteTriggerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const trigger = await this.findTriggerByAlias({ alias: options.alias, channel });
             if (!trigger) {
-                throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
+                throw new MerossDeviceError(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'trigger', resourceId: options.alias });
             }
             return await this.delete({ triggerId: trigger.id, channel });
         },
 
         async enableTriggerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const response = await this.get({ channel });
             if (!response || !response.triggerx || !Array.isArray(response.triggerx)) {
-                throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
+                throw new MerossDeviceError(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'trigger', resourceId: options.alias });
             }
 
             const trigger = response.triggerx.find(t => t.alias === options.alias);
             if (!trigger) {
-                throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
+                throw new MerossDeviceError(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'trigger', resourceId: options.alias });
             }
 
             const updatedTrigger = {
@@ -178,17 +178,17 @@ function createTriggerAbility(device) {
 
         async disableTriggerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const response = await this.get({ channel });
             if (!response || !response.triggerx || !Array.isArray(response.triggerx)) {
-                throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
+                throw new MerossDeviceError(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'trigger', resourceId: options.alias });
             }
 
             const trigger = response.triggerx.find(t => t.alias === options.alias);
             if (!trigger) {
-                throw new MerossErrorNotFound(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'trigger', options.alias);
+                throw new MerossDeviceError(`Trigger with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'trigger', resourceId: options.alias });
             }
 
             const updatedTrigger = {

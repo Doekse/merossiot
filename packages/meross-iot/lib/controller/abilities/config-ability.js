@@ -1,6 +1,6 @@
 'use strict';
 
-const { MerossErrorValidation } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a configuration feature object for a device.
@@ -32,7 +32,7 @@ function createConfigAbility(device) {
          */
         async set(options = {}) {
             if (options.enable === undefined) {
-                throw new MerossErrorValidation('enable is required', 'enable');
+                throw new MerossDeviceError('enable is required', 'VALIDATION_ERROR', { field: 'enable' });
             }
 
             const enableValue = options.enable ? 1 : 2;

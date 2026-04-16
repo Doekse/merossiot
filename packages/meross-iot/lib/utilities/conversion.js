@@ -13,7 +13,7 @@
  * @param {Array<number>} [rgb] - If array, expected format [r, g, b] where each is 0-255
  * @param {Object} [rgb] - If object, expected format {r, g, b} or {red, green, blue}
  * @returns {number} RGB color as integer
- * @throws {MerossErrorCommand} If RGB value is invalid
+ * @throws {MerossDeviceError} If RGB value is invalid
  * @example
  * const rgbInt = rgbToInt([255, 0, 0]); // Red
  * const rgbInt2 = rgbToInt({r: 0, g: 255, b: 0}); // Green
@@ -31,8 +31,8 @@ function rgbToInt(rgb) {
         const blue = rgb.b || rgb.blue || 0;
         return (red << 16) | (green << 8) | blue;
     } else {
-        const { MerossErrorCommand } = require('../model/exception');
-        throw new MerossErrorCommand('Invalid value for RGB! Must be integer, [r,g,b] tuple, or {r,g,b} object', { rgb });
+        const { MerossDeviceError } = require('../model/exception');
+        throw new MerossDeviceError('Invalid value for RGB! Must be integer, [r,g,b] tuple, or {r,g,b} object', 'COMMAND_FAILED', { rgb });
     }
 }
 

@@ -3,7 +3,7 @@
 const { OnlineStatus } = require('../enums');
 const { DEFAULT_MQTT_HOST, DEFAULT_MQTT_PORT } = require('../constants');
 const { extractDomain, extractPort } = require('../../utilities/network');
-const { MerossErrorValidation } = require('../exception');
+const { MerossDeviceError } = require('../exception');
 
 /**
  * Represents device information from the HTTP API
@@ -53,7 +53,7 @@ class HttpDeviceInfo {
      */
     static fromDict(jsonDict) {
         if (!jsonDict || typeof jsonDict !== 'object') {
-            throw new MerossErrorValidation('Device info dictionary is required', 'jsonDict');
+            throw new MerossDeviceError('Device info dictionary is required', 'VALIDATION_ERROR', { field: 'jsonDict' });
         }
 
         // Object.create() prevents accidental instantiation via 'new' constructor,

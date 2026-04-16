@@ -62,8 +62,8 @@ class ManagerDevices {
      * @param {boolean} [options.onlineOnly=true] - If true, only return online devices (default: true)
      * @param {boolean} [options.excludeHubs=false] - If true, exclude hub devices (default: false)
      * @returns {Promise<Array>} Promise that resolves with array of device info objects from HTTP API
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
      * @example
      * // Get all smart plugs
      * const smartPlugs = await manager.devices.discover({ deviceTypes: ['mss315', 'mss425'] });
@@ -113,8 +113,8 @@ class ManagerDevices {
      * @param {string} [options.subdeviceType] - Subdevice type filter (e.g., 'ma151' for smoke alarms, case-insensitive)
      * @param {boolean} [options.onlineOnly=true] - If true, only return subdevices from online hubs (default: true)
      * @returns {Promise<Array>} Promise that resolves with array of subdevice info objects with hub context
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
      * @example
      * // Get all smoke alarms
      * const smokeAlarms = await manager.devices.discoverSubdevices({ subdeviceType: 'ma151' });
@@ -251,8 +251,8 @@ class ManagerDevices {
      * @param {Object} [options] - Optional filter options
      * @param {Array<string>} [options.uuids] - Array of device UUIDs to filter. If provided, only devices with matching UUIDs will be initialized. If not provided, all online devices will be initialized.
      * @returns {Promise<number>} Promise that resolves with the number of devices initialized
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
      * @example
      * // Initialize all devices
      * const count = await manager.devices.initialize();
@@ -329,7 +329,7 @@ class ManagerDevices {
      * @param {string} identifier.hubUuid - Hub UUID that the subdevice belongs to
      * @param {string} identifier.id - Subdevice ID
      * @returns {Promise<MerossDevice|MerossHubDevice|MerossSubDevice|null>} Device instance, or null if initialization fails
-     * @throws {MerossErrorValidation} If device UUID not found or subdevice identifier is invalid
+     * @throws {MerossDeviceError} If device UUID not found or subdevice identifier is invalid
      * @example
      * // Initialize a base device
      * const device = await manager.devices.initializeDevice('device-uuid');
@@ -358,7 +358,7 @@ class ManagerDevices {
      *
      * @param {string} deviceUuid - Device UUID string
      * @returns {Promise<MerossDevice|MerossHubDevice|null>} Device instance or null if initialization fails
-     * @throws {MerossErrorValidation|MerossErrorNotFound} If device list is empty, device not found, or device is offline
+     * @throws {MerossDeviceError} If device list is empty, device not found, or device is offline
      * @private
      */
     async _initializeBaseDevice(deviceUuid) {
@@ -400,7 +400,7 @@ class ManagerDevices {
      * @param {string} identifier.hubUuid - Hub UUID that the subdevice belongs to
      * @param {string} identifier.id - Subdevice ID
      * @returns {Promise<MerossSubDevice>} Subdevice instance
-     * @throws {MerossErrorNotFound|MerossErrorInitialization} If subdevice not found or hub initialization fails
+     * @throws {MerossDeviceError} If subdevice not found or hub initialization fails
      * @private
      */
     async _initializeSubdevice(identifier) {
@@ -430,7 +430,7 @@ class ManagerDevices {
      *
      * @param {string} hubUuid - Hub UUID
      * @returns {Promise<MerossHubDevice>} Hub device instance
-     * @throws {MerossErrorValidation|MerossErrorNotFound|MerossErrorInitialization} If device list is empty, hub not found, or hub initialization fails
+     * @throws {MerossDeviceError} If device list is empty, hub not found, or hub initialization fails
      * @private
      */
     async _ensureHubInitialized(hubUuid) {
@@ -467,7 +467,7 @@ class ManagerDevices {
      * @param {string} hubUuid - Hub UUID (for API calls and error messages)
      * @param {string} subdeviceId - Subdevice ID to find
      * @returns {Promise<MerossSubDevice>} Enrolled subdevice instance
-     * @throws {MerossErrorNotFound} If subdevice not found in hub
+     * @throws {MerossDeviceError} If subdevice not found in hub
      * @private
      */
     async _findAndEnrollSubdevice(hubDevice, hubUuid, subdeviceId) {
@@ -505,7 +505,7 @@ class ManagerDevices {
      * @param {string} identifier.hubUuid - Hub UUID that the subdevice belongs to
      * @param {string} identifier.id - Subdevice ID
      * @returns {Promise<boolean>} Promise that resolves to true if device was removed, false if not found
-     * @throws {MerossErrorValidation} If identifier is invalid
+     * @throws {MerossDeviceError} If identifier is invalid
      * @example
      * // Remove a base device
      * const removed = await manager.devices.remove('device-uuid');
@@ -975,8 +975,8 @@ class ManagerDevices {
      * @param {string} domain - MQTT domain for the device
      * @param {number} [timeout=5000] - Timeout in milliseconds
      * @returns {Promise<Object|null>} Abilities object or null if query fails or times out
-     * @throws {MerossErrorCommandTimeout} If query times out
-     * @throws {MerossErrorMqtt} If MQTT connection fails
+     * @throws {MerossDeviceError} If query times out (COMMAND_TIMEOUT)
+     * @throws {MerossNetworkError} If MQTT connection fails (MQTT_ERROR)
      * @private
      */
     async _queryDeviceAbilities(deviceUuid, domain, timeout = 5000) {

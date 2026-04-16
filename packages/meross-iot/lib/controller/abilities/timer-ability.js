@@ -3,7 +3,7 @@
 const TimerState = require('../../model/states/timer-state');
 const { normalizeChannel } = require('../../utilities/options');
 const timerUtils = require('../../utilities/timer');
-const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a timer feature object for a device.
@@ -248,7 +248,7 @@ function createTimerAbility(device) {
          */
         async delete(options = {}) {
             if (!options.timerId) {
-                throw new MerossErrorValidation('timerId is required', 'timerId');
+                throw new MerossDeviceError('timerId is required', 'VALIDATION_ERROR', { field: 'timerId' });
             }
             const channel = normalizeChannel(options);
             const payload = {
@@ -281,7 +281,7 @@ function createTimerAbility(device) {
          */
         async findTimerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const response = await this.get({ channel });
@@ -304,12 +304,12 @@ function createTimerAbility(device) {
          */
         async deleteTimerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const timer = await this.findTimerByAlias({ alias: options.alias, channel });
             if (!timer) {
-                throw new MerossErrorNotFound(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'timer', options.alias);
+                throw new MerossDeviceError(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'timer', resourceId: options.alias });
             }
             return await this.delete({ timerId: timer.id, channel });
         },
@@ -324,17 +324,17 @@ function createTimerAbility(device) {
          */
         async enableTimerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const response = await this.get({ channel });
             if (!response || !response.timerx || !Array.isArray(response.timerx)) {
-                throw new MerossErrorNotFound(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'timer', options.alias);
+                throw new MerossDeviceError(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'timer', resourceId: options.alias });
             }
 
             const timer = response.timerx.find(t => t.alias === options.alias);
             if (!timer) {
-                throw new MerossErrorNotFound(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'timer', options.alias);
+                throw new MerossDeviceError(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'timer', resourceId: options.alias });
             }
 
             const updatedTimer = {
@@ -355,17 +355,17 @@ function createTimerAbility(device) {
          */
         async disableTimerByAlias(options = {}) {
             if (!options.alias) {
-                throw new MerossErrorValidation('alias is required', 'alias');
+                throw new MerossDeviceError('alias is required', 'VALIDATION_ERROR', { field: 'alias' });
             }
             const channel = normalizeChannel(options);
             const response = await this.get({ channel });
             if (!response || !response.timerx || !Array.isArray(response.timerx)) {
-                throw new MerossErrorNotFound(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'timer', options.alias);
+                throw new MerossDeviceError(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'timer', resourceId: options.alias });
             }
 
             const timer = response.timerx.find(t => t.alias === options.alias);
             if (!timer) {
-                throw new MerossErrorNotFound(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'timer', options.alias);
+                throw new MerossDeviceError(`Timer with alias "${options.alias}" not found on channel ${channel}`, 'NOT_FOUND', { resourceType: 'timer', resourceId: options.alias });
             }
 
             const updatedTimer = {

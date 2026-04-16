@@ -214,8 +214,8 @@ class MerossHttpClient {
      * @returns {Response} returns.response - Fetch Response object
      * @returns {Object} returns.body - Parsed JSON response body
      * @returns {string} returns.bodyText - Raw response text
-     * @throws {MerossErrorHttpApi} If HTTP status is not 200
-     * @throws {MerossErrorNetworkTimeout} If request timeout occurs
+     * @throws {MerossApiError} If HTTP status is not 200
+     * @throws {MerossNetworkError} If request timeout occurs
      * @private
      */
     async _executeHttpRequest(url, headers, payload, requestCounter) {
@@ -306,7 +306,7 @@ class MerossHttpClient {
      * @param {Object} body - Response body containing redirect information
      * @param {number} retryCount - Current retry attempt count
      * @returns {Promise<Object>} Promise that resolves with API response data after retry
-     * @throws {MerossErrorBadDomain} If max retries exceeded or auto-retry disabled
+     * @throws {MerossApiError} If max retries exceeded or auto-retry disabled
      * @private
      */
     async _handleDomainRedirect(endpoint, paramsData, body, retryCount) {
@@ -360,13 +360,13 @@ class MerossHttpClient {
      *
      * @param {number} apiStatus - API status code from response
      * @param {Object} body - Response body containing error information
-     * @throws {MerossErrorMFARequired} If MFA is required but code not provided (apiStatus 1033)
-     * @throws {MerossErrorWrongMFA} If MFA code is incorrect (apiStatus 1032)
-     * @throws {MerossErrorTokenExpired} If authentication token has expired (apiStatus 1019, 1022, 1200)
-     * @throws {MerossErrorTooManyTokens} If too many tokens are active (apiStatus 1301)
-     * @throws {MerossErrorAuthentication} If authentication fails (apiStatus 1000-1008)
-     * @throws {MerossErrorApiLimitReached} If API rate limit is reached (apiStatus 1042)
-     * @throws {MerossErrorResourceAccessDenied} If resource access is denied (apiStatus 1043)
+     * @throws {MerossAuthError} If MFA is required but code not provided (apiStatus 1033)
+     * @throws {MerossAuthError} If MFA code is incorrect (apiStatus 1032)
+     * @throws {MerossAuthError} If authentication token has expired (apiStatus 1019, 1022, 1200)
+     * @throws {MerossAuthError} If too many tokens are active (apiStatus 1301)
+     * @throws {MerossAuthError} If authentication fails (apiStatus 1000-1008)
+     * @throws {MerossApiError} If API rate limit is reached (apiStatus 1042)
+     * @throws {MerossApiError} If resource access is denied (apiStatus 1043)
      * @throws {MerossError} For other API error status codes
      * @private
      */
@@ -414,15 +414,15 @@ class MerossHttpClient {
      * @param {Object} paramsData - Request parameters object to be encoded and sent
      * @param {number} [retryCount=0] - Internal retry counter (used for domain redirect retries)
      * @returns {Promise<Object>} Promise that resolves with the API response data
-     * @throws {MerossErrorBadDomain} If domain redirect occurs and max retries exceeded or auto-retry disabled
-     * @throws {MerossErrorMFARequired} If MFA is required but code not provided (apiStatus 1033)
-     * @throws {MerossErrorWrongMFA} If MFA code is incorrect (apiStatus 1032)
-     * @throws {MerossErrorTokenExpired} If authentication token has expired (apiStatus 1019, 1022, 1200)
-     * @throws {MerossErrorTooManyTokens} If too many tokens are active (apiStatus 1301)
-     * @throws {MerossErrorAuthentication} If authentication fails (apiStatus 1000-1008)
-     * @throws {MerossErrorApiLimitReached} If API rate limit is reached (apiStatus 1042)
-     * @throws {MerossErrorResourceAccessDenied} If resource access is denied (apiStatus 1043)
-     * @throws {MerossErrorHttpApi} If HTTP request fails (network errors, timeouts)
+     * @throws {MerossApiError} If domain redirect occurs and max retries exceeded or auto-retry disabled
+     * @throws {MerossAuthError} If MFA is required but code not provided (apiStatus 1033)
+     * @throws {MerossAuthError} If MFA code is incorrect (apiStatus 1032)
+     * @throws {MerossAuthError} If authentication token has expired (apiStatus 1019, 1022, 1200)
+     * @throws {MerossAuthError} If too many tokens are active (apiStatus 1301)
+     * @throws {MerossAuthError} If authentication fails (apiStatus 1000-1008)
+     * @throws {MerossApiError} If API rate limit is reached (apiStatus 1042)
+     * @throws {MerossApiError} If resource access is denied (apiStatus 1043)
+     * @throws {MerossApiError} If HTTP request fails (network errors, timeouts)
      * @throws {MerossError} For other API error status codes
      * @private
      */
@@ -486,11 +486,11 @@ class MerossHttpClient {
      * @returns {string} returns.key - Encryption key
      * @returns {string} returns.userId - User ID
      * @returns {string} returns.email - User email
-     * @throws {MerossErrorAuthentication} If email or password is missing
-     * @throws {MerossErrorMFARequired} If MFA is required but code not provided
-     * @throws {MerossErrorWrongMFA} If MFA code is incorrect
-     * @throws {MerossErrorTokenExpired} If token has expired
-     * @throws {MerossErrorBadDomain} If domain redirect occurs and auto-retry fails
+     * @throws {MerossAuthError} If email or password is missing
+     * @throws {MerossAuthError} If MFA is required but code not provided
+     * @throws {MerossAuthError} If MFA code is incorrect
+     * @throws {MerossAuthError} If token has expired
+     * @throws {MerossApiError} If domain redirect occurs and auto-retry fails
      * @example
      * const result = await client.login('email@example.com', 'password');
      * client.setToken(result.token);
@@ -553,9 +553,9 @@ class MerossHttpClient {
      * Gets the list of devices from Meross cloud
      *
      * @returns {Promise<Array>} Promise that resolves with array of device objects
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
-     * @throws {MerossErrorUnauthorized} If not authenticated
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
+     * @throws {MerossAuthError} If not authenticated
      * @example
      * const devices = await client.getDevices();
      * console.log(`Found ${devices.length} devices`);
@@ -573,9 +573,9 @@ class MerossHttpClient {
      *
      * @param {string} deviceUuid - Hub device UUID
      * @returns {Promise<Array>} Promise that resolves with array of subdevice objects
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
-     * @throws {MerossErrorUnauthorized} If not authenticated
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
+     * @throws {MerossAuthError} If not authenticated
      * @example
      * const subdevices = await client.getSubDevices(hubUuid);
      * console.log(`Hub has ${subdevices.length} subdevices`);
@@ -622,7 +622,7 @@ class MerossHttpClient {
      * credentials on this client so subsequent reads reflect a logged-out state.
      *
      * @returns {Promise<Object|null>} Promise that resolves with logout response data (or null if empty)
-     * @throws {MerossErrorAuthentication} If not authenticated
+     * @throws {MerossAuthError} If not authenticated
      * @example
      * const response = await client.logout();
      * console.log('Logged out successfully', response);

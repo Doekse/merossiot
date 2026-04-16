@@ -2,7 +2,7 @@
 
 const RollerShutterState = require('../../model/states/roller-shutter-state');
 const { normalizeChannel } = require('../../utilities/options');
-const { MerossErrorValidation } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a roller shutter feature object for a device.
@@ -21,12 +21,11 @@ function createRollerShutterAbility(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {number} options.position - Position value (0-100 for open/close, -1 for stop)
          * @returns {Promise<Object>} Response from the device
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async set(options = {}) {
             if (options.position === undefined) {
-                throw new MerossErrorValidation('position is required', 'position');
+                throw new MerossDeviceError('position is required', 'VALIDATION_ERROR', { field: 'position' });
             }
             const channel = normalizeChannel(options);
             const payload = { 'position': { position: options.position, channel } };
@@ -51,8 +50,7 @@ function createRollerShutterAbility(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<RollerShutterState|undefined>} Promise that resolves with roller shutter state or undefined
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
@@ -147,7 +145,7 @@ function createRollerShutterAbility(device) {
          */
         async setConfig(options = {}) {
             if (!options.config) {
-                throw new MerossErrorValidation('config is required', 'config');
+                throw new MerossDeviceError('config is required', 'VALIDATION_ERROR', { field: 'config' });
             }
             const payload = { config: options.config };
             const response = await device.publishMessage('SET', 'Appliance.RollerShutter.Config', payload);

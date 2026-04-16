@@ -4,7 +4,7 @@ const DiffuserLightState = require('../../model/states/diffuser-light-state');
 const DiffuserSprayState = require('../../model/states/diffuser-spray-state');
 const { buildStateChanges } = require('../../utilities/state-changes');
 const { normalizeChannel } = require('../../utilities/options');
-const { MerossErrorValidation } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a diffuser feature object for a device.
@@ -29,8 +29,7 @@ function createDiffuserAbility(device) {
          * @param {number} [options.mode] - Spray mode value (for spray control)
          * @param {number} [options.channel=0] - Channel to control (default: 0, for spray)
          * @returns {Promise<Object>} Response from the device
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async set(options = {}) {
             // Handle light
@@ -68,7 +67,7 @@ function createDiffuserAbility(device) {
                 return response;
             }
 
-            throw new MerossErrorValidation('Either light or mode is required', 'light|mode');
+            throw new MerossDeviceError('Either light or mode is required', 'VALIDATION_ERROR', { field: 'light|mode' });
         },
 
         /**
@@ -80,8 +79,7 @@ function createDiffuserAbility(device) {
          * @param {string} [options.type='light'] - Type to get: 'light' or 'spray' (default: 'light')
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<DiffuserLightState|DiffuserSprayState|undefined>} Promise that resolves with state or undefined
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async get(options = {}) {
             const type = options.type || 'light';
@@ -125,7 +123,7 @@ function createDiffuserAbility(device) {
                 return device._diffuserSprayStateByChannel.get(channel);
             }
 
-            throw new MerossErrorValidation('type must be "light" or "spray"', 'type');
+            throw new MerossDeviceError('type must be "light" or "spray"', 'VALIDATION_ERROR', { field: 'type' });
         },
 
         /**
@@ -147,7 +145,7 @@ function createDiffuserAbility(device) {
          */
         async setSensor(options = {}) {
             if (!options.sensorData) {
-                throw new MerossErrorValidation('sensorData is required', 'sensorData');
+                throw new MerossDeviceError('sensorData is required', 'VALIDATION_ERROR', { field: 'sensorData' });
             }
             const sensorData = options.sensorData;
             const payload = sensorData;

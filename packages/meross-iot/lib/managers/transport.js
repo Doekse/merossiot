@@ -35,7 +35,7 @@ class ManagerTransport {
      * Sets the default transport mode for device communication.
      *
      * @param {number} value - Transport mode from TransportMode enum
-     * @throws {MerossErrorMqtt} If invalid transport mode is provided
+     * @throws {MerossNetworkError} If invalid transport mode is provided
      */
     set defaultMode(value) {
         if (!Object.values(TransportMode).includes(value)) {
@@ -56,9 +56,9 @@ class ManagerTransport {
      * @param {Object} data - Message data object with header and payload
      * @param {number|null} [overrideMode=null] - Override transport mode (from TransportMode enum)
      * @returns {Promise<boolean>} Promise that resolves to true if message was sent successfully
-     * @throws {MerossErrorCommand} If message cannot be sent
-     * @throws {MerossErrorHttpApi} If HTTP request fails
-     * @throws {MerossErrorMqtt} If MQTT publish fails
+     * @throws {MerossDeviceError} If message cannot be sent (COMMAND_FAILED)
+     * @throws {MerossApiError} If HTTP request fails
+     * @throws {MerossNetworkError} If MQTT publish fails
      */
     async request(device, ip, data, overrideMode = null) {
         if (!this.manager._requestQueue) {
@@ -144,7 +144,7 @@ class ManagerTransport {
      * @param {string} ip - Device LAN IP address
      * @param {Object} data - Message data object with header and payload
      * @returns {Promise<boolean>} Promise that resolves to true if sent successfully
-     * @throws {MerossErrorHttpApi} If HTTP request fails
+     * @throws {MerossApiError} If HTTP request fails
      * @private
      */
     async _sendViaHttp(device, ip, data) {
@@ -184,9 +184,9 @@ class ManagerTransport {
      * @param {Object} data - Message data object with header and payload
      * @param {number|null} [overrideMode=null] - Override transport mode (from TransportMode enum)
      * @returns {Promise<boolean>} Promise that resolves to true if message was sent successfully
-     * @throws {MerossErrorCommand} If message cannot be sent
-     * @throws {MerossErrorHttpApi} If HTTP request fails
-     * @throws {MerossErrorMqtt} If MQTT publish fails
+     * @throws {MerossDeviceError} If message cannot be sent (COMMAND_FAILED)
+     * @throws {MerossApiError} If HTTP request fails
+     * @throws {MerossNetworkError} If MQTT publish fails
      * @private
      */
     async _send(device, ip, data, overrideMode = null) {

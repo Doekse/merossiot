@@ -1,5 +1,6 @@
 'use strict';
 
+const { MerossDeviceError } = require('../../model/exception');
 const { normalizeChannel, validateRequired } = require('../../utilities/options');
 
 const MAX_ALARM_EVENTS_MEMORY = 10;
@@ -37,9 +38,7 @@ function createAlarmAbility(device) {
          * @param {boolean} options.on - True to turn alarm on, false to turn off
          * @param {number} [options.duration] - Optional duration in seconds
          * @returns {Promise<Object>} Promise that resolves with the response
-         * @throws {MerossErrorValidation} If required options are missing
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If required options are missing, device is not connected, or command times out
          */
         async set(options = {}) {
             validateRequired(options, ['on']);
@@ -84,15 +83,11 @@ function createAlarmAbility(device) {
          * @param {number} options.volume - Volume level (0-100)
          * @param {number} options.song - Ringtone/song selection (typically 1-7)
          * @returns {Promise<Object>} Promise that resolves with the response
-         * @throws {MerossErrorValidation} If required options are missing
-         * @throws {MerossErrorUnknownDeviceType} If device does not support Appliance.Config.Alarm
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If required options are missing, alarm namespace unsupported, device is not connected, or command times out
          */
         async setConfig(options = {}) {
             if (!device.abilities || !device.abilities['Appliance.Config.Alarm']) {
-                const { MerossErrorUnknownDeviceType } = require('../../model/exception');
-                throw new MerossErrorUnknownDeviceType('Device does not support Appliance.Config.Alarm', device.deviceType);
+                throw new MerossDeviceError('Device does not support Appliance.Config.Alarm', 'UNKNOWN_DEVICE_TYPE', { deviceType: device.deviceType });
             }
 
             validateRequired(options, ['enable', 'volume', 'song']);

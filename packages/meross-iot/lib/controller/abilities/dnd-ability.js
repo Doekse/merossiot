@@ -1,5 +1,6 @@
 'use strict';
 
+const { MerossDeviceError } = require('../../model/exception');
 const { DNDMode } = require('../../model/enums');
 
 /**
@@ -53,8 +54,7 @@ function createDNDAbility(device) {
          */
         async set(options = {}) {
             if (options.mode === undefined) {
-                const { MerossErrorCommand } = require('../../model/exception');
-                throw new MerossErrorCommand('mode is required', { options }, device.uuid);
+                throw new MerossDeviceError('mode is required', 'VALIDATION_ERROR', { field: 'mode', options, deviceUuid: device.uuid });
             }
             let modeValue;
             if (typeof options.mode === 'boolean') {
@@ -62,8 +62,7 @@ function createDNDAbility(device) {
             } else if (options.mode === DNDMode.DND_ENABLED || options.mode === DNDMode.DND_DISABLED) {
                 modeValue = options.mode;
             } else {
-                const { MerossErrorCommand } = require('../../model/exception');
-                throw new MerossErrorCommand('Invalid DND mode. Expected boolean or DNDMode enum value.', { mode: options.mode }, device.uuid);
+                throw new MerossDeviceError('Invalid DND mode. Expected boolean or DNDMode enum value.', 'VALIDATION_ERROR', { field: 'mode', mode: options.mode, deviceUuid: device.uuid });
             }
 
             const payload = { 'DNDMode': { 'mode': modeValue } };

@@ -1,7 +1,7 @@
 'use strict';
 
 const TimerType = require('../model/enums').TimerType;
-const { MerossErrorValidation } = require('../model/exception');
+const { MerossDeviceError } = require('../model/exception');
 
 /**
  * Timer utility functions.
@@ -22,7 +22,7 @@ const { MerossErrorValidation } = require('../model/exception');
  *
  * @param {string|Date|number} time - Time in HH:MM format (24-hour), Date object, or minutes since midnight
  * @returns {number} Minutes since midnight (0-1439)
- * @throws {MerossErrorValidation} If time format is invalid
+ * @throws {MerossDeviceError} If time format is invalid
  * @example
  * timeToMinutes('14:30'); // Returns 870
  * timeToMinutes(new Date(2023, 0, 1, 14, 30)); // Returns 870 (14:30)
@@ -33,7 +33,7 @@ function timeToMinutes(time) {
         if (time >= 0 && time < 1440) {
             return time;
         }
-        throw new MerossErrorValidation(`Invalid time value: ${time}. Must be 0-1439 minutes`, 'time');
+        throw new MerossDeviceError(`Invalid time value: ${time}. Must be 0-1439 minutes`, 'VALIDATION_ERROR', { field: 'time' });
     }
 
     if (time instanceof Date) {
@@ -44,15 +44,13 @@ function timeToMinutes(time) {
         const trimmed = time.trim();
         const timePattern = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
         if (!timePattern.test(trimmed)) {
-            const { MerossErrorValidation } = require('../model/exception');
-            throw new MerossErrorValidation(`Invalid time format: "${time}". Expected HH:MM (24-hour format)`, 'time');
+            throw new MerossDeviceError(`Invalid time format: "${time}". Expected HH:MM (24-hour format)`, 'VALIDATION_ERROR', { field: 'time' });
         }
         const [hours, minutes] = trimmed.split(':').map(Number);
         return hours * 60 + minutes;
     }
 
-    const { MerossErrorValidation } = require('../model/exception');
-    throw new MerossErrorValidation(`Invalid time type: ${typeof time}. Expected string (HH:MM), Date, or number`, 'time');
+    throw new MerossDeviceError(`Invalid time type: ${typeof time}. Expected string (HH:MM), Date, or number`, 'VALIDATION_ERROR', { field: 'time' });
 }
 
 /**
@@ -63,14 +61,14 @@ function timeToMinutes(time) {
  *
  * @param {number} minutes - Minutes since midnight (0-1439)
  * @returns {string} Time in HH:MM format (24-hour)
- * @throws {MerossErrorValidation} If minutes value is invalid
+ * @throws {MerossDeviceError} If minutes value is invalid
  * @example
  * minutesToTime(870); // Returns "14:30"
  * minutesToTime(0); // Returns "00:00"
  */
 function minutesToTime(minutes) {
     if (typeof minutes !== 'number' || minutes < 0 || minutes >= 1440) {
-        throw new MerossErrorValidation(`Invalid minutes value: ${minutes}. Must be 0-1439`, 'minutes');
+        throw new MerossDeviceError(`Invalid minutes value: ${minutes}. Must be 0-1439`, 'VALIDATION_ERROR', { field: 'minutes' });
     }
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -108,7 +106,7 @@ function getSpecialKeywordBitmask(keyword) {
  * @private
  * @param {string|number} day - Day value as number (0-6) or string (day name)
  * @returns {number} Day number (0-6, where 0=Monday)
- * @throws {MerossErrorValidation} If day value is invalid
+ * @throws {MerossDeviceError} If day value is invalid
  */
 function parseDayToNumber(day) {
     const dayMap = {
@@ -130,8 +128,7 @@ function parseDayToNumber(day) {
 
     if (typeof day === 'number') {
         if (day < 0 || day > 6) {
-            const { MerossErrorValidation } = require('../model/exception');
-            throw new MerossErrorValidation(`Invalid day number: ${day}. Must be 0-6 (0=Monday)`, 'day');
+            throw new MerossDeviceError(`Invalid day number: ${day}. Must be 0-6 (0=Monday)`, 'VALIDATION_ERROR', { field: 'day' });
         }
         return day;
     }
@@ -141,11 +138,10 @@ function parseDayToNumber(day) {
         if (dayMap[normalized] !== undefined) {
             return dayMap[normalized];
         }
-        throw new MerossErrorValidation(`Invalid day name: "${day}". Use 'monday', 'tuesday', etc.`, 'day');
+        throw new MerossDeviceError(`Invalid day name: "${day}". Use 'monday', 'tuesday', etc.`, 'VALIDATION_ERROR', { field: 'day' });
     }
 
-    const { MerossErrorValidation } = require('../model/exception');
-    throw new MerossErrorValidation(`Invalid day type: ${typeof day}. Expected string or number`, 'day');
+    throw new MerossDeviceError(`Invalid day type: ${typeof day}. Expected string or number`, 'VALIDATION_ERROR', { field: 'day' });
 }
 
 /**
@@ -158,7 +154,7 @@ function parseDayToNumber(day) {
  * @param {Array<string|number>} days - Array of weekday names ('monday', 'tuesday', etc.) or numbers (0-6, where 0=Monday)
  * @param {boolean} [repeat=true] - Whether to set the repeat bit (bit 7). Default: true
  * @returns {number} Week bitmask with selected days and repeat bit
- * @throws {MerossErrorValidation} If day names are invalid
+ * @throws {MerossDeviceError} If day names are invalid
  * @example
  * daysToWeekMask(['monday', 'wednesday', 'friday']); // Returns bitmask for Mon, Wed, Fri + repeat
  * daysToWeekMask([0, 2, 4]); // Same as above using numbers
@@ -167,7 +163,7 @@ function parseDayToNumber(day) {
  */
 function daysToWeekMask(days, repeat = true) {
     if (!Array.isArray(days) || days.length === 0) {
-        throw new MerossErrorValidation('Days must be a non-empty array', 'days');
+        throw new MerossDeviceError('Days must be a non-empty array', 'VALIDATION_ERROR', { field: 'days' });
     }
 
     let bitmask = 0;

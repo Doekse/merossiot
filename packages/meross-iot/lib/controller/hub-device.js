@@ -1,5 +1,6 @@
 'use strict';
 
+const { MerossDeviceError } = require('../model/exception');
 const { MerossDevice } = require('./device');
 const createHubAbility = require('./abilities/hub-ability');
 const { handlePushNotification } = require('./abilities/hub-ability');
@@ -91,7 +92,7 @@ class MerossHubDevice extends MerossDevice {
      * Prevents duplicate registrations to avoid state conflicts from multiple instances.
      *
      * @param {MerossSubDevice} subdevice - The subdevice instance to register
-     * @throws {MerossErrorUnknownDeviceType} If the subdevice is invalid or missing a subdeviceId
+     * @throws {MerossDeviceError} If the subdevice is invalid or missing a subdeviceId
      * @example
      * const subdevice = buildSubdevice(subdeviceInfo, hubUuid, hubAbilities, manager, hub);
      * hub.registerSubdevice(subdevice);
@@ -101,8 +102,7 @@ class MerossHubDevice extends MerossDevice {
      */
     registerSubdevice(subdevice) {
         if (!subdevice || !subdevice.subdeviceId) {
-            const { MerossErrorUnknownDeviceType } = require('../model/exception');
-            throw new MerossErrorUnknownDeviceType('Invalid subdevice: must have subdeviceId');
+            throw new MerossDeviceError('Invalid subdevice: must have subdeviceId', 'UNKNOWN_DEVICE_TYPE');
         }
 
         if (this._subDevices.has(subdevice.subdeviceId)) {

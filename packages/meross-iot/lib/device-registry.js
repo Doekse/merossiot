@@ -1,6 +1,6 @@
 'use strict';
 
-const { MerossErrorUnknownDeviceType } = require('./model/exception');
+const { MerossDeviceError } = require('./model/exception');
 
 /**
  * Registry for managing Meross devices and subdevices.
@@ -253,7 +253,7 @@ class DeviceRegistry {
      *
      * @param {MerossDevice|MerossHubDevice|MerossSubDevice} device - Device instance
      * @returns {string} Internal ID string
-     * @throws {MerossErrorUnknownDeviceType} If required identifiers are missing
+     * @throws {MerossDeviceError} If required identifiers are missing
      * @private
      */
     _getInternalId(device) {
@@ -266,7 +266,7 @@ class DeviceRegistry {
             const subdeviceId = device.subdeviceId || device._subdeviceId;
 
             if (!hubUuid || !subdeviceId) {
-                throw new MerossErrorUnknownDeviceType('Cannot generate internal ID for subdevice: missing hub UUID or subdevice ID');
+                throw new MerossDeviceError('Cannot generate internal ID for subdevice: missing hub UUID or subdevice ID', 'UNKNOWN_DEVICE_TYPE');
             }
 
             const internalId = DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, subdeviceId);
@@ -276,7 +276,7 @@ class DeviceRegistry {
 
         const uuid = device.uuid;
         if (!uuid) {
-            throw new MerossErrorUnknownDeviceType('Cannot generate internal ID: device missing UUID');
+            throw new MerossDeviceError('Cannot generate internal ID: device missing UUID', 'UNKNOWN_DEVICE_TYPE');
         }
 
         const internalId = DeviceRegistry.generateInternalId(uuid);

@@ -11,7 +11,7 @@ const ErrorBudgetManager = require('./error-budget');
 const { MqttStatsCounter, HttpStatsCounter } = require('./utilities/stats');
 const RequestQueue = require('./utilities/request-queue');
 const DeviceRegistry = require('./device-registry');
-const { MerossErrorAuthentication, MerossErrorValidation } = require('./model/exception');
+const { MerossAuthError, MerossDeviceError } = require('./model/exception');
 
 /**
  * Manages Meross cloud connections and device communication
@@ -44,7 +44,7 @@ class ManagerMeross extends EventEmitter {
      * @param {string} [options.mqttDomain] - MQTT domain for credential authentication
      * @param {Function} [options.logger] - Optional logger for auth and manager runtime
      * @returns {Promise<ManagerMeross>} Connected manager instance
-     * @throws {MerossErrorValidation} If options do not contain a valid auth shape
+     * @throws {MerossDeviceError} If options do not contain a valid auth shape
      */
     static async connect(options) {
         const normalizedOptions = options || {};
@@ -55,9 +55,10 @@ class ManagerMeross extends EventEmitter {
             normalizedOptions.domain);
 
         if (!isPasswordAuth && !isCredentialAuth) {
-            throw new MerossErrorValidation(
+            throw new MerossDeviceError(
                 'Provide either {email, password} or {token, key, userId, domain}',
-                'options'
+                'VALIDATION_ERROR',
+                { field: 'options' }
             );
         }
 
@@ -131,11 +132,11 @@ class ManagerMeross extends EventEmitter {
      *
      * @private
      * @param {Object} options - Configuration options
-     * @throws {MerossErrorValidation} If httpClient is missing
+     * @throws {MerossDeviceError} If httpClient is missing
      */
     _validateOptions(options) {
         if (!options || !options.httpClient) {
-            throw new MerossErrorValidation('httpClient is required. Use MerossHttpClient.fromUserPassword() to create a client.', 'httpClient');
+            throw new MerossDeviceError('httpClient is required. Use MerossHttpClient.fromUserPassword() to create a client.', 'VALIDATION_ERROR', { field: 'httpClient' });
         }
     }
 
@@ -621,8 +622,8 @@ class ManagerMeross extends EventEmitter {
      * authentication errors during device discovery.
      *
      * @returns {Promise<number>} Promise that resolves with the number of devices discovered
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
      */
     async login() {
         return await this.devices.initialize();
@@ -636,8 +637,8 @@ class ManagerMeross extends EventEmitter {
      * errors during initialization.
      *
      * @returns {Promise<number>} Promise that resolves with the number of devices connected
-     * @throws {MerossErrorHttpApi} If API request fails
-     * @throws {MerossErrorTokenExpired} If authentication token has expired
+     * @throws {MerossApiError} If API request fails
+     * @throws {MerossAuthError} If authentication token has expired
      */
     async connect() {
         try {
@@ -662,11 +663,11 @@ class ManagerMeross extends EventEmitter {
      * and disconnects all devices and MQTT connections.
      *
      * @returns {Promise<Object|null>} Promise that resolves with logout response data from Meross API (or null if empty)
-     * @throws {MerossErrorAuthentication} If not authenticated
+     * @throws {MerossAuthError} If not authenticated
      */
     async logout() {
         if (!this.authenticated || !this.token) {
-            throw new MerossErrorAuthentication('Not authenticated');
+            throw new MerossAuthError('Not authenticated', 'AUTHENTICATION');
         }
         const response = await this._httpClient.logout();
         this.authenticated = false;

@@ -43,7 +43,7 @@ function normalizeChannel(options = {}, defaultChannel = 0) {
  *
  * @param {Object} options - Options object to validate
  * @param {Array<string>} requiredFields - Array of required field names
- * @throws {MerossErrorValidation} If any required field is missing
+ * @throws {MerossDeviceError} If any required field is missing
  * @example
  * validateRequired({onoff: true}, ['onoff']); // OK
  * validateRequired({}, ['onoff']); // Throws error

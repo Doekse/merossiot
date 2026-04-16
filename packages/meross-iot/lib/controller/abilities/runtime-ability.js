@@ -1,5 +1,7 @@
 'use strict';
 
+const { MerossDeviceError } = require('../../model/exception');
+
 /**
  * Creates a runtime feature object for a device.
  *
@@ -59,8 +61,7 @@ function createRuntimeAbility(device) {
             if (typeof device.system?.getAllData === 'function') {
                 await device.system.getAllData();
             } else {
-                const { MerossErrorUnknownDeviceType } = require('../../model/exception');
-                throw new MerossErrorUnknownDeviceType('Device does not support refreshState()', device.deviceType);
+                throw new MerossDeviceError('Device does not support refreshState()', 'UNKNOWN_DEVICE_TYPE', { deviceType: device.deviceType });
             }
             await this.get();
         }

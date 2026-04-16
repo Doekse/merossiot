@@ -1,5 +1,6 @@
 'use strict';
 
+const { MerossDeviceError } = require('../../model/exception');
 const crypto = require('crypto');
 
 const DEFAULT_IV = Buffer.from('0000000000000000', 'utf8');
@@ -130,8 +131,7 @@ function createEncryptionAbility(device) {
          */
         encryptMessage(messageData) {
             if (!this.isEncryptionKeySet()) {
-                const { MerossErrorCommand } = require('../../model/exception');
-                throw new MerossErrorCommand('Encryption key is not set! Please invoke setEncryptionKey first.', null, device.uuid);
+                throw new MerossDeviceError('Encryption key is not set! Please invoke setEncryptionKey first.', 'COMMAND_FAILED', { deviceUuid: device.uuid });
             }
             return _encrypt(messageData, device._encryptionKey);
         },
@@ -144,8 +144,7 @@ function createEncryptionAbility(device) {
          */
         decryptMessage(encryptedData) {
             if (!this.isEncryptionKeySet()) {
-                const { MerossErrorCommand } = require('../../model/exception');
-                throw new MerossErrorCommand('Encryption key is not set! Please invoke setEncryptionKey first.', null, device.uuid);
+                throw new MerossDeviceError('Encryption key is not set! Please invoke setEncryptionKey first.', 'COMMAND_FAILED', { deviceUuid: device.uuid });
             }
             return _decrypt(encryptedData, device._encryptionKey);
         },

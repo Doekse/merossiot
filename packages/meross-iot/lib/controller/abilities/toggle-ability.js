@@ -1,5 +1,6 @@
 'use strict';
 
+const { MerossDeviceError } = require('../../model/exception');
 const ToggleState = require('../../model/states/toggle-state');
 const { normalizeChannel, validateRequired } = require('../../utilities/options');
 
@@ -23,9 +24,7 @@ function createToggleAbility(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {boolean} options.on - True to turn on, false to turn off
          * @returns {Promise<void>} Promise that resolves when state is set
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
-         * @throws {MerossErrorUnknownDeviceType} If device does not support Toggle or ToggleX
+         * @throws {MerossDeviceError} If device is not connected, command times out, or toggle is unsupported (UNKNOWN_DEVICE_TYPE, DEVICE_UNCONNECTED, COMMAND_TIMEOUT)
          */
         async set(options = {}) {
             validateRequired(options, ['on']);
@@ -58,8 +57,7 @@ function createToggleAbility(device) {
                     device._updateToggleState({ channel: 0, onoff }, 'response');
                 }
             } else {
-                const { MerossErrorUnknownDeviceType } = require('../../model/exception');
-                throw new MerossErrorUnknownDeviceType('Device does not support Toggle or ToggleX', device.deviceType);
+                throw new MerossDeviceError('Device does not support Toggle or ToggleX', 'UNKNOWN_DEVICE_TYPE', { deviceType: device.deviceType });
             }
         },
 
@@ -71,8 +69,7 @@ function createToggleAbility(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<ToggleState|undefined>} Promise that resolves with toggle state or undefined
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

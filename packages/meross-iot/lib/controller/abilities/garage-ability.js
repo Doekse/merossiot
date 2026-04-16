@@ -2,7 +2,7 @@
 
 const GarageDoorState = require('../../model/states/garage-door-state');
 const { normalizeChannel } = require('../../utilities/options');
-const { MerossErrorValidation } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a garage door feature object for a device.
@@ -21,12 +21,11 @@ function createGarageAbility(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {boolean} options.open - True to open, false to close
          * @returns {Promise<Object>} Response from the device
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async set(options = {}) {
             if (options.open === undefined) {
-                throw new MerossErrorValidation('open is required', 'open');
+                throw new MerossDeviceError('open is required', 'VALIDATION_ERROR', { field: 'open' });
             }
             const channel = normalizeChannel(options);
             const payload = { 'state': { channel, 'open': options.open ? 1 : 0, 'uuid': device.uuid } };
@@ -51,8 +50,7 @@ function createGarageAbility(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<GarageDoorState|undefined>} Promise that resolves with garage door state or undefined
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);

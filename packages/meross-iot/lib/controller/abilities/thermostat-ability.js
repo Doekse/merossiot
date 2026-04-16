@@ -3,7 +3,7 @@
 const ThermostatState = require('../../model/states/thermostat-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
-const { MerossErrorValidation, MerossErrorCommand } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a thermostat feature object for a device.
@@ -20,7 +20,7 @@ function createThermostatAbility(device) {
      * @param {number} temperature - Temperature in Celsius
      * @param {number} [channel=0] - Channel to get temperature limits for (default: 0)
      * @returns {number} Temperature in device units (tenths of degrees)
-     * @throws {MerossErrorCommand} If temperature is out of valid range
+     * @throws {MerossDeviceError} If temperature is out of valid range (code COMMAND_FAILED)
      * @private
      */
     function alignThermostatTemperature(temperature, channel = 0) {
@@ -41,10 +41,10 @@ function createThermostatAbility(device) {
         }
 
         if (temperature < minSetableTemp || temperature > maxSetableTemp) {
-            throw new MerossErrorCommand(
+            throw new MerossDeviceError(
                 `Temperature ${temperature}°C is out of range (${minSetableTemp}-${maxSetableTemp}°C) for this device`,
-                { temperature, minSetableTemp, maxSetableTemp },
-                device.uuid
+                'COMMAND_FAILED',
+                { temperature, minSetableTemp, maxSetableTemp, deviceUuid: device.uuid }
             );
         }
 
@@ -71,9 +71,7 @@ function createThermostatAbility(device) {
          * @param {number} [options.state] - Mode B state (for ModeB namespace)
          * @param {boolean} [options.windowOpened] - Window opened status
          * @returns {Promise<Object>} Response from the device
-         * @throws {MerossErrorCommand} If mode value is invalid or temperature is out of range
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If mode value is invalid, temperature is out of range, or transport fails (DEVICE_UNCONNECTED, COMMAND_TIMEOUT, COMMAND_FAILED)
          */
         async set(options = {}) {
             const channel = normalizeChannel(options);
@@ -87,10 +85,10 @@ function createThermostatAbility(device) {
             // Handle mode B
             if (options.state !== undefined) {
                 if (!device.abilities || !device.abilities['Appliance.Control.Thermostat.ModeB']) {
-                    throw new MerossErrorCommand(
+                    throw new MerossDeviceError(
                         'Device does not support Appliance.Control.Thermostat.ModeB namespace',
-                        { namespace: 'Appliance.Control.Thermostat.ModeB', channel, options },
-                        device.uuid
+                        'COMMAND_FAILED',
+                        { namespace: 'Appliance.Control.Thermostat.ModeB', channel, options, deviceUuid: device.uuid }
                     );
                 }
 
@@ -166,8 +164,7 @@ function createThermostatAbility(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<ThermostatState|undefined>} Promise that resolves with thermostat state or undefined
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
@@ -200,15 +197,15 @@ function createThermostatAbility(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get mode B for (default: 0)
          * @returns {Promise<Object>} Response containing thermostat mode B
-         * @throws {MerossErrorCommand} If the device does not support the ModeB namespace
+         * @throws {MerossDeviceError} If the device does not support the ModeB namespace (code COMMAND_FAILED)
          */
         async getModeB(options = {}) {
             const channel = normalizeChannel(options);
             if (!device.abilities || !device.abilities['Appliance.Control.Thermostat.ModeB']) {
-                throw new MerossErrorCommand(
+                throw new MerossDeviceError(
                     'Device does not support Appliance.Control.Thermostat.ModeB namespace',
-                    { namespace: 'Appliance.Control.Thermostat.ModeB', channel },
-                    device.uuid
+                    'COMMAND_FAILED',
+                    { namespace: 'Appliance.Control.Thermostat.ModeB', channel, deviceUuid: device.uuid }
                 );
             }
 
@@ -323,7 +320,7 @@ function createThermostatAbility(device) {
          */
         async setHoldAction(options = {}) {
             if (!options.holdActionData) {
-                throw new MerossErrorValidation('holdActionData is required', 'holdActionData');
+                throw new MerossDeviceError('holdActionData is required', 'VALIDATION_ERROR', { field: 'holdActionData' });
             }
             const payload = { holdAction: Array.isArray(options.holdActionData) ? options.holdActionData : [options.holdActionData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.HoldAction', payload);
@@ -351,7 +348,7 @@ function createThermostatAbility(device) {
          */
         async setOverheat(options = {}) {
             if (!options.overheatData) {
-                throw new MerossErrorValidation('overheatData is required', 'overheatData');
+                throw new MerossDeviceError('overheatData is required', 'VALIDATION_ERROR', { field: 'overheatData' });
             }
             const payload = { overheat: Array.isArray(options.overheatData) ? options.overheatData : [options.overheatData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Overheat', payload);
@@ -379,7 +376,7 @@ function createThermostatAbility(device) {
          */
         async setDeadZone(options = {}) {
             if (!options.deadZoneData) {
-                throw new MerossErrorValidation('deadZoneData is required', 'deadZoneData');
+                throw new MerossDeviceError('deadZoneData is required', 'VALIDATION_ERROR', { field: 'deadZoneData' });
             }
             const payload = { deadZone: Array.isArray(options.deadZoneData) ? options.deadZoneData : [options.deadZoneData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.DeadZone', payload);
@@ -407,7 +404,7 @@ function createThermostatAbility(device) {
          */
         async setCalibration(options = {}) {
             if (!options.calibrationData) {
-                throw new MerossErrorValidation('calibrationData is required', 'calibrationData');
+                throw new MerossDeviceError('calibrationData is required', 'VALIDATION_ERROR', { field: 'calibrationData' });
             }
             const payload = { calibration: Array.isArray(options.calibrationData) ? options.calibrationData : [options.calibrationData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Calibration', payload);
@@ -435,7 +432,7 @@ function createThermostatAbility(device) {
          */
         async setSensor(options = {}) {
             if (!options.sensorData) {
-                throw new MerossErrorValidation('sensorData is required', 'sensorData');
+                throw new MerossDeviceError('sensorData is required', 'VALIDATION_ERROR', { field: 'sensorData' });
             }
             const payload = { sensor: Array.isArray(options.sensorData) ? options.sensorData : [options.sensorData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Sensor', payload);
@@ -463,7 +460,7 @@ function createThermostatAbility(device) {
          */
         async setSummerMode(options = {}) {
             if (!options.summerModeData) {
-                throw new MerossErrorValidation('summerModeData is required', 'summerModeData');
+                throw new MerossDeviceError('summerModeData is required', 'VALIDATION_ERROR', { field: 'summerModeData' });
             }
             const payload = { summerMode: Array.isArray(options.summerModeData) ? options.summerModeData : [options.summerModeData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.SummerMode', payload);
@@ -491,7 +488,7 @@ function createThermostatAbility(device) {
          */
         async setFrost(options = {}) {
             if (!options.frostData) {
-                throw new MerossErrorValidation('frostData is required', 'frostData');
+                throw new MerossDeviceError('frostData is required', 'VALIDATION_ERROR', { field: 'frostData' });
             }
             const payload = { frost: Array.isArray(options.frostData) ? options.frostData : [options.frostData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Frost', payload);
@@ -519,7 +516,7 @@ function createThermostatAbility(device) {
          */
         async setAlarmConfig(options = {}) {
             if (!options.alarmConfigData) {
-                throw new MerossErrorValidation('alarmConfigData is required', 'alarmConfigData');
+                throw new MerossDeviceError('alarmConfigData is required', 'VALIDATION_ERROR', { field: 'alarmConfigData' });
             }
             const payload = { alarmConfig: Array.isArray(options.alarmConfigData) ? options.alarmConfigData : [options.alarmConfigData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.AlarmConfig', payload);
@@ -547,7 +544,7 @@ function createThermostatAbility(device) {
          */
         async setCompressorDelay(options = {}) {
             if (!options.delayData) {
-                throw new MerossErrorValidation('delayData is required', 'delayData');
+                throw new MerossDeviceError('delayData is required', 'VALIDATION_ERROR', { field: 'delayData' });
             }
             const payload = { delay: Array.isArray(options.delayData) ? options.delayData : [options.delayData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.CompressorDelay', payload);
@@ -575,7 +572,7 @@ function createThermostatAbility(device) {
          */
         async setCtlRange(options = {}) {
             if (!options.ctlRangeData) {
-                throw new MerossErrorValidation('ctlRangeData is required', 'ctlRangeData');
+                throw new MerossDeviceError('ctlRangeData is required', 'VALIDATION_ERROR', { field: 'ctlRangeData' });
             }
             const payload = { ctlRange: Array.isArray(options.ctlRangeData) ? options.ctlRangeData : [options.ctlRangeData] };
             return await device.publishMessage('SET', 'Appliance.Control.Thermostat.CtlRange', payload);

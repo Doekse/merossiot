@@ -3,7 +3,7 @@
 const SprayState = require('../../model/states/spray-state');
 const { SprayMode } = require('../../model/enums');
 const { normalizeChannel } = require('../../utilities/options');
-const { MerossErrorValidation } = require('../../model/exception');
+const { MerossDeviceError } = require('../../model/exception');
 
 /**
  * Creates a spray feature object for a device.
@@ -22,12 +22,11 @@ function createSprayAbility(device) {
          * @param {number} [options.channel=0] - Channel to control (default: 0)
          * @param {number|import('../lib/enums').SprayMode} options.mode - Spray mode value or SprayMode enum
          * @returns {Promise<Object>} Response from the device
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async set(options = {}) {
             if (options.mode === undefined) {
-                throw new MerossErrorValidation('mode is required', 'mode');
+                throw new MerossDeviceError('mode is required', 'VALIDATION_ERROR', { field: 'mode' });
             }
             const channel = normalizeChannel(options);
             const modeValue = options.mode || 0;
@@ -54,8 +53,7 @@ function createSprayAbility(device) {
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to get state for (default: 0)
          * @returns {Promise<SprayState|undefined>} Promise that resolves with spray state or undefined
-         * @throws {MerossErrorUnconnected} If device is not connected
-         * @throws {MerossErrorCommandTimeout} If command times out
+         * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
