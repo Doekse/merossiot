@@ -740,21 +740,21 @@ class ManagerMeross extends EventEmitter {
  * Events emitted by ManagerMeross instance
  *
  * @typedef {Object} MerossCloudEvents
- * @property {Function} deviceInitialized - Emitted when a device is initialized
- *   @param {string} deviceId - Device UUID
+ * @property {Function} deviceReady - Emitted when a device finishes initialization and is ready
  *   @param {MerossDevice|MerossHubDevice} device - Device instance
  * @property {Function} connected - Emitted when a device connects
- *   @param {string} deviceId - Device UUID
- * @property {Function} close - Emitted when a device connection closes
- *   @param {string} deviceId - Device UUID
- *   @param {string|null} error - Error message if connection closed due to error
- * @property {Function} error - Emitted when an error occurs
- *   @param {string} deviceId - Device UUID (or null for manager-level errors)
- *   @param {Error|string} error - Error object or error message
- * @property {Function} pushNotification - Emitted when a push notification is received
- *   @param {string} deviceId - Device UUID
- *   @param {GenericPushNotification} notification - Push notification object
  *   @param {MerossDevice|MerossHubDevice} device - Device instance
+ * @property {Function} reconnected - Emitted when a device reconnects after a disconnect
+ *   @param {MerossDevice|MerossHubDevice} device - Device instance
+ * @property {Function} disconnected - Emitted when a device connection closes
+ *   @param {MerossDevice|MerossHubDevice} device - Device instance
+ *   @param {Error|string|null} error - Present when the disconnect was caused by an error
+ * @property {Function} deviceUpdate - Emitted when a device reports a state change
+ *   @param {MerossDevice|MerossHubDevice} device - Device instance
+ *   @param {Object} change - State change payload from the device
+ * @property {Function} error - Emitted when an error occurs on a device or in MQTT transport
+ *   @param {Error|string} error - Error object or message
+ *   @param {string|null} deviceId - Device UUID when scoped to a device, or null for manager-level errors
  */
 
 module.exports = ManagerMeross;
