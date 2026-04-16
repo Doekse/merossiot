@@ -33,26 +33,31 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
         : manager.devices.get(uuid);
 
     if (!device) {
-        throw new ManagerMeross.MerossErrorNotFound(
-            `Device not found: ${uuid}`,
-            'device',
-            uuid
+        throw new ManagerMeross.MerossDeviceError(
+            subdeviceId
+                ? `Subdevice with ID ${subdeviceId} not found in hub ${uuid}`
+                : `Device not found: ${uuid}`,
+            'NOT_FOUND',
+            subdeviceId
+                ? { resourceType: 'subdevice', resourceId: subdeviceId, hubUuid: uuid }
+                : { resourceType: 'device', resourceId: uuid }
         );
     }
 
     if (!device.deviceConnected) {
-        throw new ManagerMeross.MerossErrorUnconnected(
+        throw new ManagerMeross.MerossDeviceError(
             'Device is not connected. Please wait for device to connect.',
-            uuid
+            'DEVICE_UNCONNECTED',
+            { deviceUuid: device.uuid }
         );
     }
 
     const parts = String(methodName).split('.');
     if (parts.length !== 2) {
-        throw new ManagerMeross.MerossErrorUnsupported(
+        throw new ManagerMeross.MerossDeviceError(
             `Invalid method name format: ${methodName}. Expected format: "feature.action" (e.g., "toggle.set")`,
-            methodName,
-            'Method name must be in format: feature.action'
+            'UNSUPPORTED',
+            { operation: String(methodName), reason: 'Method name must be in format: feature.action' }
         );
     }
 
@@ -64,20 +69,26 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     });
 
     if (!ability || typeof ability !== 'object') {
-        throw new ManagerMeross.MerossErrorUnsupported(
+        throw new ManagerMeross.MerossDeviceError(
             `Ability '${abilityName}' is not available on this device`,
-            methodName,
-            availableAbilities.length > 0
-                ? `Available abilities: ${availableAbilities.join(', ')}`
-                : 'Device has no callable abilities available'
+            'UNSUPPORTED',
+            {
+                operation: String(methodName),
+                reason: availableAbilities.length > 0
+                    ? `Available abilities: ${availableAbilities.join(', ')}`
+                    : 'Device has no callable abilities available'
+            }
         );
     }
 
     if (typeof ability[action] !== 'function') {
-        throw new ManagerMeross.MerossErrorUnsupported(
+        throw new ManagerMeross.MerossDeviceError(
             `Action '${action}' not available on ability '${abilityName}'`,
-            methodName,
-            `Ability ${abilityName} does not support ${action} action`
+            'UNSUPPORTED',
+            {
+                operation: String(methodName),
+                reason: `Ability ${abilityName} does not support ${action} action`
+            }
         );
     }
 
