@@ -1,7 +1,6 @@
 'use strict';
 
 const ManagerMeross = require('meross-iot');
-const { MerossHttpClient } = require('meross-iot');
 const ora = require('ora');
 const { handleError } = require('../utils/error-handler');
 
@@ -44,59 +43,16 @@ async function createAndConnect(connectOpts, settings) {
 }
 
 /**
- * Builds an authenticated manager without calling {@link ManagerMeross#connect}, so callers can
- * run discovery and selective {@link ManagerDevices#initialize} (interactive menu).
+ * Builds an authenticated manager via {@link ManagerMeross.authenticate} without calling
+ * {@link ManagerMeross#connect}, so callers can run discovery and selective
+ * {@link ManagerDevices#initialize} (interactive menu).
  *
  * @param {Object} connectOpts - Same shape as {@link ManagerMeross.connect} (email/password or token credentials)
  * @param {{ transportMode?: number, timeout?: number, enableStats?: boolean, verbose?: boolean }} [settings] - Runtime options
  * @returns {Promise<import('meross-iot')>}
  */
 async function createMerossInstance(connectOpts, settings = {}) {
-    const normalized = connectOpts || {};
-    const isPasswordAuth = !!(normalized.email && normalized.password);
-    const isCredentialAuth = !!(
-        normalized.token &&
-        normalized.key &&
-        normalized.userId &&
-        normalized.domain
-    );
-
-    if (!isPasswordAuth && !isCredentialAuth) {
-        throw new Error(
-            'Invalid connect options: provide either { email, password } or { token, key, userId, domain }'
-        );
-    }
-
-    const httpClientOpts = {};
-    if (normalized.logger) {
-        httpClientOpts.logger = normalized.logger;
-    }
-
-    let httpClient;
-    if (isPasswordAuth) {
-        httpClient = await MerossHttpClient.fromUserPassword({
-            email: normalized.email,
-            password: normalized.password,
-            mfaCode: normalized.mfaCode,
-            ...httpClientOpts
-        });
-    } else {
-        httpClient = MerossHttpClient.fromCredentials(
-            {
-                token: normalized.token,
-                key: normalized.key,
-                userId: normalized.userId,
-                domain: normalized.domain,
-                mqttDomain: normalized.mqttDomain
-            },
-            httpClientOpts
-        );
-    }
-
-    const manager = new ManagerMeross({ httpClient });
-    if (normalized.logger) {
-        manager.logger = normalized.logger;
-    }
+    const manager = await ManagerMeross.authenticate(connectOpts);
     applyMerossRuntimeSettings(manager, settings);
 
     if (settings.verbose) {

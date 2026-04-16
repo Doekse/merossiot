@@ -187,15 +187,19 @@ declare module 'meross-iot' {
         remove(identifier: string | { hubUuid: string; id: string }): Promise<boolean>;
     }
 
-    export class MerossHttpClient {
-        static fromUserPassword(options: { email: string; password: string; mfaCode?: string; logger?: Logger }): Promise<MerossHttpClient>;
-        static fromCredentials(credentials: { token: string; key: string; userId: string; domain: string; mqttDomain?: string }, options?: { logger?: Logger }): MerossHttpClient;
-        getDevices(): Promise<DeviceDefinition[]>;
-        getSubDevices(deviceUuid: string): Promise<any[]>;
-        logout(): Promise<void>;
-    }
-
     export class ManagerMeross extends EventEmitter {
+        static authenticate(options: {
+            email?: string;
+            password?: string;
+            mfaCode?: string;
+            token?: string;
+            key?: string;
+            userId?: string;
+            domain?: string;
+            mqttDomain?: string;
+            logger?: Logger;
+        }): Promise<ManagerMeross>;
+
         static connect(options: {
             email?: string;
             password?: string;
@@ -208,7 +212,8 @@ declare module 'meross-iot' {
             logger?: Logger;
         }): Promise<ManagerMeross>;
 
-        constructor(options: { httpClient: MerossHttpClient });
+        /** Prefer {@link ManagerMeross.authenticate} or {@link ManagerMeross.connect}; the HTTP client is not part of the public API. */
+        constructor(options: { httpClient: object });
 
         readonly devices: ManagerDevices;
         readonly transport: { defaultMode: number };

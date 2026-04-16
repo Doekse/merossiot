@@ -25,11 +25,12 @@ const { MerossAuthError, MerossDeviceError } = require('./model/exception');
  */
 class ManagerMeross extends EventEmitter {
     /**
-     * Creates and connects a manager from authentication input.
+     * Authenticates and returns a manager without connecting to the cloud or initializing devices.
      *
-     * Centralizing auth creation here keeps `MerossHttpClient` as an internal detail
+     * Centralizing auth creation here keeps the HTTP client as an internal detail
      * so consumers only need to provide credentials and can adjust runtime settings
-     * on the returned manager.
+     * on the returned manager. Use {@link ManagerMeross.connect} when you want auth
+     * plus cloud connection in one step.
      *
      * @static
      * @async
@@ -43,10 +44,10 @@ class ManagerMeross extends EventEmitter {
      * @param {string} [options.domain] - HTTP API domain for credential authentication
      * @param {string} [options.mqttDomain] - MQTT domain for credential authentication
      * @param {Function} [options.logger] - Optional logger for auth and manager runtime
-     * @returns {Promise<ManagerMeross>} Connected manager instance
+     * @returns {Promise<ManagerMeross>} Authenticated manager (not yet connected)
      * @throws {MerossDeviceError} If options do not contain a valid auth shape
      */
-    static async connect(options) {
+    static async authenticate(options) {
         const normalizedOptions = options || {};
         const isPasswordAuth = !!(normalizedOptions.email && normalizedOptions.password);
         const isCredentialAuth = !!(normalizedOptions.token &&
@@ -90,6 +91,20 @@ class ManagerMeross extends EventEmitter {
             manager.logger = normalizedOptions.logger;
         }
 
+        return manager;
+    }
+
+    /**
+     * Authenticates via {@link ManagerMeross.authenticate} then connects to the cloud.
+     *
+     * @static
+     * @async
+     * @param {Object} options - Same shape as {@link ManagerMeross.authenticate}
+     * @returns {Promise<ManagerMeross>} Connected manager instance
+     * @throws {MerossDeviceError} If options do not contain a valid auth shape
+     */
+    static async connect(options) {
+        const manager = await ManagerMeross.authenticate(options);
         await manager.connect();
         return manager;
     }
@@ -136,7 +151,11 @@ class ManagerMeross extends EventEmitter {
      */
     _validateOptions(options) {
         if (!options || !options.httpClient) {
-            throw new MerossDeviceError('httpClient is required. Use MerossHttpClient.fromUserPassword() to create a client.', 'VALIDATION_ERROR', { field: 'httpClient' });
+            throw new MerossDeviceError(
+                'httpClient is required. Use ManagerMeross.authenticate() or ManagerMeross.connect().',
+                'VALIDATION_ERROR',
+                { field: 'httpClient' }
+            );
         }
     }
 

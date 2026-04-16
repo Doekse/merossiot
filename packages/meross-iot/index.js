@@ -36,5 +36,3 @@ module.exports.HubThermostatValve = subdevice.HubThermostatValve;
 module.exports.HubWaterLeakSensor = subdevice.HubWaterLeakSensor;
 module.exports.HubSmokeDetector = subdevice.HubSmokeDetector;
 
-const MerossHttpClient = require('./lib/http-api');
-module.exports.MerossHttpClient = MerossHttpClient;
