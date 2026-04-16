@@ -10,23 +10,16 @@
  * Demonstrates how to create and manage timers using helper methods and utilities.
  */
 
-const { ManagerMeross, MerossHttpClient } = require('../index.js');
+const Meross = require('../index.js');
 
 (async () => {
     try {
-        const httpClient = await MerossHttpClient.fromUserPassword({
+        console.log('Connecting to Meross Cloud...');
+        const meross = await Meross.connect({
             email: 'your@email.com',
             password: 'yourpassword',
             logger: console.log
         });
-
-        const meross = new ManagerMeross({
-            httpClient: httpClient,
-            logger: console.log
-        });
-
-        console.log('Connecting to Meross Cloud...');
-        await meross.connect();
 
         const devices = meross.devices.list();
         if (devices.length === 0) {
@@ -170,4 +163,3 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         }
     }
 })();
-

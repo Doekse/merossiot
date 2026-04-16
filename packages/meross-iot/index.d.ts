@@ -537,19 +537,18 @@ declare module 'meross-iot' {
     /**
      * Authentication token data.
      * 
-     * Contains all information needed to authenticate with the Meross API.
-     * Can be saved and reused with MerossHttpClient.fromCredentials().
+     * Contains all information needed to authenticate with the Meross API without a password.
+     * Pass compatible fields to {@link ManagerMeross.connect} as {@link MerossCredentialOptions}, or use {@link MerossHttpClient.fromCredentials} while migrating legacy code.
      * 
      * @example
      * ```typescript
      * const tokenData = manager.getTokenData();
-     * // Save tokenData for later use
-     * const httpClient = MerossHttpClient.fromCredentials({
+     * const restored = await ManagerMeross.connect({
      *   token: tokenData.token,
      *   key: tokenData.key,
      *   userId: tokenData.userId,
      *   domain: tokenData.domain,
-     *   mqttDomain: tokenData.mqttDomain
+     *   mqttDomain: tokenData.mqttDomain,
      * });
      * ```
      */
@@ -617,24 +616,27 @@ declare module 'meross-iot' {
     }
 
     /**
-     * Configuration options for ManagerMeross cloud manager.
-     * 
+     * Legacy constructor options for {@link ManagerMeross}.
+     *
+     * @deprecated Prefer {@link ManagerMeross.connect} with {@link MerossPasswordOptions} or {@link MerossCredentialOptions}.
+     * Authentication is handled inside `connect()`; transport mode, timeouts, logging, and statistics are runtime settings on the manager.
+     *
      * @example
      * ```typescript
-     * const httpClient = await MerossHttpClient.fromUserPassword({
+     * const meross = await ManagerMeross.connect({
      *   email: 'user@example.com',
-     *   password: 'password'
+     *   password: 'password',
      * });
-     * 
-     * const manager = new ManagerMeross({
-     *   httpClient,
-     *   transportMode: TransportMode.LAN_HTTP_FIRST,
-     *   logger: console.log
-     * });
+     * meross.transportMode = TransportMode.LAN_HTTP_FIRST;
+     * meross.logger = console.log;
      * ```
      */
     export interface CloudOptions {
-        /** HTTP client instance (required - use MerossHttpClient.fromUserPassword()) */
+        /**
+         * Pre-authenticated HTTP client (legacy dependency injection).
+         *
+         * @deprecated Prefer {@link ManagerMeross.connect}; `MerossHttpClient` is an internal implementation detail for typical apps.
+         */
         httpClient: MerossHttpClient;
         /** Logger function for debug output */
         logger?: Logger;
@@ -660,6 +662,34 @@ declare module 'meross-iot' {
         enableRequestThrottling?: boolean,
         /** Subscription manager options for automatic polling and data provisioning */
         subscription?: ManagerSubscriptionOptions
+    }
+
+    /**
+     * Password authentication options for {@link ManagerMeross.connect}.
+     *
+     * Only fields needed for the cloud login handshake; configure everything else on the manager after connect.
+     */
+    export interface MerossPasswordOptions {
+        email: string;
+        password: string;
+        mfaCode?: string;
+        /** Optional logger for debugging the connect and login phase */
+        logger?: Logger;
+    }
+
+    /**
+     * Saved-credential options for {@link ManagerMeross.connect} (token reuse path).
+     *
+     * Matches data returned by {@link ManagerMeross.getTokenData} / {@link TokenData} for session restore without a password.
+     */
+    export interface MerossCredentialOptions {
+        token: string;
+        key: string;
+        userId: string;
+        domain: string;
+        mqttDomain?: string;
+        /** Optional logger for debugging the connect phase */
+        logger?: Logger;
     }
 
     export interface LightData {
@@ -1676,29 +1706,6 @@ declare module 'meross-iot' {
     }
 
     /**
-     * Main Meross IoT cloud manager.
-     * 
-     * Manages connections to Meross devices via cloud MQTT and local HTTP.
-     * Handles device discovery, connection management, and provides access to device instances.
-     * 
-     * @example
-     * ```typescript
-     * const httpClient = await MerossHttpClient.fromUserPassword({
-     *   email: 'user@example.com',
-     *   password: 'password'
-     * });
-     * 
-     * const manager = new ManagerMeross({ httpClient });
-     * await manager.connect();
-     * 
-     * manager.on('deviceReady', (device) => {
-     *   console.log(`Device initialized: ${device.name}`);
-     * });
-     * 
-     * const devices = manager.devices.list();
-     * ```
-     */
-    /**
      * Manages device discovery, initialization, and lifecycle.
      * 
      * Handles device discovery from Meross cloud, device enrollment,
@@ -1901,13 +1908,47 @@ declare module 'meross-iot' {
         request(device: MerossDevice | MerossHubDevice | MerossSubDevice, ip: string | null, data: any, overrideMode?: number | null): Promise<boolean>
     }
 
+    /**
+     * Main Meross IoT cloud manager.
+     *
+     * Connects to Meross cloud MQTT and LAN HTTP, discovers devices, and exposes device controllers.
+     * Prefer {@link ManagerMeross.connect} for sign-in; use {@link CloudOptions} only for legacy dependency injection.
+     *
+     * @example
+     * ```typescript
+     * const manager = await ManagerMeross.connect({
+     *   email: 'user@example.com',
+     *   password: 'password',
+     * });
+     * manager.transportMode = TransportMode.LAN_HTTP_FIRST;
+     *
+     * manager.on('deviceReady', (device) => {
+     *   console.log(`Device initialized: ${device.name}`);
+     * });
+     *
+     * const devices = manager.devices.list();
+     * ```
+     */
     export class ManagerMeross extends EventEmitter {
         /**
          * Creates a new ManagerMeross instance.
-         * 
+         *
+         * @deprecated Prefer {@link ManagerMeross.connect} for normal use. This constructor remains for internal use and legacy code that injects a {@link MerossHttpClient}.
+         *
          * @param options - Configuration options
          */
         constructor(options: CloudOptions)
+
+        /**
+         * Authenticates (if needed), constructs the manager, awaits {@link ManagerMeross#connect}, and returns a ready instance.
+         *
+         * Only authentication-related fields belong in `options`; set `transportMode`, `timeout`, `logger`, and statistics on the returned manager.
+         *
+         * @param options - Either {@link MerossPasswordOptions} or {@link MerossCredentialOptions}
+         * @returns Connected manager with devices initialized
+         * @throws {MerossErrorValidation} If neither password nor credential options are provided
+         */
+        static connect(options: MerossPasswordOptions | MerossCredentialOptions): Promise<ManagerMeross>
         
         /**
          * Connects to the Meross cloud and initializes devices.
@@ -1921,7 +1962,7 @@ declare module 'meross-iot' {
          * Authenticates with Meross cloud and discovers devices.
          * 
          * Alias for devices.initialize(). Retrieves device list and initializes device connections.
-         * The httpClient should already be authenticated when passed to the constructor.
+         * Requires an authenticated session (e.g. after {@link ManagerMeross.connect} or valid constructor credentials).
          * 
          * @returns Promise resolving to the number of devices discovered
          * @throws {MerossErrorHttpApi} If API request fails
@@ -2003,9 +2044,51 @@ declare module 'meross-iot' {
          * @returns Token data or null if not authenticated
          */
         getTokenData(): TokenData | null
-        
-        /** HTTP client instance */
-        readonly httpClient: MerossHttpClient
+
+        /** Current auth token (delegates to the internal HTTP client) */
+        get token(): string | null
+
+        /** Encryption key for API payloads (delegates to the internal HTTP client) */
+        get key(): string | null
+
+        /** Meross user id (delegates to the internal HTTP client) */
+        get userId(): string | null
+
+        /** Account email (delegates to the internal HTTP client) */
+        get userEmail(): string | null
+
+        /** Active HTTP API domain (delegates to the internal HTTP client) */
+        get httpDomain(): string | null
+
+        /**
+         * Default transport mode for {@link ManagerTransport.request} when no override is passed.
+         *
+         * May be changed at any time during a session.
+         */
+        get transportMode(): number
+        set transportMode(mode: number)
+
+        /**
+         * Request timeout in milliseconds for device commands.
+         */
+        get timeout(): number
+        set timeout(value: number)
+
+        /**
+         * Debug/logger function; propagated to the internal HTTP client and related subsystems when set.
+         */
+        get logger(): Logger | null
+        set logger(fn: Logger | null)
+
+        /**
+         * Enables MQTT and HTTP statistics collection up to `maxSamples` per counter.
+         */
+        enableStats(maxSamples?: number): void
+
+        /**
+         * Disables MQTT and HTTP statistics collection.
+         */
+        disableStats(): void
         
         /** Subscription manager instance for automatic polling and data provisioning */
         readonly subscription: ManagerSubscription
@@ -2029,24 +2112,16 @@ declare module 'meross-iot' {
      * 
      * Handles authentication and HTTP API requests to the Meross cloud.
      * Provides factory methods for easy initialization from credentials.
+     *
+     * @deprecated Prefer {@link ManagerMeross.connect} for applications. This class remains exported for migration and advanced scenarios; it is not part of the primary public API surface going forward.
      * 
      * @example
      * ```typescript
-     * // Login with username/password
-     * const httpClient = await MerossHttpClient.fromUserPassword({
+     * const manager = await ManagerMeross.connect({
      *   email: 'user@example.com',
-     *   password: 'password'
+     *   password: 'password',
      * });
-     * 
-     * // Or use saved credentials
-     * const httpClient = MerossHttpClient.fromCredentials({
-     *   token: '...',
-     *   key: '...',
-     *   userId: '...',
-     *   domain: '...'
-     * });
-     * 
-     * const devices = await httpClient.getDevices();
+     * const devices = await manager.devices.initialize();
      * ```
      */
     export class MerossHttpClient {

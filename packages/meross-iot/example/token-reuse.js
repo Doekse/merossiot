@@ -8,10 +8,10 @@
  * Token Reuse and Credentials Management
  *
  * Demonstrates how to save and reuse authentication tokens to avoid repeated
- * logins and MFA requests using the factory pattern.
+ * logins and MFA requests using {@link ManagerMeross.connect}.
  */
 
-const { ManagerMeross, MerossHttpClient } = require('../index.js');
+const Meross = require('../index.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -35,31 +35,29 @@ function loadTokenData() {
 
 (async () => {
     try {
-        let httpClient;
+        let meross;
 
         const savedTokenData = loadTokenData();
 
         if (savedTokenData) {
             console.log('Found saved token data, attempting to reuse...');
-            httpClient = MerossHttpClient.fromCredentials(savedTokenData, {
+            meross = await Meross.connect({
+                token: savedTokenData.token,
+                key: savedTokenData.key,
+                userId: savedTokenData.userId,
+                domain: savedTokenData.domain,
+                mqttDomain: savedTokenData.mqttDomain,
                 logger: console.log
             });
         } else {
             console.log('No saved token data, performing login...');
-            httpClient = await MerossHttpClient.fromUserPassword({
+            meross = await Meross.connect({
                 email: 'your@email.com',
                 password: 'yourpassword',
                 logger: console.log
             });
         }
 
-        const meross = new ManagerMeross({
-            httpClient: httpClient,
-            logger: console.log
-        });
-
-        console.log('Connecting to Meross Cloud...');
-        await meross.connect();
         console.log('✓ Connected successfully');
 
         saveTokenData(meross);
@@ -77,14 +75,14 @@ function loadTokenData() {
         }
 
         console.log('\nListening... (Press Ctrl+C to exit)');
-        
+
         process.on('SIGINT', async () => {
             console.log('\n\nShutting down...');
             await meross.logout();
             meross.disconnectAll(true);
             process.exit(0);
         });
-        
+
     } catch (error) {
         console.error(`Error: ${error.message}`);
 
@@ -93,7 +91,7 @@ function loadTokenData() {
             fs.unlinkSync(TOKEN_FILE);
             console.log('Deleted invalid token file');
         }
-        
+
         process.exit(1);
     }
 })();

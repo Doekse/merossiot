@@ -1,10 +1,18 @@
 'use strict';
 
 const fs = require('fs');
-const { MerossHttpClient, TransportMode } = require('meross-iot');
-const { handleError } = require('../utils/error-handler');
+const { TransportMode } = require('meross-iot');
 
-async function processOptionsAndCreateHttpClient(opts) {
+/**
+ * Builds auth-only connect options plus runtime settings from CLI flags and env.
+ *
+ * Separates credentials (used by {@link ManagerMeross.connect}) from transport,
+ * timeout, stats, and verbose flags that apply after connection.
+ *
+ * @param {Object} opts - Parsed CLI options and env-backed values
+ * @returns {{ connectOpts: Object, settings: Object }} Connect payload and runtime settings
+ */
+function processOptions(opts) {
     const email = opts.email || process.env.MEROSS_EMAIL || null;
     const password = opts.password || process.env.MEROSS_PASSWORD || null;
     const mfaCode = opts.mfaCode || process.env.MEROSS_MFA_CODE || null;
@@ -23,31 +31,32 @@ async function processOptionsAndCreateHttpClient(opts) {
     const enableStats = opts.enableStats || false;
     const verbose = opts.verbose || false;
 
-    let httpClient;
+    /** @type {Object} */
+    let connectOpts;
 
     if (tokenData) {
-        httpClient = MerossHttpClient.fromCredentials(tokenData, {
-            logger: verbose ? console.log : null,
-            timeout,
-            autoRetryOnBadDomain: true,
-            enableStats,
-            maxStatsSamples: 1000
-        });
+        connectOpts = {
+            token: tokenData.token,
+            key: tokenData.key,
+            userId: tokenData.userId,
+            domain: tokenData.domain
+        };
+        if (tokenData.mqttDomain) {
+            connectOpts.mqttDomain = tokenData.mqttDomain;
+        }
+        if (verbose) {
+            connectOpts.logger = console.log;
+        }
     } else if (email && password) {
-        try {
-            httpClient = await MerossHttpClient.fromUserPassword({
-                email,
-                password,
-                mfaCode,
-                logger: verbose ? console.log : null,
-                timeout,
-                autoRetryOnBadDomain: true,
-                enableStats,
-                maxStatsSamples: 1000
-            });
-        } catch (error) {
-            // Re-throw with better context for MFA/auth errors
-            throw error;
+        connectOpts = {
+            email,
+            password
+        };
+        if (mfaCode) {
+            connectOpts.mfaCode = mfaCode;
+        }
+        if (verbose) {
+            connectOpts.logger = console.log;
         }
     } else {
         throw new Error('Email and password are required (or provide token data).\nUse --email and --password options or set MEROSS_EMAIL and MEROSS_PASSWORD environment variables.');
@@ -62,15 +71,8 @@ async function processOptionsAndCreateHttpClient(opts) {
     }
 
     return {
-        httpClient,
-        options: {
-            httpClient,
-            transportMode,
-            timeout,
-            enableStats,
-            logger: verbose ? console.log : null
-        },
-        config: {
+        connectOpts,
+        settings: {
             transportMode,
             timeout,
             enableStats,
@@ -89,7 +91,6 @@ function getTransportModeName(mode) {
 }
 
 module.exports = {
-    processOptionsAndCreateHttpClient,
+    processOptions,
     getTransportModeName
 };
-

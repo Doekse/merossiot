@@ -1,330 +1,72 @@
 # Examples
 
-This directory contains focused examples demonstrating different aspects of the MerossIot library.
+Scripts in this folder are **small, runnable demos**. They assume Node 18+ and valid Meross credentials.
 
-## Available Examples
+## Configure credentials
 
-### `basic-usage.js`
-The simplest example showing how to connect to Meross Cloud and discover devices. Perfect for getting started.
+Edit the `email` / `password` fields in each script (or use saved tokens in `token-reuse.js` / `device-discovery.js` patterns).
 
-**Run:**
+```javascript
+const Meross = require('meross-iot'); // or require('../index.js') from this repo
+
+const meross = await Meross.connect({
+    email: 'you@example.com',
+    password: '…',
+    logger: console.log, // optional
+});
+
+// Runtime settings (any time after connect):
+// meross.transportMode = Meross.TransportMode.LAN_HTTP_FIRST;
+// meross.timeout = 15000;
+// meross.enableStats();
+```
+
+Environment variables (if you wire them in your own code): `MEROSS_EMAIL`, `MEROSS_PASSWORD`.
+
+## Helper: `on-each-device.js`
+
+`ManagerMeross.connect()` initializes devices internally, so `deviceReady` may fire before your code runs. Examples that need per-device setup import:
+
+```javascript
+const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
+
+onEachDevice(meross, (device) => {
+    runWhenConnected(device, async () => {
+        /* device is on the network */
+    });
+});
+```
+
+## Catalogue
+
+| Script | Purpose |
+|--------|---------|
+| **basic-usage.js** | Connect and list devices |
+| **device-control.js** | Toggle, light, electricity, `system.getAllData` |
+| **event-handling.js** | Manager `deviceUpdate` and device `stateChange` |
+| **token-reuse.js** | Save/load `getTokenData()` to skip password login |
+| **device-discovery.js** | `discover` / `discoverSubdevices` filters, `initializeDevice`, `initialize({ uuids })` |
+| **statistics.js** | `enableStats()` + `createDebugUtils` |
+| **error-handling.js** | `connect()` failures, `describeMerossError` helper |
+| **hub-devices.js** | Hubs, `getSubdevices()`, subdevice toggle |
+| **transport-modes.js** | `meross.transportMode` (MQTT vs LAN-first) |
+| **multiple-accounts.js** | Two `Meross.connect()` calls → two managers |
+| **timer-usage.js** | `setTimerX`, list/delete timers |
+| **subscription-manager.js** | `meross.subscription`, polling, `deviceListUpdate` |
+
+## Run
+
+From the `meross-iot` package directory:
+
 ```bash
 node example/basic-usage.js
 ```
 
-### `device-control.js`
-Demonstrates how to control different types of Meross devices:
-- Toggle switches (on/off)
-- Smart lights (brightness, color)
-- Electricity monitoring
-- Multi-channel devices
+## Subscription polling
 
-**Run:**
-```bash
-node example/device-control.js
-```
+Intervals are usually passed to `meross.subscription.subscribe(device, { deviceStateInterval, … })`. Default constructor options for the subscription manager are not applied when you only use `Meross.connect()` (auth-only factory); pass the config you need on each `subscribe()` call.
 
-### `event-handling.js`
-Shows how to handle various events emitted by the library:
-- Device readiness
-- Connection/disconnection/reconnection events
-- Unified device updates (`deviceUpdate` and `stateChange`)
-- Online status changes
-- Error events
+## Further reading
 
-**Run:**
-```bash
-node example/event-handling.js
-```
-
-### `token-reuse.js`
-Demonstrates how to save and reuse authentication tokens to avoid repeated logins:
-- Saving token data to file
-- Loading saved tokens
-- Encoding credentials for cross-platform storage
-- Token expiration handling
-
-**Run:**
-```bash
-node example/token-reuse.js
-```
-
-### `statistics.js`
-Shows how to enable and use statistics tracking for monitoring API calls:
-- Enabling statistics
-- Viewing HTTP statistics
-- Viewing MQTT statistics
-- Statistics by device, URL, or time window
-
-**Run:**
-```bash
-node example/statistics.js
-```
-
-### `error-handling.js`
-Demonstrates comprehensive error handling:
-- Authentication errors
-- MFA (Multi-Factor Authentication) handling
-- Token expiration
-- Device command errors
-- Retry logic
-
-**Run:**
-```bash
-node example/error-handling.js
-```
-
-### `hub-devices.js`
-Shows how to work with Meross Hub devices and their subdevices:
-- Detecting hub devices
-- Listing subdevices
-- Controlling subdevices
-- Reading sensor data from subdevices
-
-**Run:**
-```bash
-node example/hub-devices.js
-```
-
-### `transport-modes.js`
-Explains the different transport modes available:
-- `MQTT_ONLY`: Always use cloud MQTT
-- `LAN_HTTP_FIRST`: Try local HTTP first, fallback to MQTT
-- `LAN_HTTP_FIRST_ONLY_GET`: Use LAN HTTP for reads, MQTT for writes
-- Error budget management
-
-**Run:**
-```bash
-node example/transport-modes.js
-```
-
-### `multiple-accounts.js`
-Demonstrates how to use multiple Meross accounts simultaneously:
-- Creating multiple ManagerMeross instances
-- Managing devices from different accounts
-- Independent MQTT connections per account
-
-**Run:**
-```bash
-node example/multiple-accounts.js
-```
-
-### `factory-pattern-usage.js`
-Demonstrates the factory pattern for creating HTTP clients and managers:
-- Using `MerossHttpClient.fromUserPassword()` for authentication
-- Dependency injection pattern with `ManagerMeross`
-- Reusing saved credentials with `MerossHttpClient.fromCredentials()`
-
-**Run:**
-```bash
-node example/factory-pattern-usage.js
-```
-
-### `timer-usage.js`
-Shows how to create and manage device timers:
-- Creating daily, weekday, and custom timers
-- One-time timers
-- Listing and finding timers by alias
-- Deleting timers
-- Using timer utility functions
-
-**Run:**
-```bash
-node example/timer-usage.js
-```
-
-### `subscription-manager.js`
-Demonstrates how to use ManagerSubscription with unified manager events:
-- Subscribing devices for automatic polling
-- Listening to device state changes via `meross.on('deviceUpdate', ...)`
-- Monitoring device list changes (additions, removals)
-- Multiple listeners per device
-- One-time event listeners
-- Smart caching to reduce network traffic
-- Unsubscribing and cleanup
-- Property access pattern: `meross.subscription.subscribe(device)`
-
-**Run:**
-```bash
-node example/subscription-manager.js
-```
-
-### `selective-initialization.js`
-Demonstrates how to selectively initialize devices and subdevices instead of initializing all devices:
-- Discovering available devices without initializing (`devices.discover()`)
-- Discovering available subdevices without initializing (`devices.discoverSubdevices()`)
-- Initializing a single base device by UUID (`devices.initializeDevice(uuid)`)
-- Initializing a single subdevice by identifier (`devices.initializeDevice({ hubUuid, id })`)
-- Initializing multiple devices using filter (`devices.initialize({ uuids: [...] })`)
-- Filtering devices by type (e.g., only smart plugs)
-- Filtering subdevices by type (e.g., only smoke alarms)
-- Perfect for platforms like Homey where users choose which devices to add
-
-**Run:**
-```bash
-node example/selective-initialization.js
-```
-
-## Configuration
-
-Before running any example, update the credentials using the factory pattern:
-
-```javascript
-const { ManagerMeross, MerossHttpClient } = require('meross-iot');
-
-// Create HTTP client using factory method
-const httpClient = await MerossHttpClient.fromUserPassword({
-    email: 'your@email.com',      // ← Update this
-    password: 'yourpassword',      // ← Update this
-    logger: console.log
-});
-
-// Create manager with HTTP client (dependency injection)
-const meross = new ManagerMeross({
-    httpClient: httpClient,
-    logger: console.log
-});
-
-await meross.connect();
-```
-
-## Common Options
-
-### MerossHttpClient Options (Factory Pattern)
-
-When using `MerossHttpClient.fromUserPassword()`:
-- `email`: Your Meross account email (required)
-- `password`: Your Meross account password (required)
-- `mfaCode`: Multi-factor authentication code (if MFA is enabled)
-- `logger`: Logger function for debug output
-- `enableStats`: Enable statistics tracking (default: false)
-- `maxStatsSamples`: Maximum samples to keep in statistics (default: 1000)
-
-### ManagerMeross Options
-
-When creating `ManagerMeross`:
-- `httpClient`: MerossHttpClient instance (required)
-- `logger`: Logger function for debug output
-- `transportMode`: Transport mode (MQTT_ONLY, LAN_HTTP_FIRST, etc.)
-- `timeout`: Request timeout in milliseconds (default: 10000)
-- `autoRetryOnBadDomain`: Automatically retry on domain redirect errors (default: true)
-- `maxErrors`: Maximum errors allowed per device before skipping LAN HTTP (default: 1)
-- `errorBudgetTimeWindow`: Time window in milliseconds for error budget (default: 60000)
-- `enableStats`: Enable statistics tracking (default: false)
-- `maxStatsSamples`: Maximum samples to keep in statistics (default: 1000)
-- `requestBatchSize`: Number of concurrent requests per device (default: 1)
-- `requestBatchDelay`: Delay in milliseconds between batches (default: 200)
-- `enableRequestThrottling`: Enable/disable request throttling (default: true)
-- `subscription`: Optional subscription manager options (see below)
-
-### ManagerSubscription Options
-
-Subscription manager options can be passed via `subscription` property in ManagerMeross constructor, or accessed via `meross.subscription` property:
-
-- `logger`: Logger function for debug output
-- `deviceStateInterval`: Device state polling interval in milliseconds (default: 30000)
-- `electricityInterval`: Electricity metrics polling interval in milliseconds (default: 30000)
-- `consumptionInterval`: Power consumption polling interval in milliseconds (default: 60000)
-- `httpDeviceListInterval`: HTTP device list polling interval in milliseconds (default: 120000)
-- `smartCaching`: Skip polling when cached data is fresh (default: true)
-- `cacheMaxAge`: Maximum cache age in milliseconds before considering data stale (default: 10000)
-
-When calling `meross.subscription.subscribe(device, config)`:
-- `deviceStateInterval`: Override device state polling interval for this device
-- `electricityInterval`: Override electricity polling interval for this device
-- `consumptionInterval`: Override consumption polling interval for this device
-- `smartCaching`: Override smart caching setting for this device
-- `cacheMaxAge`: Override cache max age for this device
-
-Configuration is merged aggressively (shortest intervals win) to ensure all listeners receive updates at least as frequently as required.
-
-## Property Access Patterns
-
-The library uses property-based access for cleaner API design, similar to Homey's API structure:
-
-### Subscription Manager Access
-
-Access the subscription manager via the `subscription` property:
-
-```javascript
-// Subscribe to device updates
-meross.subscription.subscribe(device, {
-  deviceStateInterval: 5000
-});
-
-// Listen for updates from all devices
-meross.on('deviceUpdate', (device, change) => {
-  if (device.uuid === 'device-uuid') {
-    console.log('Device update:', change);
-  }
-});
-
-// Unsubscribe
-meross.subscription.unsubscribe(device.uuid);
-```
-
-### Device Registry Access
-
-Access devices via the `devices` property:
-
-```javascript
-// Get a device by UUID
-const device = meross.devices.get('device-uuid');
-
-// Get a subdevice by hub UUID and subdevice ID
-const subdevice = meross.devices.get({
-  hubUuid: 'hub-uuid',
-  id: 'subdevice-id'
-});
-
-// Find devices by filters
-const lights = meross.devices.find({ deviceClass: 'light' });
-
-// List all devices
-const allDevices = meross.devices.list();
-```
-
-### Selective Device Initialization
-
-For platforms that allow users to choose which devices to add:
-
-```javascript
-// Discover available devices without initializing
-const devices = await meross.devices.discover({ onlineOnly: true });
-
-// Discover available subdevices without initializing
-const subdevices = await meross.devices.discoverSubdevices({ subdeviceType: 'ma151' });
-
-// Initialize a single base device
-const device = await meross.devices.initializeDevice('device-uuid');
-
-// Initialize a single subdevice (hub auto-initialized if needed)
-const subdevice = await meross.devices.initializeDevice({
-  hubUuid: 'hub-uuid',
-  id: 'subdevice-id'
-});
-
-// Initialize multiple devices using filter
-const count = await meross.devices.initialize({ uuids: ['uuid1', 'uuid2'] });
-
-// Remove a device (disconnects and cleans up resources)
-const removed = await meross.devices.remove('device-uuid');
-
-// Remove a subdevice
-const removed = await meross.devices.remove({
-  hubUuid: 'hub-uuid',
-  id: 'subdevice-id'
-});
-```
-
-
-## Environment Variables
-
-You can also set credentials via environment variables:
-
-```bash
-export MEROSS_EMAIL="your@email.com"
-export MEROSS_PASSWORD="yourpassword"
-node example/basic-usage.js
-```
-
+- Package overview: [../README.md](../README.md)
+- Type definitions: `index.d.ts` (`ManagerMeross`, `MerossError*`)

@@ -5,103 +5,60 @@
 'use strict';
 
 /**
- * Statistics Tracking Example
- *
- * Demonstrates how to enable and use statistics tracking for monitoring
- * HTTP and MQTT API calls.
+ * HTTP / MQTT statistics (`enableStats` + debug utils)
  */
 
-const { ManagerMeross, MerossHttpClient } = require('../index.js');
+const Meross = require('../index.js');
 const { createDebugUtils } = require('../lib/utilities/debug');
+const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
 
 (async () => {
     try {
-        const httpClient = await MerossHttpClient.fromUserPassword({
+        console.log('Connecting to Meross Cloud...');
+        const meross = await Meross.connect({
             email: 'your@email.com',
             password: 'yourpassword',
-            logger: console.log,
-            enableStats: true,
-            maxStatsSamples: 1000
+            logger: console.log
         });
-
-        const meross = new ManagerMeross({
-            httpClient: httpClient,
-            logger: console.log,
-            enableStats: true,
-            maxStatsSamples: 1000
-        });
+        meross.enableStats(1000);
 
         const debug = createDebugUtils(meross);
+        const n = meross.devices.list().length;
+        console.log(`\n✓ ${n} device(s). Generating a little traffic…`);
 
-        meross.on('deviceReady', (device) => {
-            device.on('connected', async () => {
-                console.log(`\n[Connected] ${device.name}`);
-
-                // Generate API calls to demonstrate statistics tracking
+        onEachDevice(meross, (device) => {
+            runWhenConnected(device, async () => {
                 if (device.toggle) {
                     try {
                         await device.toggle();
-                        console.log('✓ Device toggled');
                     } catch (err) {
-                        console.error('Toggle error:', err.message);
+                        console.error(err.message);
                     }
                 }
             });
         });
 
-        console.log('Connecting to Meross Cloud...');
-        const deviceCount = await meross.connect();
-        console.log(`\n✓ Successfully connected to ${deviceCount} device(s)`);
+        await new Promise((r) => setTimeout(r, 5000));
 
-        // Allow time for API calls to accumulate before displaying statistics
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        console.log('\n=== Statistics ===\n');
+        console.log('\n=== Statistics (last 60s) ===\n');
 
         const httpStats = debug.getHttpStats(60000);
         if (httpStats) {
-            console.log('HTTP Statistics:');
-            console.log(`  Total calls: ${httpStats.globalStats.totalCalls}`);
-            console.log('  By HTTP status code:');
-            httpStats.globalStats.byHttpResponseCode().forEach(([code, count]) => {
-                console.log(`    ${code}: ${count}`);
-            });
-            console.log('  By API status code:');
-            httpStats.globalStats.byApiStatusCode().forEach(([code, count]) => {
-                console.log(`    ${code}: ${count}`);
-            });
+            console.log(`HTTP calls: ${httpStats.globalStats.totalCalls}`);
         } else {
-            console.log('HTTP Statistics: Not available (stats not enabled)');
+            console.log('HTTP stats: (none)');
         }
 
         const mqttStats = debug.getMqttStats(60000);
-        console.log('\nMQTT Statistics:');
-        console.log(`  Total API calls: ${mqttStats.globalStats.totalCalls}`);
-        console.log('  By method/namespace:');
-        mqttStats.globalStats.byMethodNamespace().forEach(([method, count]) => {
-            console.log(`    ${method}: ${count}`);
-        });
+        console.log(`MQTT calls: ${mqttStats.globalStats.totalCalls}`);
 
-        const delayedStats = debug.getDelayedMqttStats(60000);
-        console.log(`\n  Delayed calls: ${delayedStats.globalStats.totalCalls}`);
-
-        const droppedStats = debug.getDroppedMqttStats(60000);
-        console.log(`  Dropped calls: ${droppedStats.globalStats.totalCalls}`);
-
-        console.log('\nListening... (Press Ctrl+C to exit)');
-        
         process.on('SIGINT', async () => {
-            console.log('\n\nShutting down...');
             await meross.logout();
             meross.disconnectAll(true);
             process.exit(0);
         });
-        
     } catch (error) {
         console.error(`Error: ${error.message}`);
-        if (error.stack) {
-            console.error(error.stack);
-        }
         process.exit(1);
     }
 })();

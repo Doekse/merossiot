@@ -5,96 +5,70 @@
 'use strict';
 
 /**
- * Device Control Examples
+ * Device control (toggle, light, power monitoring)
  *
- * Demonstrates how to control different types of Meross devices:
- * - Toggle switches (on/off)
- * - Smart lights (color, brightness)
- * - Electricity monitoring
- * - Multi-channel devices
+ * Uses `on-each-device.js` because `deviceReady` can fire while `connect()` runs.
  */
 
-const { ManagerMeross, MerossHttpClient } = require('../index.js');
+const Meross = require('../index.js');
+const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
 
 (async () => {
     try {
-        const httpClient = await MerossHttpClient.fromUserPassword({
+        console.log('Connecting to Meross Cloud...');
+        const meross = await Meross.connect({
             email: 'your@email.com',
             password: 'yourpassword',
             logger: console.log
         });
 
-        const meross = new ManagerMeross({
-            httpClient: httpClient,
-            logger: console.log
-        });
+        /**
+         * @param {Object} device - Device instance
+         * @returns {Promise<void>}
+         */
+        async function runControlDemo(device) {
+            console.log(`\n[Reachable] ${device.name}`);
 
-        meross.on('deviceReady', (device) => {
-            device.on('connected', async () => {
-                console.log(`\n[Connected] ${device.name}`);
-
-        try {
-            // Example 1: Toggle Control (Switches/Plugs)
-            if (device.toggle) {
-                console.log('  Supports Toggle control');
-
-                await device.toggle.set({ channel: 1, on: true });
-                console.log('  ✓ Turned on channel 1');
-
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                await device.toggle.set({ channel: 1, on: false });
-                console.log('  ✓ Turned off channel 1');
-
-                // Check state
-                const isOn = device.toggle.isOn({ channel: 1 });
-                console.log(`  Channel 1 is ${isOn ? 'on' : 'off'}`);
-            }
-
-            // Example 2: Light Control
-            if (device.light) {
-                console.log('  Supports Light control');
-
-                const lightState = await device.light.get({ channel: 0 });
-                if (lightState) {
-                    console.log(`  Current brightness: ${lightState.luminance || 'N/A'}%`);
+            try {
+                if (device.toggle) {
+                    console.log('  Toggle');
+                    await device.toggle.set({ channel: 1, on: true });
+                    await new Promise((r) => setTimeout(r, 2000));
+                    await device.toggle.set({ channel: 1, on: false });
+                    console.log(`  Channel 1: ${device.toggle.isOn({ channel: 1 }) ? 'on' : 'off'}`);
                 }
 
-                await device.light.set({ channel: 0, luminance: 50 });
-                console.log('  ✓ Set brightness to 50%');
-
-                // RGB support must be checked separately as not all light devices support it
-                if (device.light.supportsRgb({ channel: 0 })) {
-                    await device.light.set({ channel: 0, rgb: [255, 0, 0] });
-                    console.log('  ✓ Set color to red');
+                if (device.light) {
+                    console.log('  Light');
+                    const st = await device.light.get({ channel: 0 });
+                    if (st) {
+                        console.log(`    Brightness: ${st.luminance || 'N/A'}%`);
+                    }
+                    await device.light.set({ channel: 0, luminance: 50 });
+                    if (device.light.supportsRgb({ channel: 0 })) {
+                        await device.light.set({ channel: 0, rgb: [255, 0, 0] });
+                    }
                 }
-            }
 
-            // Example 3: Electricity Monitoring
-            if (device.abilities && device.abilities['Appliance.Control.Electricity']) {
-                console.log('  Supports Electricity monitoring');
-
-                const electricity = await device.getElectricity({ channel: 0 });
-                if (electricity) {
-                    console.log(`  Current: ${electricity.amperage.toFixed(2)} A`);
-                    console.log(`  Voltage: ${electricity.voltage.toFixed(1)} V`);
-                    console.log(`  Power: ${electricity.wattage.toFixed(2)} W`);
+                if (device.abilities && device.abilities['Appliance.Control.Electricity']) {
+                    const electricity = await device.getElectricity({ channel: 0 });
+                    if (electricity) {
+                        console.log(`  Power: ${electricity.wattage.toFixed(2)} W`);
+                    }
                 }
-            }
 
-            // Example 4: Get all device data
-            const allData = await device.system.getAllData();
-            console.log('  System data retrieved');
-            
-        } catch (error) {
-            console.error(`  Error: ${error.message}`);
+                await device.system.getAllData();
+                console.log('  system.getAllData ok');
+            } catch (error) {
+                console.error(`  ${error.message}`);
+            }
         }
-        });
-    });
 
-        console.log('Connecting to Meross Cloud...');
-        await meross.connect();
-        console.log('✓ Connected. Waiting for devices...');
+        onEachDevice(meross, (device) => {
+            runWhenConnected(device, () => runControlDemo(device));
+        });
+
+        console.log('✓ Connected. Running demos when each device is reachable…');
 
         process.on('SIGINT', async () => {
             await meross.logout();
@@ -106,4 +80,3 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         process.exit(1);
     }
 })();
-

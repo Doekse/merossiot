@@ -44,13 +44,17 @@ async function _handleStoredUserLogin(loginChoice) {
     }
 
     const manager = await createMerossInstance(
-        userData.email,
-        userData.password,
-        userData.mfaCode,
-        TransportMode.MQTT_ONLY,
-        10000,
-        false,
-        false
+        {
+            email: userData.email,
+            password: userData.password,
+            mfaCode: userData.mfaCode || undefined
+        },
+        {
+            transportMode: TransportMode.MQTT_ONLY,
+            timeout: 10000,
+            enableStats: false,
+            verbose: false
+        }
     );
 
     return { success: true, manager, userName };
@@ -90,13 +94,17 @@ async function _handleAddNewUser(rl) {
     }
 
     const manager = await createMerossInstance(
-        userData.email,
-        userData.password,
-        userData.mfaCode,
-        TransportMode.MQTT_ONLY,
-        10000,
-        false,
-        false
+        {
+            email: userData.email,
+            password: userData.password,
+            mfaCode: userData.mfaCode || undefined
+        },
+        {
+            transportMode: TransportMode.MQTT_ONLY,
+            timeout: 10000,
+            enableStats: false,
+            verbose: false
+        }
     );
 
     return { success: true, manager, userName: name.trim() };
@@ -105,13 +113,17 @@ async function _handleAddNewUser(rl) {
 async function _handleManualLogin(rl) {
     const credentials = await _promptForCredentials(rl);
     const manager = await createMerossInstance(
-        credentials.email,
-        credentials.password,
-        credentials.mfaCode,
-        TransportMode.MQTT_ONLY,
-        10000,
-        false,
-        false
+        {
+            email: credentials.email,
+            password: credentials.password,
+            mfaCode: credentials.mfaCode || undefined
+        },
+        {
+            transportMode: TransportMode.MQTT_ONLY,
+            timeout: 10000,
+            enableStats: false,
+            verbose: false
+        }
     );
 
     return { success: true, manager, credentials };
@@ -121,13 +133,17 @@ async function _handleNoStoredUsersLogin(rl) {
     process.stdout.write('\nNo stored users found. Please enter credentials:\n\n');
     const credentials = await _promptForCredentials(rl);
     const manager = await createMerossInstance(
-        credentials.email,
-        credentials.password,
-        credentials.mfaCode,
-        TransportMode.MQTT_ONLY,
-        10000,
-        false,
-        false
+        {
+            email: credentials.email,
+            password: credentials.password,
+            mfaCode: credentials.mfaCode || undefined
+        },
+        {
+            transportMode: TransportMode.MQTT_ONLY,
+            timeout: 10000,
+            enableStats: false,
+            verbose: false
+        }
     );
 
     return { success: true, manager, credentials };
@@ -535,13 +551,17 @@ function _buildSettingsCallbacks(
         onSwitchUser: async (userName, userData) => {
             await disconnectMeross(managerRef.current);
             managerRef.current = await createMerossInstance(
-                userData.email,
-                userData.password,
-                userData.mfaCode,
-                transportModeRef.current,
-                timeoutRef.current,
-                enableStatsRef.current,
-                verboseRef.current
+                {
+                    email: userData.email,
+                    password: userData.password,
+                    mfaCode: userData.mfaCode || undefined
+                },
+                {
+                    transportMode: transportModeRef.current,
+                    timeout: timeoutRef.current,
+                    enableStats: enableStatsRef.current,
+                    verbose: verboseRef.current
+                }
             );
             const connected = await _selectDevicesToInitialize(managerRef.current);
             if (connected) {
@@ -591,12 +611,7 @@ async function _handleSettingsCommand(manager, rl, currentUserRef, currentCreden
     };
     const setVerbose = (enabled) => {
         verboseRef.current = enabled;
-        if (managerRef.current.options) {
-            managerRef.current.options.logger = enabled ? console.log : null;
-        }
-        if (managerRef.current.httpClient && managerRef.current.httpClient.options) {
-            managerRef.current.httpClient.options.logger = enabled ? console.log : null;
-        }
+        managerRef.current.logger = enabled ? console.log : null;
     };
 
     const userManagementCallbacks = _buildSettingsCallbacks(

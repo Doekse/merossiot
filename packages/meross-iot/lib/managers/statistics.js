@@ -31,8 +31,8 @@ class ManagerStatistics {
      * @param {number|null} apiCode - Meross API response code (null if not applicable)
      */
     notifyHttpRequest(url, method, httpCode, apiCode) {
-        if (this.manager.httpClient && this.manager.httpClient._httpStatsCounter) {
-            this.manager.httpClient._httpStatsCounter.notifyHttpRequest(url, method, httpCode, apiCode);
+        if (this.manager._httpClient && this.manager._httpClient._httpStatsCounter) {
+            this.manager._httpClient._httpStatsCounter.notifyHttpRequest(url, method, httpCode, apiCode);
         }
     }
 
@@ -93,8 +93,8 @@ class ManagerStatistics {
      * @returns {HttpStatsResult|null} Statistics result or null if statistics not enabled
      */
     getHttpStats(timeWindowMs = 60000) {
-        if (this.manager.httpClient && this.manager.httpClient._httpStatsCounter) {
-            return this.manager.httpClient._httpStatsCounter.getStats(timeWindowMs);
+        if (this.manager._httpClient && this.manager._httpClient._httpStatsCounter) {
+            return this.manager._httpClient._httpStatsCounter.getStats(timeWindowMs);
         }
         return null;
     }
@@ -151,7 +151,7 @@ class ManagerStatistics {
      */
     isEnabled() {
         return (this.manager._mqttStatsCounter !== null) &&
-               (this.manager.httpClient && this.manager.httpClient._httpStatsCounter !== null);
+               (this.manager._httpClient && this.manager._httpClient._httpStatsCounter !== null);
     }
 }
 

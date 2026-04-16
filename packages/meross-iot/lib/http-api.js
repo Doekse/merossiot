@@ -95,6 +95,8 @@ class MerossHttpClient {
      */
     constructor(options) {
         this.options = options || {};
+        /** @type {function(string, string, number, number|null): void|null} */
+        this._onHttpRequest = null;
         this.token = null;
         this.key = null;
         this.userId = null;
@@ -448,9 +450,7 @@ class MerossHttpClient {
             const apiResponseCode = body.apiStatus ?? null;
 
             // Track statistics after parsing response to capture both HTTP and API-level status codes
-            if (this._manager) {
-                this._manager.statistics.notifyHttpRequest(url, 'POST', 200, apiResponseCode);
-            }
+            this._onHttpRequest?.(url, 'POST', 200, apiResponseCode);
 
             if (body.apiStatus === 0) {
                 return body.data;
@@ -467,9 +467,7 @@ class MerossHttpClient {
         } catch (error) {
             // Track error statistics by extracting HTTP and API status codes from various error types
             const { httpCode, apiCode } = this._extractErrorCodes(error);
-            if (this._manager) {
-                this._manager.statistics.notifyHttpRequest(url, 'POST', httpCode, apiCode);
-            }
+            this._onHttpRequest?.(url, 'POST', httpCode, apiCode);
 
             // Preserve custom error types for proper error handling upstream
             const { MerossError } = require('./model/exception');
@@ -632,8 +630,8 @@ class MerossHttpClient {
     /**
      * Logs out from Meross cloud API
      *
-     * Invalidates the current authentication token on the server. Should be called when
-     * shutting down to prevent token leakage and ensure proper session cleanup.
+     * Invalidates the current authentication token on the server and clears stored
+     * credentials on this client so subsequent reads reflect a logged-out state.
      *
      * @returns {Promise<Object|null>} Promise that resolves with logout response data (or null if empty)
      * @throws {MerossErrorAuthentication} If not authenticated
@@ -646,6 +644,10 @@ class MerossHttpClient {
             throw new MerossErrorAuthentication('Not authenticated');
         }
         const response = await this.authenticatedPost(LOGOUT_URL, {});
+        this.token = null;
+        this.key = null;
+        this.userId = null;
+        this.userEmail = null;
         return response || null;
     }
 

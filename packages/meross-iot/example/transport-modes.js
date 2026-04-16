@@ -8,50 +8,36 @@
  * Transport Modes Example
  *
  * Demonstrates the different transport modes available for communicating
- * with devices:
+ * with devices. Set {@link ManagerMeross#transportMode} at any time after connect:
  * - MQTT_ONLY: Always use cloud MQTT
  * - LAN_HTTP_FIRST: Try local HTTP first, fallback to MQTT
  * - LAN_HTTP_FIRST_ONLY_GET: Try local HTTP for GET requests only, use MQTT for SET
  */
 
-const { ManagerMeross, MerossHttpClient } = require('../index.js');
+const Meross = require('../index.js');
 
 (async () => {
     try {
-        const httpClient = await MerossHttpClient.fromUserPassword({
+        console.log('Connecting to Meross Cloud...');
+        const meross = await Meross.connect({
             email: 'your@email.com',
             password: 'yourpassword',
             logger: console.log
         });
 
         // Example 1: MQTT Only (default)
-        // All communication goes through the cloud MQTT broker
-        const mqttOnly = new ManagerMeross({
-            httpClient: httpClient,
-            transportMode: ManagerMeross.TransportMode.MQTT_ONLY,
-            logger: (msg) => console.log(`[MQTT Only] ${msg}`)
-        });
+        // meross.transportMode = Meross.TransportMode.MQTT_ONLY;
 
         // Example 2: LAN HTTP First
-        // Tries to communicate via local HTTP first, falls back to MQTT if it fails
-        const lanHttpFirst = new ManagerMeross({
-            httpClient: httpClient,
-            transportMode: ManagerMeross.TransportMode.LAN_HTTP_FIRST,
-            logger: (msg) => console.log(`[LAN HTTP First] ${msg}`)
-        });
+        // meross.transportMode = Meross.TransportMode.LAN_HTTP_FIRST;
 
         // Example 3: LAN HTTP First (GET only)
-        // Uses local HTTP for GET requests, MQTT for SET requests
-        const lanHttpGetOnly = new ManagerMeross({
-            httpClient: httpClient,
-            transportMode: ManagerMeross.TransportMode.LAN_HTTP_FIRST_ONLY_GET,
-            logger: (msg) => console.log(`[LAN HTTP GET Only] ${msg}`)
-        });
+        // meross.transportMode = Meross.TransportMode.LAN_HTTP_FIRST_ONLY_GET;
 
-        const meross = mqttOnly;
+        meross.transportMode = Meross.TransportMode.MQTT_ONLY;
+        meross.logger = (msg) => console.log(`[MQTT Only] ${msg}`);
 
-        console.log('Connecting to Meross Cloud...');
-        const deviceCount = await meross.connect();
+        const deviceCount = meross.devices.list().length;
         console.log(`\n✓ Successfully connected to ${deviceCount} device(s)`);
 
         const devices = meross.devices.list();
@@ -65,14 +51,14 @@ const { ManagerMeross, MerossHttpClient } = require('../index.js');
         }
 
         console.log('\nListening... (Press Ctrl+C to exit)');
-        
+
         process.on('SIGINT', async () => {
             console.log('\n\nShutting down...');
             await meross.logout();
             meross.disconnectAll(true);
             process.exit(0);
         });
-        
+
     } catch (error) {
         console.error(`Error: ${error.message}`);
         if (error.stack) {

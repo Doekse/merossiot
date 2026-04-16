@@ -36,55 +36,32 @@ Refer to the [example/README.md](example/README.md) for detailed usage instructi
 If you are really impatient to use this library, refer to the following snippet of code that looks for a device and turns it on/off.
 
 ```javascript
-const { ManagerMeross, MerossHttpClient } = require('meross-iot');
+const Meross = require('meross-iot');
 
 (async () => {
-  // Create HTTP client using factory method
-  const httpClient = await MerossHttpClient.fromUserPassword({
+  const meross = await Meross.connect({
     email: 'your@email.com',
-    password: 'yourpassword'
+    password: 'yourpassword',
   });
 
-  // Create manager with HTTP client
-  const meross = new ManagerMeross({
-    httpClient: httpClient
-  });
-
-  // Listen for device events
-  meross.on('deviceInitialized', (deviceId, device) => {
-    console.log(`Device found: ${device.name} (${device.deviceType})`);
-  });
-
-  // Connect and discover devices
-  await meross.connect();
-  
-  // Find a device and control it
   const devices = meross.devices.list();
   if (devices.length > 0) {
     const device = devices[0];
-    
-    // Example: Toggle a switch
     if (device.toggle) {
-      await device.toggle.set({ channel: 0, on: true }); // Turn on channel 0
+      await device.toggle.set({ channel: 0, on: true });
     }
   }
 })();
 ```
 
-The `example/` directory contains focused examples for different use cases:
-- **`basic-usage.js`** - Simple connection and device discovery
-- **`device-control.js`** - Controlling switches, lights, and monitoring devices
-- **`event-handling.js`** - Handling events from devices and the manager
-- **`subscription-manager.js`** - Automatic polling and unified update streams with ManagerSubscription
-- **`token-reuse.js`** - Saving and reusing authentication tokens
-- **`statistics.js`** - Enabling and viewing API call statistics
-- **`error-handling.js`** - Comprehensive error handling and MFA
-- **`hub-devices.js`** - Working with hub devices and subdevices
-- **`transport-modes.js`** - Understanding different transport modes
-- **`multiple-accounts.js`** - Using multiple Meross accounts simultaneously
-- **`factory-pattern-usage.js`** - Recommended factory pattern for creating HTTP clients and managers
-- **`timer-usage.js`** - Creating and managing device timers
-- **`selective-initialization.js`** - Selectively initializing devices and subdevices
+The `example/` directory contains focused examples. See **[example/README.md](example/README.md)** for the full table. Highlights:
+
+- **`basic-usage.js`** — Connect and list devices
+- **`device-control.js`** — Switches, lights, power monitoring
+- **`device-discovery.js`** — Discovery filters and targeted `initializeDevice`
+- **`on-each-device.js`** — Helper for `deviceReady` + existing registry (used by several demos)
+- **`subscription-manager.js`** — `ManagerSubscription` polling and list updates
+- **`token-reuse.js`** — Persist `getTokenData()` between runs
 
 ## Adding and Removing Devices
 

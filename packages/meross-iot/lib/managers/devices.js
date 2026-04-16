@@ -72,7 +72,7 @@ class ManagerDevices {
      * const devices = await manager.devices.discover({ excludeHubs: true });
      */
     async discover(options = {}) {
-        const deviceList = await this.manager.httpClient.getDevices();
+        const deviceList = await this.manager._httpClient.getDevices();
 
         if (!deviceList || !Array.isArray(deviceList)) {
             return [];
@@ -123,7 +123,7 @@ class ManagerDevices {
      * const subdevices = await manager.devices.discoverSubdevices({ hubUuids: ['hub-uuid-1', 'hub-uuid-2'] });
      */
     async discoverSubdevices(options = {}) {
-        const deviceList = await this.manager.httpClient.getDevices();
+        const deviceList = await this.manager._httpClient.getDevices();
 
         if (!deviceList || !Array.isArray(deviceList)) {
             return [];
@@ -217,7 +217,7 @@ class ManagerDevices {
         const subdevices = [];
 
         try {
-            const subDeviceList = await this.manager.httpClient.getSubDevices(hubDevice.uuid);
+            const subDeviceList = await this.manager._httpClient.getSubDevices(hubDevice.uuid);
             if (subDeviceList && Array.isArray(subDeviceList)) {
                 for (const subdeviceInfo of subDeviceList) {
                     if (subdeviceTypeFilter) {
@@ -473,7 +473,7 @@ class ManagerDevices {
      */
     async _findAndEnrollSubdevice(hubDevice, hubUuid, subdeviceId) {
         try {
-            const subDeviceList = await this.manager.httpClient.getSubDevices(hubUuid);
+            const subDeviceList = await this.manager._httpClient.getSubDevices(hubUuid);
             if (subDeviceList && Array.isArray(subDeviceList)) {
                 const subdeviceInfo = subDeviceList.find(sd =>
                     (sd.subDeviceId || sd.id) === subdeviceId
@@ -758,7 +758,7 @@ class ManagerDevices {
             let subDeviceList = null;
             if (isHub) {
                 try {
-                    subDeviceList = await this.manager.httpClient.getSubDevices(deviceInfo.uuid);
+                    subDeviceList = await this.manager._httpClient.getSubDevices(deviceInfo.uuid);
                 } catch (err) {
                     subDeviceList = [];
                 }
@@ -891,7 +891,7 @@ class ManagerDevices {
      * @private
      */
     async _getValidatedDeviceList() {
-        const deviceList = await this.manager.httpClient.getDevices();
+        const deviceList = await this.manager._httpClient.getDevices();
         if (!deviceList || !Array.isArray(deviceList)) {
             return [];
         }

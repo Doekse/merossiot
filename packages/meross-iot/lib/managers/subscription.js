@@ -418,7 +418,7 @@ class ManagerSubscription extends EventEmitter {
      */
     async _pollHttpDeviceList() {
         try {
-            const devices = await this.manager.httpClient.listDevices();
+            const devices = await this.manager._httpClient.getDevices();
 
             const previousUuids = new Set(this._lastDeviceList?.map(d => d.uuid) || []);
             const currentUuids = new Set(devices.map(d => d.uuid));

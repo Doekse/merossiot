@@ -1,80 +1,118 @@
 'use strict';
 
 const ManagerMeross = require('meross-iot');
-const { MerossHttpClient, TransportMode } = require('meross-iot');
+const { MerossHttpClient } = require('meross-iot');
 const ora = require('ora');
 const { handleError } = require('../utils/error-handler');
 
-async function createMerossInstance(optionsOrEmail, password, mfaCode, transportMode, timeout, enableStats, verbose) {
-    let httpClient;
-    let finalTransportMode;
-    let finalTimeout;
-    let finalEnableStats;
-    let finalVerbose;
+/**
+ * Applies CLI runtime settings after a manager exists (transport, timeout, stats, verbose).
+ *
+ * @param {import('meross-iot')} manager - Manager instance
+ * @param {{ transportMode?: number, timeout?: number, enableStats?: boolean, verbose?: boolean }} settings - Runtime options
+ * @returns {void}
+ */
+function applyMerossRuntimeSettings(manager, settings) {
+    if (!settings) {
+        return;
+    }
+    if (settings.verbose) {
+        manager.logger = console.log;
+    }
+    if (settings.timeout != null) {
+        manager.timeout = settings.timeout;
+    }
+    if (settings.transportMode != null) {
+        manager.transportMode = settings.transportMode;
+    }
+    if (settings.enableStats) {
+        manager.enableStats();
+    }
+}
 
-    // Handle both old signature (individual params) and new signature (options object)
-    if (typeof optionsOrEmail === 'object' && optionsOrEmail !== null && optionsOrEmail.httpClient) {
-        // New signature: options object
-        const options = optionsOrEmail;
-        httpClient = options.httpClient;
-        finalTransportMode = options.transportMode || TransportMode.MQTT_ONLY;
-        finalTimeout = options.timeout || 10000;
-        finalEnableStats = options.enableStats || false;
-        finalVerbose = options.verbose || false;
-    } else {
-        // Old signature: individual parameters
-        const email = optionsOrEmail;
-        finalTransportMode = transportMode || TransportMode.MQTT_ONLY;
-        finalTimeout = timeout || 10000;
-        finalEnableStats = enableStats || false;
-        finalVerbose = verbose || false;
+/**
+ * Connects via {@link ManagerMeross.connect} and applies runtime settings (CLI one-shot commands).
+ *
+ * @param {Object} connectOpts - Password or credential options for {@link ManagerMeross.connect}
+ * @param {{ transportMode?: number, timeout?: number, enableStats?: boolean, verbose?: boolean }} settings - Runtime options
+ * @returns {Promise<import('meross-iot')>}
+ */
+async function createAndConnect(connectOpts, settings) {
+    const manager = await ManagerMeross.connect(connectOpts);
+    applyMerossRuntimeSettings(manager, settings);
+    return manager;
+}
 
-        // Create HTTP client
-        try {
-            httpClient = await MerossHttpClient.fromUserPassword({
-                email,
-                password,
-                mfaCode,
-                logger: finalVerbose ? console.log : null,
-                timeout: finalTimeout,
-                autoRetryOnBadDomain: true,
-                enableStats: finalEnableStats,
-                maxStatsSamples: 1000
-            });
-        } catch (error) {
-            // Re-throw to let caller handle with proper error formatting
-            throw error;
-        }
+/**
+ * Builds an authenticated manager without calling {@link ManagerMeross#connect}, so callers can
+ * run discovery and selective {@link ManagerDevices#initialize} (interactive menu).
+ *
+ * @param {Object} connectOpts - Same shape as {@link ManagerMeross.connect} (email/password or token credentials)
+ * @param {{ transportMode?: number, timeout?: number, enableStats?: boolean, verbose?: boolean }} [settings] - Runtime options
+ * @returns {Promise<import('meross-iot')>}
+ */
+async function createMerossInstance(connectOpts, settings = {}) {
+    const normalized = connectOpts || {};
+    const isPasswordAuth = !!(normalized.email && normalized.password);
+    const isCredentialAuth = !!(
+        normalized.token &&
+        normalized.key &&
+        normalized.userId &&
+        normalized.domain
+    );
+
+    if (!isPasswordAuth && !isCredentialAuth) {
+        throw new Error(
+            'Invalid connect options: provide either { email, password } or { token, key, userId, domain }'
+        );
     }
 
-    const instance = new ManagerMeross({
-        httpClient,
-        transportMode: finalTransportMode,
-        timeout: finalTimeout,
-        enableStats: finalEnableStats,
-        logger: finalVerbose ? console.log : null
-    });
+    const httpClientOpts = {};
+    if (normalized.logger) {
+        httpClientOpts.logger = normalized.logger;
+    }
 
-    instance.on('deviceReady', (device) => {
-        if (finalVerbose) {
+    let httpClient;
+    if (isPasswordAuth) {
+        httpClient = await MerossHttpClient.fromUserPassword({
+            email: normalized.email,
+            password: normalized.password,
+            mfaCode: normalized.mfaCode,
+            ...httpClientOpts
+        });
+    } else {
+        httpClient = MerossHttpClient.fromCredentials(
+            {
+                token: normalized.token,
+                key: normalized.key,
+                userId: normalized.userId,
+                domain: normalized.domain,
+                mqttDomain: normalized.mqttDomain
+            },
+            httpClientOpts
+        );
+    }
+
+    const manager = new ManagerMeross({ httpClient });
+    if (normalized.logger) {
+        manager.logger = normalized.logger;
+    }
+    applyMerossRuntimeSettings(manager, settings);
+
+    if (settings.verbose) {
+        manager.on('deviceReady', (device) => {
             console.log(`Device ready: ${device?.uuid || 'unknown'}`);
-        }
-    });
-
-    instance.on('connected', (device) => {
-        if (finalVerbose) {
+        });
+        manager.on('connected', (device) => {
             console.log(`Device connected: ${device?.uuid || 'unknown'}`);
-        }
-    });
-
-    instance.on('error', (error, device) => {
-        if (finalVerbose) {
+        });
+        manager.on('error', (error, device) => {
             const deviceId = device?.uuid || null;
             console.error(`Error${deviceId ? ` (${deviceId})` : ''}: ${error.message}`);
-        }
-    });
+        });
+    }
 
-    return instance;
+    return manager;
 }
 
 async function connectMeross(manager) {
@@ -104,8 +142,9 @@ async function disconnectMeross(manager) {
 }
 
 module.exports = {
+    applyMerossRuntimeSettings,
+    createAndConnect,
     createMerossInstance,
     connectMeross,
     disconnectMeross
 };
-

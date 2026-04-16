@@ -8,7 +8,7 @@ const {
     generateClientAndAppId
 } = require('./utilities/mqtt');
 const ErrorBudgetManager = require('./error-budget');
-const { MqttStatsCounter } = require('./utilities/stats');
+const { MqttStatsCounter, HttpStatsCounter } = require('./utilities/stats');
 const RequestQueue = require('./utilities/request-queue');
 const DeviceRegistry = require('./device-registry');
 const { MerossErrorAuthentication, MerossErrorValidation } = require('./model/exception');
@@ -24,6 +24,75 @@ const { MerossErrorAuthentication, MerossErrorValidation } = require('./model/ex
  * @extends EventEmitter
  */
 class ManagerMeross extends EventEmitter {
+    /**
+     * Creates and connects a manager from authentication input.
+     *
+     * Centralizing auth creation here keeps `MerossHttpClient` as an internal detail
+     * so consumers only need to provide credentials and can adjust runtime settings
+     * on the returned manager.
+     *
+     * @static
+     * @async
+     * @param {Object} options - Authentication options
+     * @param {string} [options.email] - Account email for password authentication
+     * @param {string} [options.password] - Account password for password authentication
+     * @param {string} [options.mfaCode] - MFA code for password authentication
+     * @param {string} [options.token] - Existing token for credential authentication
+     * @param {string} [options.key] - Encryption key for credential authentication
+     * @param {string} [options.userId] - User ID for credential authentication
+     * @param {string} [options.domain] - HTTP API domain for credential authentication
+     * @param {string} [options.mqttDomain] - MQTT domain for credential authentication
+     * @param {Function} [options.logger] - Optional logger for auth and manager runtime
+     * @returns {Promise<ManagerMeross>} Connected manager instance
+     * @throws {MerossErrorValidation} If options do not contain a valid auth shape
+     */
+    static async connect(options) {
+        const normalizedOptions = options || {};
+        const isPasswordAuth = !!(normalizedOptions.email && normalizedOptions.password);
+        const isCredentialAuth = !!(normalizedOptions.token &&
+            normalizedOptions.key &&
+            normalizedOptions.userId &&
+            normalizedOptions.domain);
+
+        if (!isPasswordAuth && !isCredentialAuth) {
+            throw new MerossErrorValidation(
+                'Provide either {email, password} or {token, key, userId, domain}',
+                'options'
+            );
+        }
+
+        const MerossHttpClient = require('./http-api');
+        const httpClientOpts = {
+            logger: normalizedOptions.logger
+        };
+
+        let httpClient;
+        if (isPasswordAuth) {
+            httpClient = await MerossHttpClient.fromUserPassword({
+                email: normalizedOptions.email,
+                password: normalizedOptions.password,
+                mfaCode: normalizedOptions.mfaCode,
+                ...httpClientOpts
+            });
+        } else {
+            httpClient = MerossHttpClient.fromCredentials({
+                token: normalizedOptions.token,
+                key: normalizedOptions.key,
+                userId: normalizedOptions.userId,
+                domain: normalizedOptions.domain,
+                mqttDomain: normalizedOptions.mqttDomain
+            }, httpClientOpts);
+        }
+
+        const manager = new ManagerMeross({ httpClient });
+        if (normalizedOptions.logger) {
+            manager.logger = normalizedOptions.logger;
+        }
+
+        await manager.connect();
+        return manager;
+    }
+
     /**
      * Creates a new ManagerMeross instance
      *
@@ -53,7 +122,6 @@ class ManagerMeross extends EventEmitter {
         this._initializeStatistics(options);
         this._initializeHttpClient(options);
         this._initializeManagers();
-        this._reuseAuthenticationFromClient();
     }
 
     /**
@@ -83,16 +151,11 @@ class ManagerMeross extends EventEmitter {
      */
     _initializeBasicProperties(options) {
         this.options = options || {};
-        this.token = null;
-        this.key = null;
-        this.userId = null;
-        this.userEmail = null;
         this.authenticated = false;
-        this.httpDomain = null;
         this.mqttDomain = MEROSS_MQTT_DOMAIN;
         this.issuedOn = null;
         this.autoRetryOnBadDomain = options.autoRetryOnBadDomain !== undefined ? !!options.autoRetryOnBadDomain : true;
-        this.timeout = options.timeout || 10000;
+        this._timeout = options.timeout || 10000;
     }
 
     /**
@@ -178,19 +241,31 @@ class ManagerMeross extends EventEmitter {
     }
 
     /**
-     * Initializes HTTP client and sets up manager reference.
+     * Initializes HTTP client and wires HTTP statistics notification.
      *
-     * Establishes bidirectional reference between manager and HTTP client to enable
-     * statistics tracking. Stores subscription options for lazy initialization of
-     * subscription manager to avoid creating it when not needed.
+     * Registers a request hook on the client so authenticated POSTs can feed
+     * manager statistics without the client holding a back-reference to the manager.
+     * Stores subscription options for lazy initialization of the subscription manager.
      *
      * @private
      * @param {Object} options - Configuration options
      */
     _initializeHttpClient(options) {
-        this.httpClient = options.httpClient;
-        if (this.httpClient) {
-            this.httpClient._manager = this;
+        this._httpClient = options.httpClient;
+        if (this._httpClient) {
+            this._httpClient._onHttpRequest = (url, method, httpCode, apiCode) => {
+                if (this._mqttStatsCounter || this._httpClient._httpStatsCounter) {
+                    this.statistics.notifyHttpRequest(url, method, httpCode, apiCode);
+                }
+            };
+        }
+        if (this._httpClient && this._httpClient.token) {
+            this.mqttDomain = this._httpClient.mqttDomain || this.mqttDomain;
+            this.authenticated = true;
+
+            const { appId } = generateClientAndAppId();
+            this._appId = appId;
+            this.clientResponseTopic = buildClientResponseTopic(this.userId, this._appId);
         }
         this._subscriptionOptions = options.subscription || {};
     }
@@ -214,30 +289,195 @@ class ManagerMeross extends EventEmitter {
     }
 
     /**
-     * Reuses authentication from HTTP client if already authenticated.
+     * Gets the authentication token from the internal HTTP client.
      *
-     * Copies credentials and domains from HTTP client to avoid redundant authentication
-     * and ensure both HTTP and MQTT connections use the same session. Generates appId
-     * immediately to establish consistent client identity before any MQTT operations.
+     * Delegating token reads keeps manager auth state synchronized with the
+     * single source of truth owned by MerossHttpClient.
      *
-     * @private
+     * @returns {string|null} Active token value
      */
-    _reuseAuthenticationFromClient() {
-        if (!this.httpClient.token) {
+    get token() {
+        return this._httpClient?.token || null;
+    }
+
+    /**
+     * Gets the encryption key from the internal HTTP client.
+     *
+     * Delegating key reads avoids stale credentials when HTTP client auth
+     * state changes after login, refresh, or logout.
+     *
+     * @returns {string|null} Active encryption key
+     */
+    get key() {
+        return this._httpClient?.key || null;
+    }
+
+    /**
+     * Gets the Meross user ID from the internal HTTP client.
+     *
+     * Using the HTTP client as the single source of truth prevents divergence
+     * between manager and transport authentication metadata.
+     *
+     * @returns {string|null} Authenticated user ID
+     */
+    get userId() {
+        return this._httpClient?.userId || null;
+    }
+
+    /**
+     * Gets the Meross user email from the internal HTTP client.
+     *
+     * Returning the email directly from the auth owner avoids duplicate
+     * assignment paths and keeps token exports consistent.
+     *
+     * @returns {string|null} Authenticated user email
+     */
+    get userEmail() {
+        return this._httpClient?.userEmail || null;
+    }
+
+    /**
+     * Gets the active HTTP API domain from the internal HTTP client.
+     *
+     * Domain can change due to redirects, so delegating reads ensures callers
+     * always receive the latest endpoint in use.
+     *
+     * @returns {string|null} Active Meross HTTP domain
+     */
+    get httpDomain() {
+        return this._httpClient?.httpDomain || null;
+    }
+
+    /**
+     * Gets the internal HTTP client instance.
+     *
+     * Keeping this alias preserves compatibility for code paths that have not
+     * yet migrated to the internal `_httpClient` property.
+     *
+     * @returns {MerossHttpClient|null} Active HTTP client instance
+     */
+    get httpClient() {
+        return this._httpClient || null;
+    }
+
+    /**
+     * Gets the default transport mode used for device requests.
+     *
+     * Keeping transport mode mutable allows callers to switch routing strategies
+     * at runtime without reconnecting.
+     *
+     * @returns {number} Current default transport mode
+     */
+    get transportMode() {
+        return this._defaultTransportMode;
+    }
+
+    /**
+     * Sets the default transport mode used for device requests.
+     *
+     * Applying transport mode changes immediately helps operational tooling
+     * adapt to network conditions during a running session.
+     *
+     * @param {number} mode - Transport mode value from TransportMode enum
+     */
+    set transportMode(mode) {
+        this._defaultTransportMode = mode;
+    }
+
+    /**
+     * Gets the request timeout used for device commands.
+     *
+     * Timeout is surfaced as a runtime setting so callers can tune responsiveness
+     * while the manager is active.
+     *
+     * @returns {number} Timeout in milliseconds
+     */
+    get timeout() {
+        return this._timeout;
+    }
+
+    /**
+     * Sets the request timeout used for device commands.
+     *
+     * Guarding invalid values avoids broken request behavior when settings are
+     * changed dynamically from CLI or application code.
+     *
+     * @param {number} value - Timeout in milliseconds
+     */
+    set timeout(value) {
+        const normalizedTimeout = Number(value);
+        if (Number.isFinite(normalizedTimeout) && normalizedTimeout > 0) {
+            this._timeout = normalizedTimeout;
             return;
         }
+        this._timeout = 10000;
+    }
 
-        this.token = this.httpClient.token;
-        this.key = this.httpClient.key || null;
-        this.userId = this.httpClient.userId || null;
-        this.userEmail = this.httpClient.userEmail || null;
-        this.httpDomain = this.httpClient.httpDomain;
-        this.mqttDomain = this.httpClient.mqttDomain || this.mqttDomain;
-        this.authenticated = true;
+    /**
+     * Gets the active logger function.
+     *
+     * Logger is exposed at runtime so debugging can be enabled or disabled
+     * without recreating the manager.
+     *
+     * @returns {Function|null} Logger function or null when disabled
+     */
+    get logger() {
+        return this.options?.logger || null;
+    }
 
-        const { appId } = generateClientAndAppId();
-        this._appId = appId;
-        this.clientResponseTopic = buildClientResponseTopic(this.userId, this._appId);
+    /**
+     * Sets the logger for manager and dependent runtime components.
+     *
+     * Propagating logger updates keeps log behavior consistent across HTTP calls,
+     * throttling, and subscription polling after initial construction.
+     *
+     * @param {Function|null} fn - Logger function to use
+     */
+    set logger(fn) {
+        if (!this.options) {
+            this.options = {};
+        }
+        this.options.logger = typeof fn === 'function' ? fn : null;
+
+        if (this._httpClient) {
+            this._httpClient.options.logger = this.options.logger;
+        }
+        if (this._requestQueue) {
+            this._requestQueue.logger = this.options.logger;
+        }
+        if (this._subscriptionManager) {
+            this._subscriptionManager.logger = this.options.logger || (() => {});
+        }
+    }
+
+    /**
+     * Enables MQTT and HTTP request statistics collection.
+     *
+     * Runtime toggling avoids the overhead of collecting stats unless callers
+     * explicitly need diagnostics.
+     *
+     * @param {number} [maxSamples=1000] - Maximum retained samples per counter
+     */
+    enableStats(maxSamples = 1000) {
+        if (!this._mqttStatsCounter) {
+            this._mqttStatsCounter = new MqttStatsCounter(maxSamples);
+        }
+        if (this._httpClient && !this._httpClient._httpStatsCounter) {
+            this._httpClient._httpStatsCounter = new HttpStatsCounter(maxSamples);
+        }
+    }
+
+    /**
+     * Disables MQTT and HTTP request statistics collection.
+     *
+     * Clearing counters releases memory and stops accumulation when stats are
+     * no longer needed.
+     */
+    disableStats() {
+        this._mqttStatsCounter = null;
+        if (this._httpClient) {
+            this._httpClient._httpStatsCounter = null;
+        }
     }
 
     /**
@@ -394,8 +634,9 @@ class ManagerMeross extends EventEmitter {
     /**
      * Logs out from Meross cloud and disconnects all devices.
      *
-     * Closes all MQTT connections, disconnects all devices, and clears authentication.
-     * Should be called when shutting down the application to properly clean up resources.
+     * Ends the session via the Meross API (invalidating the token server-side), clears
+     * credential state on the internal HTTP client, marks this manager as unauthenticated,
+     * and disconnects all devices and MQTT connections.
      *
      * @returns {Promise<Object|null>} Promise that resolves with logout response data from Meross API (or null if empty)
      * @throws {MerossErrorAuthentication} If not authenticated
@@ -404,15 +645,9 @@ class ManagerMeross extends EventEmitter {
         if (!this.authenticated || !this.token) {
             throw new MerossErrorAuthentication('Not authenticated');
         }
-        const response = await this.httpClient.logout();
-        this.token = null;
-        this.key = null;
-        this.userId = null;
-        this.userEmail = null;
+        const response = await this._httpClient.logout();
         this.authenticated = false;
-
         this.disconnectAll();
-
         return response;
     }
 

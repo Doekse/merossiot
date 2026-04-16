@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-const ManagerMeross = require('meross-iot');
 const { MerossHubDevice } = require('meross-iot');
 const path = require('path');
 const testRunner = require('./tests/test-runner');
@@ -14,7 +13,8 @@ const { detectControlMethods } = require('./control-registry');
 const packageJson = require('../package.json');
 
 // Import from new modules
-const { processOptionsAndCreateHttpClient } = require('./helpers/client');
+const { processOptions } = require('./helpers/client');
+const { createAndConnect } = require('./helpers/meross');
 const { printLogo, printVersion } = require('./utils/display');
 const { handleError } = require('./utils/error-handler');
 const { listDevices, dumpRegistry, listMqttConnections, getDeviceStatus, showDeviceInfo, executeControlCommand, collectControlParameters, runTestCommand } = require('./commands');
@@ -73,7 +73,7 @@ Examples:
 
     // Helper function to connect and setup meross instance
     async function connectMerossInstance(opts) {
-        const processed = await processOptionsAndCreateHttpClient({
+        const { connectOpts, settings } = processOptions({
             email: opts.email,
             password: opts.password,
             mfaCode: opts.mfaCode,
@@ -84,45 +84,42 @@ Examples:
             verbose: opts.verbose
         });
 
-        const { options, config } = processed;
-
-        const manager = new ManagerMeross(options);
+        const spinner = ora('Connecting to Meross cloud...').start();
+        let manager;
+        try {
+            manager = await createAndConnect(connectOpts, settings);
+            const deviceCount = manager.devices.list().length;
+            spinner.succeed(chalk.green(`Connected to ${deviceCount} device(s)`));
+        } catch (error) {
+            spinner.stop();
+            handleError(error, { verbose: settings.verbose });
+            throw error;
+        }
 
         // Handle device events
         manager.on('deviceReady', (device) => {
-            if (config.verbose) {
+            if (settings.verbose) {
                 console.log(`Device ready: ${device?.uuid || 'unknown'}`);
             }
         });
 
         manager.on('connected', (device) => {
-            if (config.verbose) {
+            if (settings.verbose) {
                 console.log(`Device connected: ${device?.uuid || 'unknown'}`);
             }
         });
 
         manager.on('error', (error, device) => {
-            if (config.verbose) {
+            if (settings.verbose) {
                 const deviceId = device?.uuid || null;
                 console.error(chalk.red(`Error${deviceId ? ` (${deviceId})` : ''}: ${error.message}`));
             }
         });
 
-        // Connect
-        const spinner = ora('Connecting to Meross cloud...').start();
-        try {
-            const deviceCount = await manager.connect();
-            spinner.succeed(chalk.green(`Connected to ${deviceCount} device(s)`));
-        } catch (error) {
-            spinner.stop();
-            handleError(error, { verbose: config.verbose });
-            throw error;
-        }
-
         // Wait a bit for devices to connect
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        return { manager, config };
+        return { manager, config: settings };
     }
 
     // List command

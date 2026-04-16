@@ -99,7 +99,12 @@ module.exports.HubThermostatValve = subdevice.HubThermostatValve;
 module.exports.HubWaterLeakSensor = subdevice.HubWaterLeakSensor;
 module.exports.HubSmokeDetector = subdevice.HubSmokeDetector;
 
-// Export HTTP client class (for dependency injection pattern)
+/**
+ * Prefer `connect()` on the package default export for authentication instead of constructing this
+ * class. Kept for backward compatibility during migration.
+ *
+ * @deprecated
+ */
 const MerossHttpClient = require('./lib/http-api');
 module.exports.MerossHttpClient = MerossHttpClient;
 

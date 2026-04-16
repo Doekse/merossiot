@@ -4,119 +4,43 @@
 /* jslint esversion: 6 */
 'use strict';
 
-const { ManagerMeross, MerossHttpClient } = require('../index.js');
-
 /**
- * Multiple Accounts Example
- *
- * Demonstrates how to use multiple Meross accounts simultaneously. Each
- * ManagerMeross instance manages one account and its own MQTT connections.
- * To use multiple accounts, create separate HTTP clients and managers for
- * each account.
+ * Two accounts → two managers (separate MQTT sessions)
  */
+
+const Meross = require('../index.js');
+const { onEachDevice } = require('./on-each-device.js');
 
 (async () => {
     try {
-        console.log('Connecting to multiple Meross accounts...\n');
-
-        const httpClient1 = await MerossHttpClient.fromUserPassword({
+        const account1 = await Meross.connect({
             email: 'account1@example.com',
             password: 'password1',
-            logger: (msg) => console.log(`[Account 1 HTTP] ${msg}`)
+            logger: (m) => console.log(`[A1] ${m}`)
         });
+        account1.transportMode = Meross.TransportMode.MQTT_ONLY;
 
-        const httpClient2 = await MerossHttpClient.fromUserPassword({
+        const account2 = await Meross.connect({
             email: 'account2@example.com',
             password: 'password2',
-            logger: (msg) => console.log(`[Account 2 HTTP] ${msg}`)
+            logger: (m) => console.log(`[A2] ${m}`)
         });
+        account2.transportMode = Meross.TransportMode.MQTT_ONLY;
 
-        const account1 = new ManagerMeross({
-            httpClient: httpClient1,
-            logger: (msg) => console.log(`[Account 1] ${msg}`),
-            transportMode: ManagerMeross.TransportMode.MQTT_ONLY
-        });
+        onEachDevice(account1, (d) => console.log(`A1 device: ${d.name}`));
+        onEachDevice(account2, (d) => console.log(`A2 device: ${d.name}`));
 
-        const account2 = new ManagerMeross({
-            httpClient: httpClient2,
-            logger: (msg) => console.log(`[Account 2] ${msg}`),
-            transportMode: ManagerMeross.TransportMode.MQTT_ONLY
-        });
-
-        account1.on('deviceReady', (device) => {
-            console.log(`\n[Account 1] Device ready: ${device.name} (${device.uuid})`);
-
-            device.on('connected', async () => {
-                console.log(`[Account 1] Device connected: ${device.name}`);
-            });
-        });
-
-        account2.on('deviceReady', (device) => {
-            console.log(`\n[Account 2] Device ready: ${device.name} (${device.uuid})`);
-
-            device.on('connected', async () => {
-                console.log(`[Account 2] Device connected: ${device.name}`);
-            });
-        });
-
-        // Connect both accounts in parallel for efficiency
-        const [deviceCount1, deviceCount2] = await Promise.all([
-            account1.connect(),
-            account2.connect()
-        ]);
-
-        console.log(`\n✓ Account 1: Connected to ${deviceCount1} device(s)`);
-        console.log(`✓ Account 2: Connected to ${deviceCount2} device(s)`);
-
-        const account1Devices = account1.devices.list();
-        const account2Devices = account2.devices.list();
-
-        console.log(`\nAccount 1 devices:`);
-        account1Devices.forEach(device => {
-            console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
-        });
-
-        console.log(`\nAccount 2 devices:`);
-        account2Devices.forEach(device => {
-            console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
-        });
-
-        if (account1Devices.length > 0) {
-            const device = account1Devices[0];
-            console.log(`\nControlling device from Account 1: ${device.name}`);
-            // await device.toggle.set({ channel: 1, on: true });
-        }
-
-        if (account2Devices.length > 0) {
-            const device = account2Devices[0];
-            console.log(`\nControlling device from Account 2: ${device.name}`);
-            // await device.toggle.set({ channel: 1, on: true });
-        }
-
-        console.log('\nListening for device events... (Press Ctrl+C to exit)');
+        console.log(`\nA1: ${account1.devices.list().length} device(s)`);
+        console.log(`A2: ${account2.devices.list().length} device(s)`);
 
         process.on('SIGINT', async () => {
-            console.log('\n\nShutting down...');
-            try {
-                await Promise.all([
-                    account1.logout(),
-                    account2.logout()
-                ]);
-                console.log('Logged out from all accounts');
-            } catch (error) {
-                console.error(`Error during logout: ${error.message}`);
-            }
+            await Promise.all([account1.logout(), account2.logout()]);
             account1.disconnectAll(true);
             account2.disconnectAll(true);
             process.exit(0);
         });
-        
     } catch (error) {
-        console.error(`\n✗ Connection error: ${error.message}`);
-        if (error.stack) {
-            console.error(`  Stack: ${error.stack}`);
-        }
+        console.error(error.message);
         process.exit(1);
     }
 })();
-

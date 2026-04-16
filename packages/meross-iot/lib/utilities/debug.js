@@ -1,7 +1,5 @@
 'use strict';
 
-const { MqttStatsCounter, HttpStatsCounter } = require('./stats');
-
 /**
  * Debugging utilities for Meross manager development and troubleshooting.
  *
@@ -115,12 +113,7 @@ function createDebugUtils(manager) {
          * @param {number} [maxStatsSamples=1000] - Maximum number of samples to keep in statistics
          */
         enableStats(maxStatsSamples = 1000) {
-            if (!manager._mqttStatsCounter) {
-                manager._mqttStatsCounter = new MqttStatsCounter(maxStatsSamples);
-            }
-            if (!manager.httpClient._httpStatsCounter) {
-                manager.httpClient._httpStatsCounter = new HttpStatsCounter(maxStatsSamples);
-            }
+            manager.enableStats(maxStatsSamples);
         },
 
         /**
@@ -130,10 +123,7 @@ function createDebugUtils(manager) {
          * are discarded when tracking is disabled.
          */
         disableStats() {
-            manager._mqttStatsCounter = null;
-            if (manager.httpClient) {
-                manager.httpClient._httpStatsCounter = null;
-            }
+            manager.disableStats();
         },
 
         /**
