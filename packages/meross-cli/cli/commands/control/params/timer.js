@@ -2,8 +2,7 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { TimerType, TimerUtils } = require('meross-iot');
-const { timeToMinutes } = TimerUtils;
+const { TimerType } = require('meross-iot');
 
 /**
  * Collects parameters for setTimerX interactively.
@@ -111,7 +110,10 @@ async function collectSetTimerXParams(methodMetadata, device) {
                 return 'Time is required';
             }
             try {
-                timeToMinutes(value.trim());
+                if (!device.timer || typeof device.timer.timeToMinutes !== 'function') {
+                    return 'Timer helper unavailable on this device';
+                }
+                device.timer.timeToMinutes(value.trim());
                 return true;
             } catch (e) {
                 return e.message;

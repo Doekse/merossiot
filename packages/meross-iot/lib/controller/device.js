@@ -6,15 +6,7 @@ const { parsePushNotification } = require('../model/push');
 const DeviceRegistry = require('../device-registry');
 const ChannelInfo = require('../model/channel-info');
 const HttpDeviceInfo = require('../model/http/device');
-const {
-    MerossErrorCommand,
-    MerossErrorCommandTimeout,
-    MerossErrorUnconnected,
-    MerossErrorUnknownDeviceType,
-    MerossErrorValidation,
-    MerossErrorNotFound,
-    MerossErrorInitialization
-} = require('../model/exception');
+const { MerossDeviceError } = require('../model/exception');
 
 // Import feature factories
 const createSystemAbility = require('./abilities/system-ability');
@@ -269,7 +261,7 @@ class MerossDevice extends EventEmitter {
         const dev = typeof devOrUuid === 'string' ? { uuid: devOrUuid } : devOrUuid;
 
         if (!dev || !dev.uuid) {
-            throw new MerossErrorUnknownDeviceType('Device UUID is required');
+            throw new MerossDeviceError('Device UUID is required', 'UNKNOWN_DEVICE_TYPE');
         }
 
         this._initializeCoreProperties(dev, domain, port);
@@ -628,7 +620,7 @@ class MerossDevice extends EventEmitter {
         }
 
         if (!this.uuid) {
-            throw new MerossErrorUnknownDeviceType('Cannot generate internal ID: device missing UUID');
+            throw new MerossDeviceError('Cannot generate internal ID: device missing UUID', 'UNKNOWN_DEVICE_TYPE');
         }
 
         this._internalId = DeviceRegistry.generateInternalId(this.uuid);
@@ -654,7 +646,7 @@ class MerossDevice extends EventEmitter {
                 value: this.getUnifiedState()
             });
         } else {
-            throw new MerossErrorUnknownDeviceType('Device does not support refreshState()', this.deviceType);
+            throw new MerossDeviceError('Device does not support refreshState()', 'UNKNOWN_DEVICE_TYPE', { deviceType: this.deviceType });
         }
     }
 
@@ -1463,10 +1455,10 @@ class MerossDevice extends EventEmitter {
 
         if (message.header.method === 'ERROR') {
             const errorPayload = message.payload || {};
-            pending.reject(new MerossErrorCommand(
+            pending.reject(new MerossDeviceError(
                 `Device returned error: ${JSON.stringify(errorPayload)}`,
-                errorPayload,
-                this.uuid
+                'COMMAND_FAILED',
+                { errorPayload, deviceUuid: this.uuid }
             ));
         } else {
             if (this._heartbeat) {
@@ -1632,10 +1624,10 @@ class MerossDevice extends EventEmitter {
 
         this._initializationTimeout = setTimeout(() => {
             if (!this._deviceInitializedEmitted) {
-                this.emit('error', new MerossErrorInitialization(
+                this.emit('error', new MerossDeviceError(
                     'Device initialization timeout: System.All not received',
-                    'device',
-                    'System.All timeout'
+                    'INITIALIZATION_FAILED',
+                    { component: 'device', reason: 'System.All timeout' }
                 ));
             }
             this._initializationTimeout = null;
@@ -1700,12 +1692,12 @@ class MerossDevice extends EventEmitter {
         return new Promise(async (resolve, reject) => {
             try {
                 if (!this.deviceConnected) {
-                    return reject(new MerossErrorUnconnected('Device is not connected', this.uuid));
+                    return reject(new MerossDeviceError('Device is not connected', 'DEVICE_UNCONNECTED', { deviceUuid: this.uuid }));
                 }
 
                 const res = await this.cloudInst.transport.request(this, this.lanIp, data, transportMode);
                 if (!res) {
-                    return reject(new MerossErrorUnconnected('Device has no data connection available', this.uuid));
+                    return reject(new MerossDeviceError('Device has no data connection available', 'DEVICE_UNCONNECTED', { deviceUuid: this.uuid }));
                 }
 
                 const timeoutDuration = this.cloudInst.timeout;
@@ -1720,11 +1712,10 @@ class MerossDevice extends EventEmitter {
                                 messageId
                             };
                             this.waitingMessageIds[messageId].reject(
-                                new MerossErrorCommandTimeout(
+                                new MerossDeviceError(
                                     `Command timed out after ${timeoutDuration}ms`,
-                                    this.uuid,
-                                    timeoutDuration,
-                                    commandInfo
+                                    'COMMAND_TIMEOUT',
+                                    { deviceUuid: this.uuid, timeout: timeoutDuration, command: commandInfo }
                                 )
                             );
                             delete this.waitingMessageIds[messageId];
@@ -1811,7 +1802,7 @@ class MerossDevice extends EventEmitter {
             return res[0];
         }
 
-        throw new MerossErrorNotFound(`Could not find channel by id or name = ${channelIdOrName}`, 'channel', channelIdOrName);
+        throw new MerossDeviceError(`Could not find channel by id or name = ${channelIdOrName}`, 'NOT_FOUND', { resourceType: 'channel', resourceId: channelIdOrName });
     }
 
     /**
@@ -1831,11 +1822,11 @@ class MerossDevice extends EventEmitter {
      */
     async updateFromHttpState(deviceInfo) {
         if (!deviceInfo || !deviceInfo.uuid) {
-            throw new MerossErrorValidation('Device info is required and must have a UUID', 'deviceInfo');
+            throw new MerossDeviceError('Device info is required and must have a UUID', 'VALIDATION_ERROR', { field: 'deviceInfo' });
         }
 
         if (deviceInfo.uuid !== this.uuid) {
-            throw new MerossErrorValidation(`Cannot update device (${this.uuid}) with HttpDeviceInfo for device id ${deviceInfo.uuid}`, 'deviceInfo.uuid');
+            throw new MerossDeviceError(`Cannot update device (${this.uuid}) with HttpDeviceInfo for device id ${deviceInfo.uuid}`, 'VALIDATION_ERROR', { field: 'deviceInfo.uuid' });
         }
 
         this.channels = MerossDevice._parseChannels(deviceInfo.channels);

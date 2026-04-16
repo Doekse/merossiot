@@ -6,8 +6,7 @@
  */
 
 const { findDevicesByAbility, getDeviceName, OnlineStatus } = require('./test-helper');
-const { TriggerType, TriggerUtils } = require('meross-iot');
-const { createTrigger } = TriggerUtils;
+const { TriggerType } = require('meross-iot');
 
 const metadata = {
     name: 'trigger',
@@ -54,7 +53,7 @@ async function runTests(context) {
     // Test 1: Create a trigger and verify it exists
     try {
         // Create a test trigger using the utility function
-        const testTrigger = createTrigger({
+        const testTrigger = testDevice.trigger.createTrigger({
             alias: 'Test Trigger - CLI Test',
             duration: '30m', // 30 minutes
             days: ['weekday'],

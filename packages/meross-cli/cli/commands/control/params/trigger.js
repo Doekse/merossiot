@@ -2,8 +2,7 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { TriggerType, TriggerUtils } = require('meross-iot');
-const { durationToSeconds, secondsToDuration } = TriggerUtils;
+const { TriggerType } = require('meross-iot');
 
 /**
  * Collects parameters for setTriggerX interactively.
@@ -29,7 +28,7 @@ async function collectSetTriggerXParams(methodMetadata, device) {
                 console.log(chalk.cyan(`\nExisting Triggers (Channel ${channel}):`));
                 response.triggerx.forEach((trigger, index) => {
                     const durationSeconds = trigger.rule?.duration || 0;
-                    const durationStr = secondsToDuration(durationSeconds);
+                    const durationStr = device.trigger.secondsToDuration(durationSeconds);
                     const alias = trigger.alias || `Trigger ${index + 1}`;
                     const enabled = trigger.enable === 1 ? chalk.green('Enabled') : chalk.red('Disabled');
                     console.log(chalk.dim(`  [${trigger.id}] ${alias} - ${durationStr} - ${enabled}`));
@@ -68,7 +67,10 @@ async function collectSetTriggerXParams(methodMetadata, device) {
                 return 'Duration is required';
             }
             try {
-                durationToSeconds(value.trim());
+                if (!device.trigger || typeof device.trigger.durationToSeconds !== 'function') {
+                    return 'Trigger helper unavailable on this device';
+                }
+                device.trigger.durationToSeconds(value.trim());
                 return true;
             } catch (e) {
                 return e.message;
@@ -160,7 +162,7 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
                 console.log(chalk.cyan(`\nExisting Triggers (Channel ${channel}):`));
                 items.forEach((item, index) => {
                     const durationSeconds = item.rule?.duration || 0;
-                    const durationStr = secondsToDuration(durationSeconds);
+                    const durationStr = device.trigger.secondsToDuration(durationSeconds);
                     const alias = item.alias || `Trigger ${index + 1}`;
                     const enabled = item.enable === 1 ? chalk.green('Enabled') : chalk.red('Disabled');
                     console.log(chalk.dim(`  [${item.id}] ${alias} - ${durationStr} - ${enabled}`));
@@ -169,7 +171,7 @@ async function collectDeleteTriggerXParams(methodMetadata, device) {
 
                 const choices = items.map(item => {
                     const durationSeconds = item.rule?.duration || 0;
-                    const durationStr = secondsToDuration(durationSeconds);
+                    const durationStr = device.trigger.secondsToDuration(durationSeconds);
                     const alias = item.alias || 'Unnamed Trigger';
                     return {
                         name: `${alias} - ${durationStr}`,

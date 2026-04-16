@@ -2,7 +2,7 @@
 
 const TimerState = require('../../model/states/timer-state');
 const { normalizeChannel } = require('../../utilities/options');
-const { createTimer } = require('../../utilities/timer');
+const timerUtils = require('../../utilities/timer');
 const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exception');
 
 /**
@@ -225,7 +225,7 @@ function createTimerAbility(device) {
             if (options.timerx) {
                 timerx = options.timerx;
             } else {
-                timerx = createTimer(options);
+                timerx = timerUtils.createTimer(options);
             }
 
             const payload = { timerx };
@@ -404,6 +404,47 @@ function createTimerAbility(device) {
 
             const results = await Promise.all(deletePromises);
             return results.filter(r => r !== null);
+        },
+
+        /**
+         * Converts time values to minutes since midnight.
+         *
+         * @param {string|Date|number} time - Time input
+         * @returns {number} Minutes since midnight
+         */
+        timeToMinutes(time) {
+            return timerUtils.timeToMinutes(time);
+        },
+
+        /**
+         * Converts minutes since midnight to HH:MM.
+         *
+         * @param {number} minutes - Minutes since midnight
+         * @returns {string} Time string in HH:MM format
+         */
+        minutesToTime(minutes) {
+            return timerUtils.minutesToTime(minutes);
+        },
+
+        /**
+         * Converts weekday input to Meross week bitmask.
+         *
+         * @param {Array<string|number>} days - Day names/numbers
+         * @param {boolean} [repeat=true] - Whether to set repeat bit
+         * @returns {number} Week bitmask
+         */
+        daysToWeekMask(days, repeat = true) {
+            return timerUtils.daysToWeekMask(days, repeat);
+        },
+
+        /**
+         * Creates a timer payload with sane defaults.
+         *
+         * @param {Object} options - Timer options
+         * @returns {Object} Timer payload for Appliance.Control.TimerX
+         */
+        createTimer(options = {}) {
+            return timerUtils.createTimer(options);
         }
     };
 }

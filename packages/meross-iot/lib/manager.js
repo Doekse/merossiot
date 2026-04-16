@@ -481,6 +481,29 @@ class ManagerMeross extends EventEmitter {
     }
 
     /**
+     * Returns diagnostics helpers for runtime debugging.
+     *
+     * Centralizing these methods on the manager removes the need for a separate
+     * debug utility export while keeping low-level diagnostics available to CLI
+     * and advanced consumers.
+     *
+     * @returns {Object} Diagnostics helpers
+     */
+    getDebugInfo() {
+        return {
+            getErrorBudget: (deviceUuid) => this._errorBudgetManager.getBudget(deviceUuid),
+            resetErrorBudget: (deviceUuid) => this._errorBudgetManager.resetBudget(deviceUuid),
+            getMqttStats: (timeWindowMs = 60000) => this.statistics.getMqttStats(timeWindowMs),
+            getHttpStats: (timeWindowMs = 60000) => this.statistics.getHttpStats(timeWindowMs),
+            getDelayedMqttStats: (timeWindowMs = 60000) => this.statistics.getDelayedMqttStats(timeWindowMs),
+            getDroppedMqttStats: (timeWindowMs = 60000) => this.statistics.getDroppedMqttStats(timeWindowMs),
+            enableStats: (maxStatsSamples = 1000) => this.enableStats(maxStatsSamples),
+            disableStats: () => this.disableStats(),
+            isStatsEnabled: () => this.statistics.isEnabled()
+        };
+    }
+
+    /**
      * Gets the ManagerDevices instance.
      *
      * Lazy-loads the devices manager on first access to reduce startup overhead.

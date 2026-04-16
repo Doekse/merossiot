@@ -19,10 +19,10 @@ function applyMerossRuntimeSettings(manager, settings) {
     if (settings.verbose) {
         manager.logger = console.log;
     }
-    if (settings.timeout != null) {
+    if (settings.timeout !== null && settings.timeout !== undefined) {
         manager.timeout = settings.timeout;
     }
-    if (settings.transportMode != null) {
+    if (settings.transportMode !== null && settings.transportMode !== undefined) {
         manager.transportMode = settings.transportMode;
     }
     if (settings.enableStats) {

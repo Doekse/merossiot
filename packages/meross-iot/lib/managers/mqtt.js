@@ -10,7 +10,7 @@ const {
     generateClientAndAppId,
     generateMqttPassword
 } = require('../utilities/mqtt');
-const { MerossErrorMqtt, MerossErrorCommand, MerossErrorParse } = require('../model/exception');
+const { MerossDeviceError, MerossNetworkError } = require('../model/exception');
 
 /**
  * Manages MQTT connections and message publishing.
@@ -184,7 +184,7 @@ class ManagerMqtt {
             }
             return parsed;
         } catch (err) {
-            this.manager.emit('error', new MerossErrorParse(`JSON parse error: ${err.message}`, message.toString(), 'json', { cause: err }), null);
+            this.manager.emit('error', new MerossNetworkError(`JSON parse error: ${err.message}`, 'PARSE_ERROR', { data: message.toString(), format: 'json', cause: err }), null);
             return null;
         }
     }
@@ -208,19 +208,19 @@ class ManagerMqtt {
         if (messageMethod === 'ERROR') {
             const errorPayload = message.payload || {};
             const deviceUuid = message.header?.from ? deviceUuidFromPushNotification(message.header.from) : null;
-            pendingFuture.reject(new MerossErrorCommand(
+            pendingFuture.reject(new MerossDeviceError(
                 `Device returned error: ${JSON.stringify(errorPayload)}`,
-                errorPayload,
-                deviceUuid
+                'COMMAND_FAILED',
+                { errorPayload, deviceUuid }
             ));
         } else if (messageMethod === 'GETACK' || messageMethod === 'SETACK' || messageMethod === 'DELETEACK') {
             pendingFuture.resolve(message.payload || message);
         } else {
             const topic = message.header?.from || null;
-            pendingFuture.reject(new MerossErrorMqtt(
+            pendingFuture.reject(new MerossNetworkError(
                 `Unexpected message method: ${messageMethod}`,
-                topic,
-                message
+                'MQTT_ERROR',
+                { topic, data: message }
             ));
         }
     }
@@ -483,7 +483,7 @@ class ManagerMqtt {
                         this.manager.mqttConnections[domain]._connectionResolve = null;
                     }
                     this.manager._mqttConnectionPromises.delete(domain);
-                    reject(new MerossErrorMqtt(`MQTT connection timeout for domain ${domain}`, null, null));
+                    reject(new MerossNetworkError(`MQTT connection timeout for domain ${domain}`, 'MQTT_ERROR'));
                 }, 30000);
             });
 

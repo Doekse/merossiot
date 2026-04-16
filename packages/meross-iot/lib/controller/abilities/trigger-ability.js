@@ -2,7 +2,7 @@
 
 const TriggerState = require('../../model/states/trigger-state');
 const { normalizeChannel } = require('../../utilities/options');
-const { createTrigger } = require('../../utilities/trigger');
+const triggerUtils = require('../../utilities/trigger');
 const { MerossErrorValidation, MerossErrorNotFound } = require('../../model/exception');
 
 /**
@@ -72,7 +72,7 @@ function createTriggerAbility(device) {
             if (options.triggerx) {
                 triggerx = options.triggerx;
             } else {
-                triggerx = createTrigger(options);
+                triggerx = triggerUtils.createTrigger(options);
             }
 
             const payload = { triggerx };
@@ -220,6 +220,36 @@ function createTriggerAbility(device) {
 
             const results = await Promise.all(deletePromises);
             return results.filter(r => r !== null);
+        },
+
+        /**
+         * Converts duration input to seconds.
+         *
+         * @param {string|number} duration - Duration expression
+         * @returns {number} Duration in seconds
+         */
+        durationToSeconds(duration) {
+            return triggerUtils.durationToSeconds(duration);
+        },
+
+        /**
+         * Converts seconds to a human-readable duration string.
+         *
+         * @param {number} seconds - Duration in seconds
+         * @returns {string} Human-readable duration string
+         */
+        secondsToDuration(seconds) {
+            return triggerUtils.secondsToDuration(seconds);
+        },
+
+        /**
+         * Creates a trigger payload with sane defaults.
+         *
+         * @param {Object} options - Trigger options
+         * @returns {Object} Trigger payload for Appliance.Control.TriggerX
+         */
+        createTrigger(options = {}) {
+            return triggerUtils.createTrigger(options);
         }
     };
 }

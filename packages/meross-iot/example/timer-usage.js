@@ -86,7 +86,7 @@ const Meross = require('../index.js');
                 alias: 'Movie Night',
                 on: true,
                 channel: 0,
-                type: require('../lib/model/enums').TimerType.SINGLE_POINT_SINGLE_SHOT
+                type: Meross.TimerType.SINGLE_POINT_SINGLE_SHOT
             });
             console.log('✓ One-time timer created:', oneTimeTimer);
         } catch (error) {
@@ -148,11 +148,9 @@ const Meross = require('../index.js');
         */
 
         console.log('\n=== Using Timer Utilities ===');
-        const { timeToMinutes, daysToWeekMask, minutesToTime } = require('../lib/utilities/timer');
-
-        console.log('Time to minutes:', timeToMinutes('14:30'));
-        console.log('Minutes to time:', minutesToTime(870));
-        console.log('Days to bitmask:', daysToWeekMask(['monday', 'friday']));
+        console.log('Time to minutes:', device.timer.timeToMinutes('14:30'));
+        console.log('Minutes to time:', device.timer.minutesToTime(870));
+        console.log('Days to bitmask:', device.timer.daysToWeekMask(['monday', 'friday']));
 
         console.log('\n✓ Examples completed!');
 

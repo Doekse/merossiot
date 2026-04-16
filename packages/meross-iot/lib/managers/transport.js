@@ -1,7 +1,7 @@
 'use strict';
 
 const { TransportMode } = require('../model/enums');
-const { MerossErrorMqtt } = require('../model/exception');
+const { MerossNetworkError, MerossApiError } = require('../model/exception');
 
 /**
  * Manages transport mode selection and message routing.
@@ -39,7 +39,7 @@ class ManagerTransport {
      */
     set defaultMode(value) {
         if (!Object.values(TransportMode).includes(value)) {
-            throw new MerossErrorMqtt(`Invalid transport mode: ${value}. Must be one of: ${Object.values(TransportMode).join(', ')}`);
+            throw new MerossNetworkError(`Invalid transport mode: ${value}. Must be one of: ${Object.values(TransportMode).join(', ')}`, 'MQTT_ERROR');
         }
         this.manager._defaultTransportMode = value;
     }
@@ -155,9 +155,8 @@ class ManagerTransport {
             return true;
         } catch (err) {
             // Distinguish HTTP-level failures from parsing errors that occur after successful HTTP 200
-            const { MerossErrorHttpApi } = require('../model/http/exception');
-            const isHttpFailure = !(err instanceof MerossErrorHttpApi) ||
-                                 (err instanceof MerossErrorHttpApi && err.httpStatusCode !== null && err.httpStatusCode !== undefined);
+            const isHttpFailure = !(err instanceof MerossApiError) ||
+                                 (err instanceof MerossApiError && err.httpStatusCode !== null && err.httpStatusCode !== undefined);
 
             if (isHttpFailure) {
                 this.manager._errorBudgetManager.notifyError(device.uuid);

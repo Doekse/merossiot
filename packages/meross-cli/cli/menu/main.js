@@ -3,7 +3,7 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const ora = require('ora');
-const { MerossHubDevice, MerossSubDevice, createDebugUtils, TransportMode } = require('meross-iot');
+const { MerossHubDevice, MerossSubDevice, TransportMode } = require('meross-iot');
 const testRunner = require('../tests/test-runner');
 const { clearScreen, renderLogoAtTop, renderSimpleHeader, clearMenuArea, CONTENT_START_LINE, SIMPLE_CONTENT_START_LINE, createRL, question, promptForPassword } = require('../utils/terminal');
 const { formatDevice } = require('../utils/display');
@@ -485,7 +485,7 @@ async function _handleStatsCommand(manager, rl) {
         ]
     }]);
 
-    const debug = createDebugUtils(manager);
+    const debug = manager.getDebugInfo();
     if (action === 'get') {
         showStats(manager);
     } else if (action === 'on') {
@@ -602,7 +602,7 @@ async function _handleSettingsCommand(manager, rl, currentUserRef, currentCreden
     };
     const setEnableStats = (enabled) => {
         enableStatsRef.current = enabled;
-        const debug = createDebugUtils(managerRef.current);
+        const debug = managerRef.current.getDebugInfo();
         if (enabled) {
             debug.enableStats();
         } else {

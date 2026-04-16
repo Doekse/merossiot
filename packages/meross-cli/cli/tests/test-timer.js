@@ -6,8 +6,7 @@
  */
 
 const { findDevicesByAbility, getDeviceName, OnlineStatus } = require('./test-helper');
-const { TimerType, TimerUtils } = require('meross-iot');
-const { createTimer } = TimerUtils;
+const { TimerType } = require('meross-iot');
 
 const metadata = {
     name: 'timer',
@@ -54,7 +53,7 @@ async function runTests(context) {
     // Test 1: Create a timer and verify it exists
     try {
         // Create a test timer using the utility function
-        const testTimer = createTimer({
+        const testTimer = testDevice.timer.createTimer({
             alias: 'Test Timer - CLI Test',
             time: '12:00',
             days: ['weekday'],

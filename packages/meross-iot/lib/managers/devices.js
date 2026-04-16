@@ -1,6 +1,6 @@
 'use strict';
 
-const { MerossErrorValidation, MerossErrorNotFound, MerossErrorInitialization, MerossErrorCommandTimeout } = require('../model/exception');
+const { MerossDeviceError } = require('../model/exception');
 
 /**
  * Manages device discovery, initialization, and lifecycle.
@@ -346,7 +346,7 @@ class ManagerDevices {
             return await this._initializeSubdevice(identifier);
         }
 
-        throw new MerossErrorValidation('Invalid identifier: expected UUID string or object with hubUuid and id properties', 'identifier');
+        throw new MerossDeviceError('Invalid identifier: expected UUID string or object with hubUuid and id properties', 'VALIDATION_ERROR', { field: 'identifier' });
     }
 
     /**
@@ -369,13 +369,12 @@ class ManagerDevices {
 
         const deviceList = await this._getValidatedDeviceList();
         if (deviceList.length === 0) {
-            const { MerossErrorValidation } = require('../model/exception');
-            throw new MerossErrorValidation('Device list is empty or invalid', 'deviceList');
+            throw new MerossDeviceError('Device list is empty or invalid', 'VALIDATION_ERROR', { field: 'deviceList' });
         }
 
         const deviceInfo = this._findDeviceByUuid(deviceList, deviceUuid);
         if (!deviceInfo) {
-            throw new MerossErrorNotFound(`Device with UUID ${deviceUuid} not found`, 'device', deviceUuid);
+            throw new MerossDeviceError(`Device with UUID ${deviceUuid} not found`, 'NOT_FOUND', { resourceType: 'device', resourceId: deviceUuid });
         }
 
         const { OnlineStatus } = require('../model/enums');
@@ -441,17 +440,17 @@ class ManagerDevices {
         if (!hubDevice || !(hubDevice instanceof MerossHubDevice)) {
             const deviceList = await this._getValidatedDeviceList();
             if (deviceList.length === 0) {
-                throw new MerossErrorValidation('Device list is empty or invalid', 'deviceList');
+                throw new MerossDeviceError('Device list is empty or invalid', 'VALIDATION_ERROR', { field: 'deviceList' });
             }
 
             const hubDeviceInfo = this._findDeviceByUuid(deviceList, hubUuid);
             if (!hubDeviceInfo) {
-                throw new MerossErrorNotFound(`Hub device with UUID ${hubUuid} not found`, 'hubDevice', hubUuid);
+                throw new MerossDeviceError(`Hub device with UUID ${hubUuid} not found`, 'NOT_FOUND', { resourceType: 'hubDevice', resourceId: hubUuid });
             }
 
             hubDevice = await this._initializeAndEnrollDevice(hubDeviceInfo);
             if (!hubDevice || !(hubDevice instanceof MerossHubDevice)) {
-                throw new MerossErrorInitialization(`Failed to initialize hub device ${hubUuid}`, 'hubDevice', 'Initialization returned invalid device type');
+                throw new MerossDeviceError(`Failed to initialize hub device ${hubUuid}`, 'INITIALIZATION_FAILED', { component: 'hubDevice', reason: 'Initialization returned invalid device type' });
             }
         }
 
@@ -489,8 +488,7 @@ class ManagerDevices {
             }
         }
 
-        const { MerossErrorNotFound } = require('../model/exception');
-        throw new MerossErrorNotFound(`Subdevice with ID ${subdeviceId} not found in hub ${hubUuid}`, 'subdevice', subdeviceId);
+        throw new MerossDeviceError(`Subdevice with ID ${subdeviceId} not found in hub ${hubUuid}`, 'NOT_FOUND', { resourceType: 'subdevice', resourceId: subdeviceId });
     }
 
     /**
@@ -1024,11 +1022,10 @@ class ManagerDevices {
             const timeoutHandle = setTimeout(() => {
                 if (this.manager._pendingMessagesFutures.has(messageId)) {
                     this.manager._pendingMessagesFutures.delete(messageId);
-                    reject(new MerossErrorCommandTimeout(
+                    reject(new MerossDeviceError(
                         `Ability query timeout after ${timeout}ms`,
-                        deviceUuid,
-                        timeout,
-                        { method: 'GET', namespace: 'Appliance.System.Ability' }
+                        'COMMAND_TIMEOUT',
+                        { deviceUuid, timeout, command: { method: 'GET', namespace: 'Appliance.System.Ability' } }
                     ));
                 }
             }, timeout);

@@ -2,7 +2,7 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { MerossSubDevice, createDebugUtils, TransportMode } = require('meross-iot');
+const { MerossSubDevice, TransportMode } = require('meross-iot');
 const { getTransportModeName } = require('../helpers/client');
 const { clearScreen, renderSimpleHeader, clearMenuArea, SIMPLE_CONTENT_START_LINE } = require('../utils/terminal');
 const { showStats } = require('../commands');
@@ -29,7 +29,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
         renderSimpleHeader(currentUser, deviceCount);
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
-        const debug = currentManager ? createDebugUtils(currentManager) : null;
+        const debug = currentManager ? currentManager.getDebugInfo() : null;
         const currentStatsEnabled = debug ? debug.isStatsEnabled() : enableStats;
         const currentTransportMode = currentManager
             ? getTransportModeName(currentManager.transport.defaultMode)
@@ -139,7 +139,7 @@ async function showStatisticsSettings(rl, currentManager, currentUser, enableSta
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
-    const debug = createDebugUtils(currentManager);
+    const debug = currentManager.getDebugInfo();
     const statsEnabled = debug.isStatsEnabled();
 
     process.stdout.write(chalk.bold('=== Statistics Settings ===\n\n'));
@@ -569,7 +569,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
         return;
     }
 
-    const debug = createDebugUtils(currentManager);
+    const debug = currentManager.getDebugInfo();
 
     while (true) {
         // Clear screen and render simple header

@@ -1,7 +1,6 @@
 'use strict';
 
-const { MerossErrorCommand, MerossErrorNetworkTimeout } = require('../model/exception');
-const { MerossErrorHttpApi } = require('../model/http/exception');
+const { MerossDeviceError, MerossNetworkError, MerossApiError } = require('../model/exception');
 
 /**
  * Manages LAN HTTP communication with devices.
@@ -47,7 +46,7 @@ class ManagerHttp {
                     if (this.manager.options.logger) {
                         this.manager.options.logger(`Warning: Device ${device.uuid} supports encryption but MAC address not available yet. Falling back to MQTT.`);
                     }
-                    throw new MerossErrorCommand('Encryption required but MAC address not available', null, device.uuid);
+                    throw new MerossDeviceError('Encryption required but MAC address not available', 'COMMAND_FAILED', { errorPayload: null, deviceUuid: device.uuid });
                 }
             }
 
@@ -97,13 +96,13 @@ class ManagerHttp {
         } catch (error) {
             clearTimeout(timeoutId);
             if (error.name === 'AbortError') {
-                throw new MerossErrorNetworkTimeout('Request timeout', null, url);
+                throw new MerossNetworkError('Request timeout', 'NETWORK_TIMEOUT', { timeout: null, url });
             }
             throw error;
         }
 
         if (response.status !== 200) {
-            throw new MerossErrorHttpApi(`HTTP ${response.status}: ${response.statusText}`, null, response.status);
+            throw new MerossApiError(`HTTP ${response.status}: ${response.statusText}`, 'HTTP_API_ERROR', { httpStatusCode: response.status });
         }
 
         return response;
@@ -136,7 +135,7 @@ class ManagerHttp {
                     if (this.manager.options.logger) {
                         this.manager.options.logger(`Error parsing decrypted response for ${device.uuid}: ${parseErr.message}`);
                     }
-                    throw new MerossErrorHttpApi(`Failed to parse decrypted response: ${parseErr.message}`, null, null, { cause: parseErr });
+                    throw new MerossApiError(`Failed to parse decrypted response: ${parseErr.message}`, 'HTTP_API_ERROR', { cause: parseErr });
                 }
             } catch (decryptErr) {
                 if (this.manager.options.logger) {
@@ -151,7 +150,7 @@ class ManagerHttp {
                 if (this.manager.options.logger) {
                     this.manager.options.logger(`Error parsing response for ${device.uuid}: ${parseErr.message}`);
                 }
-                throw new MerossErrorHttpApi(`Failed to parse response: ${parseErr.message}`, null, null, { cause: parseErr });
+                throw new MerossApiError(`Failed to parse response: ${parseErr.message}`, 'HTTP_API_ERROR', { cause: parseErr });
             }
         }
 
@@ -172,9 +171,9 @@ class ManagerHttp {
         let errorHttpCode = null;
         const errorApiCode = null;
 
-        if (error instanceof MerossErrorHttpApi && error.httpStatusCode !== null && error.httpStatusCode !== undefined) {
+        if (error instanceof MerossApiError && error.httpStatusCode !== null && error.httpStatusCode !== undefined) {
             errorHttpCode = error.httpStatusCode;
-        } else if (!(error instanceof MerossErrorHttpApi)) {
+        } else if (!(error instanceof MerossApiError)) {
             // Extract HTTP status code from network errors, timeouts, and connection failures
             if (error.statusCode) {
                 errorHttpCode = error.statusCode;
@@ -304,10 +303,10 @@ class ManagerHttp {
                 });
                 return;
             }
-            throw new MerossErrorHttpApi(`Invalid response: ${typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody)}`, null, null);
+            throw new MerossApiError(`Invalid response: ${typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody)}`, 'HTTP_API_ERROR');
         } catch (error) {
             // Log error response if it's an MerossErrorHttpApi with status
-            if (error instanceof MerossErrorHttpApi && error.httpStatusCode) {
+            if (error instanceof MerossApiError && error.httpStatusCode) {
                 this._logErrorResponse(device.uuid, error.httpStatusCode, decryptResponse);
             }
 

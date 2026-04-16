@@ -1,10 +1,9 @@
 'use strict';
 
 const chalk = require('chalk');
-const { createDebugUtils } = require('meross-iot');
 
 function showStats(manager) {
-    const debug = createDebugUtils(manager);
+    const debug = manager.getDebugInfo();
     const statsEnabled = debug.isStatsEnabled();
     const mqttStats = debug.getMqttStats();
     const httpStats = debug.getHttpStats();

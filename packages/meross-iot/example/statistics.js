@@ -9,7 +9,6 @@
  */
 
 const Meross = require('../index.js');
-const { createDebugUtils } = require('../lib/utilities/debug');
 const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
 
 (async () => {
@@ -22,7 +21,7 @@ const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
         });
         meross.enableStats(1000);
 
-        const debug = createDebugUtils(meross);
+        const debug = meross.getDebugInfo();
         const n = meross.devices.list().length;
         console.log(`\n✓ ${n} device(s). Generating a little traffic…`);
 

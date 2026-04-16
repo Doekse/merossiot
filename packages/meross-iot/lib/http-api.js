@@ -13,16 +13,7 @@ const {
 } = require('./model/constants');
 const { getErrorMessage } = require('./model/http/error-codes');
 const { HttpStatsCounter } = require('./utilities/stats');
-const { MerossErrorNetworkTimeout } = require('./model/exception');
-const {
-    MerossErrorHttpApi,
-    MerossErrorTokenExpired,
-    MerossErrorTooManyTokens,
-    MerossErrorWrongMFA,
-    MerossErrorMFARequired,
-    MerossErrorBadDomain
-} = require('./model/http/exception');
-const { MerossErrorAuthentication, MerossErrorApiLimitReached, MerossErrorResourceAccessDenied } = require('./model/exception');
+const { MerossError, MerossAuthError, MerossApiError, MerossNetworkError } = require('./model/exception');
 
 /**
  * Generates a random alphanumeric string (nonce) for API request signing.
@@ -243,7 +234,7 @@ class MerossHttpClient {
         } catch (error) {
             clearTimeout(timeoutId);
             if (error.name === 'AbortError') {
-                throw new MerossErrorNetworkTimeout('Request timeout', null, url);
+                throw new MerossNetworkError('Request timeout', 'NETWORK_TIMEOUT', { timeout: null, url });
             }
             throw error;
         }
@@ -252,7 +243,7 @@ class MerossHttpClient {
             if (this.options.logger) {
                 this.options.logger(`HTTP-Response (${requestCounter}) Error: Status=${response.status}`);
             }
-            throw new MerossErrorHttpApi(`HTTP ${response.status}: ${response.statusText}`, null, response.status);
+            throw new MerossApiError(`HTTP ${response.status}: ${response.statusText}`, 'HTTP_API_ERROR', { httpStatusCode: response.status });
         }
 
         const bodyText = await response.text();
@@ -286,7 +277,7 @@ class MerossHttpClient {
         let httpCode = 0;
         let apiCode = null;
 
-        if (error instanceof MerossErrorHttpApi && error.httpStatusCode) {
+        if (error instanceof MerossApiError && error.httpStatusCode) {
             httpCode = error.httpStatusCode;
             if (error.apiStatusCode !== undefined && error.apiStatusCode !== null) {
                 apiCode = error.apiStatusCode;
@@ -327,18 +318,18 @@ class MerossHttpClient {
         const newMqttDomain = body.data.mqttDomain;
 
         if (retryCount >= MAX_RETRIES) {
-            throw new MerossErrorBadDomain(
+            throw new MerossApiError(
                 `Max retries (${MAX_RETRIES}) exceeded for domain redirect`,
-                newApiDomain,
-                newMqttDomain
+                'BAD_DOMAIN',
+                { apiDomain: newApiDomain, mqttDomain: newMqttDomain }
             );
         }
 
         if (!this.autoRetryOnBadDomain) {
-            throw new MerossErrorBadDomain(
+            throw new MerossApiError(
                 `Login API redirected to different region: ${newApiDomain}. Auto-retry is disabled.`,
-                newApiDomain,
-                newMqttDomain
+                'BAD_DOMAIN',
+                { apiDomain: newApiDomain, mqttDomain: newMqttDomain }
             );
         }
 
@@ -384,28 +375,27 @@ class MerossHttpClient {
 
         switch (apiStatus) {
         case 1033:
-            throw new MerossErrorMFARequired(message);
+            throw new MerossAuthError(message, 'MFA_REQUIRED');
         case 1032:
-            throw new MerossErrorWrongMFA(message);
+            throw new MerossAuthError(message, 'MFA_WRONG');
         case 1019:
         case 1022:
         case 1200:
-            throw new MerossErrorTokenExpired(message, apiStatus);
+            throw new MerossAuthError(message, 'TOKEN_EXPIRED', { errorCode: apiStatus });
         case 1301:
-            throw new MerossErrorTooManyTokens(message);
+            throw new MerossAuthError(message, 'TOO_MANY_TOKENS');
         case 1042:
-            throw new MerossErrorApiLimitReached(message);
+            throw new MerossApiError(message, 'API_LIMIT_REACHED');
         case 1043:
-            throw new MerossErrorResourceAccessDenied(message);
+            throw new MerossApiError(message, 'RESOURCE_ACCESS_DENIED');
         }
 
         // Authentication failures (status codes 1000-1008) indicate invalid credentials
         // or expired sessions, which should be handled differently from other errors
         if (apiStatus >= 1000 && apiStatus <= 1008) {
-            throw new MerossErrorAuthentication(message, apiStatus);
+            throw new MerossAuthError(message, 'AUTHENTICATION', { errorCode: apiStatus });
         }
 
-        const { MerossError } = require('./model/exception');
         throw new MerossError(
             `${apiStatus} (${getErrorMessage(apiStatus)})${body.info ? ` - ${body.info}` : ''}`,
             apiStatus
@@ -470,13 +460,12 @@ class MerossHttpClient {
             this._onHttpRequest?.(url, 'POST', httpCode, apiCode);
 
             // Preserve custom error types for proper error handling upstream
-            const { MerossError } = require('./model/exception');
             if (error instanceof MerossError) {
                 throw error;
             }
             // Wrap fetch-related network errors for consistent error handling
             if (error.name === 'TypeError' && error.message && error.message.includes('fetch')) {
-                throw new MerossErrorHttpApi(`HTTP request failed: ${error.message}`, null, null, { cause: error });
+                throw new MerossApiError(`HTTP request failed: ${error.message}`, 'HTTP_API_ERROR', { cause: error });
             }
             throw error;
         }
@@ -508,10 +497,10 @@ class MerossHttpClient {
      */
     async login(email, password, mfaCode) {
         if (!email) {
-            throw new MerossErrorAuthentication('Email missing');
+            throw new MerossAuthError('Email missing', 'AUTHENTICATION');
         }
         if (!password) {
-            throw new MerossErrorAuthentication('Password missing');
+            throw new MerossAuthError('Password missing', 'AUTHENTICATION');
         }
         // Meross API expects MD5 hash of password, not plain text
         const passwordHash = crypto.createHash('md5').update(password).digest('hex');
@@ -539,7 +528,6 @@ class MerossHttpClient {
         const loginResponse = await this.authenticatedPost(LOGIN_URL, data);
 
         if (!loginResponse) {
-            const { MerossError } = require('./model/exception');
             throw new MerossError('No valid Login Response data received');
         }
 
@@ -641,7 +629,7 @@ class MerossHttpClient {
      */
     async logout() {
         if (!this.token) {
-            throw new MerossErrorAuthentication('Not authenticated');
+            throw new MerossAuthError('Not authenticated', 'AUTHENTICATION');
         }
         const response = await this.authenticatedPost(LOGOUT_URL, {});
         this.token = null;
