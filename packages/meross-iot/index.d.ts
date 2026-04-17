@@ -155,6 +155,140 @@ declare module 'meross-iot' {
         createTrigger(options?: Record<string, any>): Record<string, any>;
     }
 
+    export interface LightFeature {
+        set(options?: { channel?: number; on?: boolean; rgb?: number[] | number | { r: number; g: number; b: number }; luminance?: number; temperature?: number; gradual?: boolean | number }): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+        isOn(options?: { channel?: number }): boolean | undefined;
+        getRgbColor(options?: { channel?: number }): number[] | undefined;
+        getBrightness(options?: { channel?: number }): number | undefined;
+        getTemperature(options?: { channel?: number }): number | undefined;
+        supportsRgb(options?: { channel?: number }): boolean;
+        supportsLuminance(options?: { channel?: number }): boolean;
+        supportsTemperature(options?: { channel?: number }): boolean;
+    }
+
+    export interface ThermostatFeature {
+        set(options?: Record<string, any>): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+        getSchedule(options?: { channel?: number }): Promise<any>;
+        getTimer(options?: { channel?: number }): Promise<any>;
+    }
+
+    export interface RollerShutterFeature {
+        set(options: { channel?: number; position: number }): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+        open(options?: { channel?: number }): Promise<any>;
+        close(options?: { channel?: number }): Promise<any>;
+        stop(options?: { channel?: number }): Promise<any>;
+        getPosition(options?: Record<string, any>): Promise<any>;
+        getConfig(options?: Record<string, any>): Promise<any>;
+        setConfig(options: { config: any | any[] }): Promise<any>;
+    }
+
+    export interface GarageFeature {
+        set(options: { channel?: number; open: boolean }): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+        isOpen(options?: { channel?: number }): boolean | undefined;
+        isClosed(options?: { channel?: number }): boolean | undefined;
+        open(options?: { channel?: number }): Promise<any>;
+        close(options?: { channel?: number }): Promise<any>;
+        toggle(options?: { channel?: number }): Promise<any>;
+        getConfig(options?: Record<string, any>): Promise<any>;
+        setConfig(options?: Record<string, any>): Promise<any>;
+    }
+
+    export interface ElectricityFeature {
+        get(options?: { channel?: number }): Promise<any>;
+        getRaw(options?: { channel?: number }): Promise<any>;
+    }
+
+    export interface ConsumptionFeature {
+        get(options?: { channel?: number }): Promise<any>;
+        getConfig(): Promise<any>;
+    }
+
+    export interface SprayFeature {
+        set(options: { channel?: number; mode: number }): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+        getMode(options?: { channel?: number }): number | null;
+    }
+
+    export interface DiffuserFeature {
+        set(options?: Record<string, any>): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+        getSensor(options?: Record<string, any>): Promise<any>;
+        setSensor(options?: Record<string, any>): Promise<any>;
+    }
+
+    export interface PresenceFeature {
+        get(options?: { channel?: number }): Promise<any>;
+        getConfig(options?: { channel?: number }): Promise<any>;
+        setConfig(options?: Record<string, any>): Promise<any>;
+    }
+
+    export interface AlarmFeature {
+        get(options?: { channel?: number }): Promise<any>;
+        getLastEvents(): any[];
+    }
+
+    export interface RuntimeFeature {
+        get(): Promise<any>;
+        getCached(): any;
+    }
+
+    export interface ScreenFeature {
+        set(options?: Record<string, any>): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+    }
+
+    export interface DNDFeature {
+        set(options?: { mode?: number }): Promise<any>;
+        get(options?: Record<string, any>): Promise<any>;
+    }
+
+    export interface ChildLockFeature {
+        set(options?: { channel?: number; lock?: number | boolean }): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+    }
+
+    export interface ConfigFeature {
+        get(options?: Record<string, any>): Promise<any>;
+        set(options?: Record<string, any>): Promise<any>;
+    }
+
+    export interface TempUnitFeature {
+        set(options?: { channel?: number; unit?: number }): Promise<any>;
+        get(options?: { channel?: number }): Promise<any>;
+    }
+
+    export interface SmokeConfigFeature {
+        get(options?: { channel?: number }): Promise<any>;
+        set(options?: { channel?: number; status: number }): Promise<any>;
+    }
+
+    export interface SensorHistoryFeature {
+        get(options?: { channel?: number }): Promise<any>;
+    }
+
+    export interface SystemFeature {
+        getAllData(): Promise<any>;
+        getDebug(): Promise<any>;
+        getAbilities(): Promise<any>;
+        getEncryptSuite(): Promise<any>;
+        getEncryptECDHE(): Promise<any>;
+        getOnlineStatus(): Promise<any>;
+        getConfigWifiList(): Promise<any>;
+        getConfigTrace(): Promise<any>;
+        getHardware(): Promise<any>;
+        getFirmware(): Promise<any>;
+        getTime(): Promise<any>;
+        getPosition(): Promise<any>;
+        getFactory(): Promise<any>;
+        getLedMode(): Promise<any>;
+        setLedMode(options: { mode: number }): Promise<any>;
+        getMcuFirmware(): Promise<any>;
+    }
+
     export class MerossDevice extends EventEmitter {
         readonly uuid: string;
         readonly name: string;
@@ -162,6 +296,25 @@ declare module 'meross-iot' {
         readonly onlineStatus: number;
         readonly deviceConnected: boolean;
         readonly toggle?: ToggleFeature;
+        readonly light?: LightFeature;
+        readonly thermostat?: ThermostatFeature;
+        readonly rollerShutter?: RollerShutterFeature;
+        readonly garage?: GarageFeature;
+        readonly electricity?: ElectricityFeature;
+        readonly consumption?: ConsumptionFeature;
+        readonly spray?: SprayFeature;
+        readonly diffuser?: DiffuserFeature;
+        readonly presence?: PresenceFeature;
+        readonly alarm?: AlarmFeature;
+        readonly runtime?: RuntimeFeature;
+        readonly screen?: ScreenFeature;
+        readonly dnd?: DNDFeature;
+        readonly childLock?: ChildLockFeature;
+        readonly config?: ConfigFeature;
+        readonly tempUnit?: TempUnitFeature;
+        readonly smokeConfig?: SmokeConfigFeature;
+        readonly sensorHistory?: SensorHistoryFeature;
+        readonly system?: SystemFeature;
         readonly timer?: TimerFeature;
         readonly trigger?: TriggerFeature;
         readonly [key: string]: any;
