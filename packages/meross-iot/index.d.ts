@@ -187,6 +187,14 @@ declare module 'meross-iot' {
         remove(identifier: string | { hubUuid: string; id: string }): Promise<boolean>;
     }
 
+    export interface ManagerSubscription extends EventEmitter {
+        subscribe(device: MerossDevice, config?: Record<string, any>): void;
+        unsubscribe(deviceUuid: string): void;
+        subscribeToDeviceList(): void;
+        unsubscribeFromDeviceList(): void;
+        destroy(): void;
+    }
+
     export class ManagerMeross extends EventEmitter {
         static authenticate(options: {
             email?: string;
@@ -216,6 +224,7 @@ declare module 'meross-iot' {
         constructor(options: { httpClient: object });
 
         readonly devices: ManagerDevices;
+        readonly subscription: ManagerSubscription;
         readonly transport: { defaultMode: number };
         readonly options: { logger?: Logger | null; [key: string]: any };
         readonly authenticated: boolean;
