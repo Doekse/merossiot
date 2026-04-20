@@ -5,7 +5,7 @@
  * Tests spray mode control for spray devices
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
 const { SprayMode } = require('meross-iot');
 
 const metadata = {
@@ -29,7 +29,10 @@ async function runTests(context) {
     // Wait for devices to be connected
     for (const device of testDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.spray.get({ channel: 0 });
+        const ch = getPrimaryChannel(device);
+        if (device.spray) {
+            await device.spray.get({ channel: ch });
+        }
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
@@ -46,14 +49,19 @@ async function runTests(context) {
     
     const testDevice = testDevices[0];
     const deviceName = getDeviceName(testDevice);
-    
+    const channel = getPrimaryChannel(testDevice);
+
+    if (!assertFeatureOrSkip(results, testDevice, 'spray', deviceName, 'should set different spray modes')) {
+        return results;
+    }
+
     // Test: Set different spray modes
     try {
         // Set CONTINUOUS mode
-        await testDevice.spray.set({ channel: 0, mode: SprayMode.CONTINUOUS });
+        await testDevice.spray.set({ channel, mode: SprayMode.CONTINUOUS });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await testDevice.spray.get({ channel: 0 });
-        const mode1 = testDevice.spray.getMode({ channel: 0 });
+        await testDevice.spray.get({ channel });
+        const mode1 = testDevice.spray.getMode({ channel });
         if (mode1 !== SprayMode.CONTINUOUS) {
             results.push({
                 name: 'should set different spray modes',
@@ -66,10 +74,10 @@ async function runTests(context) {
         }
         
         // Set INTERMITTENT mode
-        await testDevice.spray.set({ channel: 0, mode: SprayMode.INTERMITTENT });
+        await testDevice.spray.set({ channel, mode: SprayMode.INTERMITTENT });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await testDevice.spray.get({ channel: 0 });
-        const mode2 = testDevice.spray.getMode({ channel: 0 });
+        await testDevice.spray.get({ channel });
+        const mode2 = testDevice.spray.getMode({ channel });
         if (mode2 !== SprayMode.INTERMITTENT) {
             results.push({
                 name: 'should set different spray modes',
@@ -82,10 +90,10 @@ async function runTests(context) {
         }
         
         // Set OFF mode
-        await testDevice.spray.set({ channel: 0, mode: SprayMode.OFF });
+        await testDevice.spray.set({ channel, mode: SprayMode.OFF });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await testDevice.spray.get({ channel: 0 });
-        const mode3 = testDevice.spray.getMode({ channel: 0 });
+        await testDevice.spray.get({ channel });
+        const mode3 = testDevice.spray.getMode({ channel });
         if (mode3 !== SprayMode.OFF) {
             results.push({
                 name: 'should set different spray modes',
@@ -98,7 +106,7 @@ async function runTests(context) {
         }
         
         // Update state
-        await testDevice.spray.get({ channel: 0 });
+        await testDevice.spray.get({ channel });
         
         results.push({
             name: 'should set different spray modes',

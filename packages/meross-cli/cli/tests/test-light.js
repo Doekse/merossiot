@@ -5,7 +5,7 @@
  * Tests RGB color, brightness, and temperature control for light devices
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
 
 const metadata = {
     name: 'light',
@@ -28,8 +28,9 @@ async function runTests(context) {
     // Wait for devices to be connected and update their states
     for (const device of lightDevices) {
         await waitForDeviceConnection(device, timeout);
+        const ch = getPrimaryChannel(device);
         if (device.light) {
-            await device.light.get({ channel: 0 });
+            await device.light.get({ channel: ch });
         }
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -61,20 +62,14 @@ async function runTests(context) {
         return results;
     }
     
+    const channel = getPrimaryChannel(testLight);
     const deviceName = getDeviceName(testLight);
-    const hasRgbSupport = rgbCapable.length > 0 && testLight.light && testLight.light.supportsRgb({ channel: 0 });
+    const hasRgbSupport = rgbCapable.length > 0 && testLight.light && testLight.light.supportsRgb({ channel });
     
     // Test 1: Set RGB color
     try {
-        if (!testLight.light) {
-            results.push({
-                name: 'should set RGB color',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support light feature',
-                device: deviceName
-            });
-        } else if (!hasRgbSupport) {
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should set RGB color')) {
+        if (!hasRgbSupport) {
             results.push({
                 name: 'should set RGB color',
                 passed: false,
@@ -83,8 +78,7 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-        
-        await testLight.light.get({ channel: 0 });
+        await testLight.light.get({ channel });
         
         // Set a random color
         const r = Math.floor(Math.random() * 256);
@@ -92,7 +86,7 @@ async function runTests(context) {
         const b = Math.floor(Math.random() * 256);
         
         await testLight.light.set({
-            channel: 0,
+            channel,
             rgb: [r, g, b],
             on: true
         });
@@ -100,7 +94,7 @@ async function runTests(context) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Check the color property returns the set color
-        const lightState = await testLight.light.get({ channel: 0 });
+        const lightState = await testLight.light.get({ channel });
         const color = lightState && lightState.rgbTuple ? lightState.rgbTuple : null;
         
         if (!color || !Array.isArray(color) || color.length !== 3) {
@@ -130,6 +124,7 @@ async function runTests(context) {
             });
         }
         }
+        }
     } catch (error) {
         results.push({
             name: 'should set RGB color',
@@ -142,28 +137,20 @@ async function runTests(context) {
     
     // Test 2: Turn light on and off
     try {
-        if (!testLight.light) {
-            results.push({
-                name: 'should turn light on and off',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support light feature',
-                device: deviceName
-            });
-        } else {
-            await testLight.light.get({ channel: 0 });
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should turn light on and off')) {
+            await testLight.light.get({ channel });
             
             // Turn device off
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: [255, 255, 255],
                 on: false
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Make sure device is now off
-            await testLight.light.get({ channel: 0 });
-            const isOff = testLight.light.isOn({ channel: 0 });
+            await testLight.light.get({ channel });
+            const isOff = testLight.light.isOn({ channel });
             if (isOff !== false) {
                 results.push({
                     name: 'should turn light on and off',
@@ -175,15 +162,15 @@ async function runTests(context) {
             } else {
                 // Set a color and turn the device on
                 await testLight.light.set({
-                    channel: 0,
+                    channel,
                     rgb: [0, 255, 0],
                     on: true
                 });
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 // Make sure device is now on with that specific color set
-                const lightStateOn = await testLight.light.get({ channel: 0 });
-                const isOn = testLight.light.isOn({ channel: 0 });
+                const lightStateOn = await testLight.light.get({ channel });
+                const isOn = testLight.light.isOn({ channel });
                 const color = lightStateOn && lightStateOn.rgbTuple ? lightStateOn.rgbTuple : null;
                 
                 if (!isOn) {
@@ -206,14 +193,14 @@ async function runTests(context) {
                 } else {
                     // Set a color without changing the on-off state
                     await testLight.light.set({
-                        channel: 0,
+                        channel,
                         rgb: [255, 0, 0]
                     });
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     
                     // Make sure device is still on and showing the specific color
-                    const lightStateStill = await testLight.light.get({ channel: 0 });
-                    const stillOn = testLight.light.isOn({ channel: 0 });
+                    const lightStateStill = await testLight.light.get({ channel });
+                    const stillOn = testLight.light.isOn({ channel });
                     const newColor = lightStateStill && lightStateStill.rgbTuple ? lightStateStill.rgbTuple : null;
                     
                     if (!stillOn) {
@@ -236,7 +223,7 @@ async function runTests(context) {
                     } else {
                         // Turn off device without changing color
                         await testLight.light.set({
-                            channel: 0,
+                            channel,
                             on: false
                         });
                         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -244,10 +231,10 @@ async function runTests(context) {
                         // Make sure device is now off
                         // Refresh toggle state if device supports ToggleX, since light.isOn() checks toggle state
                         if (testLight.toggle && testLight.abilities?.['Appliance.Control.ToggleX']) {
-                            await testLight.toggle.get({ channel: 0 });
+                            await testLight.toggle.get({ channel });
                         }
-                        await testLight.light.get({ channel: 0 });
-                        const finalIsOff = testLight.light.isOn({ channel: 0 });
+                        await testLight.light.get({ channel });
+                        const finalIsOff = testLight.light.isOn({ channel });
                         if (finalIsOff !== false) {
                             results.push({
                                 name: 'should turn light on and off',
@@ -281,7 +268,8 @@ async function runTests(context) {
     
     // Test 3: RGB input formats (array, integer, object)
     try {
-        if (!testLight.light || !hasRgbSupport) {
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should accept RGB in different formats')) {
+        if (!hasRgbSupport) {
             results.push({
                 name: 'should accept RGB in different formats',
                 passed: false,
@@ -290,35 +278,35 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            await testLight.light.get({ channel: 0 });
+            await testLight.light.get({ channel });
             
             // Test RGB as array
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: [100, 150, 200],
                 on: true
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
-            const color1 = testLight.light.getRgbColor({ channel: 0 });
+            const color1 = testLight.light.getRgbColor({ channel });
             
             // Test RGB as integer
             const rgbInt = (100 << 16) | (150 << 8) | 200;
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: rgbInt,
                 on: true
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
-            const color2 = testLight.light.getRgbColor({ channel: 0 });
+            const color2 = testLight.light.getRgbColor({ channel });
             
             // Test RGB as object
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: { r: 100, g: 150, b: 200 },
                 on: true
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
-            const color3 = testLight.light.getRgbColor({ channel: 0 });
+            const color3 = testLight.light.getRgbColor({ channel });
             
             if (!color1 || !Array.isArray(color1) || color1.length !== 3 ||
                 !color2 || !Array.isArray(color2) || color2.length !== 3 ||
@@ -350,6 +338,7 @@ async function runTests(context) {
                 });
             }
         }
+        }
     } catch (error) {
         results.push({
             name: 'should accept RGB in different formats',
@@ -362,7 +351,8 @@ async function runTests(context) {
     
     // Test 4: Brightness/Luminance control
     try {
-        if (!testLight.light || !testLight.light.supportsLuminance({ channel: 0 })) {
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should set brightness/luminance')) {
+        if (!testLight.light.supportsLuminance({ channel })) {
             results.push({
                 name: 'should set brightness/luminance',
                 passed: false,
@@ -371,18 +361,18 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            await testLight.light.get({ channel: 0 });
+            await testLight.light.get({ channel });
             
             // Set brightness to 50
             await testLight.light.set({
-                channel: 0,
+                channel,
                 luminance: 50,
                 on: true
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            const lightState = await testLight.light.get({ channel: 0 });
-            const brightness = testLight.light.getBrightness({ channel: 0 });
+            const lightState = await testLight.light.get({ channel });
+            const brightness = testLight.light.getBrightness({ channel });
             const brightnessFromState = lightState ? lightState.luminance : undefined;
             
             if (brightness === undefined && brightnessFromState === undefined) {
@@ -416,6 +406,7 @@ async function runTests(context) {
                 }
             }
         }
+        }
     } catch (error) {
         results.push({
             name: 'should set brightness/luminance',
@@ -428,7 +419,8 @@ async function runTests(context) {
     
     // Test 5: Temperature control
     try {
-        if (!testLight.light || !testLight.light.supportsTemperature({ channel: 0 })) {
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should set color temperature')) {
+        if (!testLight.light.supportsTemperature({ channel })) {
             results.push({
                 name: 'should set color temperature',
                 passed: false,
@@ -437,13 +429,13 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            await testLight.light.get({ channel: 0 });
+            await testLight.light.get({ channel });
             
             // Set temperature to 50 (middle of range)
             // Note: Some RGB-capable devices may override temperature when RGB mode is active
             // from previous operations, so we wait longer for state to stabilize
             await testLight.light.set({
-                channel: 0,
+                channel,
                 temperature: 50,
                 on: true
             });
@@ -451,8 +443,8 @@ async function runTests(context) {
             await new Promise(resolve => setTimeout(resolve, 1500));
             
             // Refresh state to get latest from device (including any push notifications)
-            const lightState = await testLight.light.get({ channel: 0 });
-            const temperature = testLight.light.getTemperature({ channel: 0 });
+            const lightState = await testLight.light.get({ channel });
+            const temperature = testLight.light.getTemperature({ channel });
             const temperatureFromState = lightState ? lightState.temperature : undefined;
             
             if (temperature === undefined && temperatureFromState === undefined) {
@@ -489,6 +481,7 @@ async function runTests(context) {
                 }
             }
         }
+        }
     } catch (error) {
         results.push({
             name: 'should set color temperature',
@@ -501,20 +494,12 @@ async function runTests(context) {
     
     // Test 6: Convenience methods
     try {
-        if (!testLight.light) {
-            results.push({
-                name: 'should provide convenience methods',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support light feature',
-                device: deviceName
-            });
-        } else {
-            await testLight.light.get({ channel: 0 });
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should provide convenience methods')) {
+            await testLight.light.get({ channel });
             
             // Set a known state
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: [128, 64, 192],
                 luminance: 75,
                 temperature: 60,
@@ -522,16 +507,16 @@ async function runTests(context) {
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await testLight.light.get({ channel: 0 });
+            await testLight.light.get({ channel });
             
-            const isOn = testLight.light.isOn({ channel: 0 });
-            const rgbColor = testLight.light.getRgbColor({ channel: 0 });
-            const brightness = testLight.light.getBrightness({ channel: 0 });
-            const temperature = testLight.light.getTemperature({ channel: 0 });
+            const isOn = testLight.light.isOn({ channel });
+            const rgbColor = testLight.light.getRgbColor({ channel });
+            const brightness = testLight.light.getBrightness({ channel });
+            const temperature = testLight.light.getTemperature({ channel });
             
-            const supportsRgb = testLight.light.supportsRgb({ channel: 0 });
-            const supportsLum = testLight.light.supportsLuminance({ channel: 0 });
-            const supportsTemp = testLight.light.supportsTemperature({ channel: 0 });
+            const supportsRgb = testLight.light.supportsRgb({ channel });
+            const supportsLum = testLight.light.supportsLuminance({ channel });
+            const supportsTemp = testLight.light.supportsTemperature({ channel });
             
             if (isOn === undefined) {
                 results.push({
@@ -577,7 +562,8 @@ async function runTests(context) {
     
     // Test 7: Gradual transition parameter
     try {
-        if (!testLight.light || !hasRgbSupport) {
+        if (assertFeatureOrSkip(results, testLight, 'light', deviceName, 'should support gradual transition parameter')) {
+        if (!hasRgbSupport) {
             results.push({
                 name: 'should support gradual transition parameter',
                 passed: false,
@@ -586,11 +572,11 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            await testLight.light.get({ channel: 0 });
+            await testLight.light.get({ channel });
             
             // Test with gradual: true
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: [255, 0, 0],
                 gradual: true,
                 on: true
@@ -599,14 +585,14 @@ async function runTests(context) {
             
             // Test with gradual: false
             await testLight.light.set({
-                channel: 0,
+                channel,
                 rgb: [0, 255, 0],
                 gradual: false,
                 on: true
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            const color = testLight.light.getRgbColor({ channel: 0 });
+            const color = testLight.light.getRgbColor({ channel });
             if (!color || !Array.isArray(color) || color.length !== 3) {
                 results.push({
                     name: 'should support gradual transition parameter',
@@ -625,6 +611,7 @@ async function runTests(context) {
                     details: { note: 'Gradual parameter accepted, visual transition not verified' }
                 });
             }
+        }
         }
     } catch (error) {
         results.push({

@@ -11,10 +11,11 @@
  * - No globals or environment variables
  * - Explicit context object passed to runTests()
  * - Structured test results returned as array
- * - Metadata exported separately
+ * - Metadata exported separately (aligned with test-registry.js)
+ * - Use getPrimaryChannel(device) for channel-scoped calls instead of hardcoding 0
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, OnlineStatus } = require('./test-helper');
 const { runSingleTest } = require('./test-runner');
 
 /**
@@ -88,10 +89,11 @@ async function runTests(context) {
     // Test 2: Get toggle state
     const testDevice = testDevices[0];
     const deviceName = getDeviceName(testDevice);
+    const channel = getPrimaryChannel(testDevice);
     
     try {
         if (testDevice.toggle) {
-            const toggleState = await testDevice.toggle.get({ channel: 0 });
+            const toggleState = await testDevice.toggle.get({ channel });
             
             if (!toggleState) {
                 results.push({
@@ -103,7 +105,7 @@ async function runTests(context) {
                 });
             } else {
                 // Check cached toggle state
-                const isOn = testDevice.toggle.isOn({ channel: 0 });
+                const isOn = testDevice.toggle.isOn({ channel });
                 
                 results.push({
                     name: 'should get toggle state',
@@ -148,20 +150,20 @@ async function runTests(context) {
             });
         } else {
             // Get initial state
-            let initialState = testDevice.toggle.isOn({ channel: 0 });
+            let initialState = testDevice.toggle.isOn({ channel });
             
             // Test turn on
-            await testDevice.toggle.set({ on: true, channel: 0 });
+            await testDevice.toggle.set({ on: true, channel });
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Verify state
-            const isOnAfter = testDevice.toggle.isOn({ channel: 0 });
+            const isOnAfter = testDevice.toggle.isOn({ channel });
             if (!isOnAfter) {
                 results.push({
                     name: 'should control toggle state (turn on)',
                     passed: false,
                     skipped: false,
-                    error: 'Device did not turn on after toggle.set({ on: true, channel: 0 }) call',
+                    error: 'Device did not turn on after toggle.set({ on: true, channel }) call',
                     device: deviceName
                 });
             } else {
@@ -175,17 +177,17 @@ async function runTests(context) {
             }
             
             // Test turn off
-            await testDevice.toggle.set({ on: false, channel: 0 });
+            await testDevice.toggle.set({ on: false, channel });
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Verify state
-            const isOffAfter = testDevice.toggle.isOn({ channel: 0 });
+            const isOffAfter = testDevice.toggle.isOn({ channel });
             if (isOffAfter) {
                 results.push({
                     name: 'should control toggle state (turn off)',
                     passed: false,
                     skipped: false,
-                    error: 'Device did not turn off after toggle.set({ on: false, channel: 0 }) call',
+                    error: 'Device did not turn off after toggle.set({ on: false, channel }) call',
                     device: deviceName
                 });
             } else {
@@ -200,7 +202,7 @@ async function runTests(context) {
             
             // Restore initial state if we changed it
             if (initialState !== undefined) {
-                await testDevice.toggle.set({ on: initialState, channel: 0 });
+                await testDevice.toggle.set({ on: initialState, channel });
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
         }

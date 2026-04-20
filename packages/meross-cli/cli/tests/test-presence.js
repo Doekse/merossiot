@@ -1,11 +1,18 @@
 'use strict';
 
 /**
- * Presence Sensor Device Tests
- * Tests presence detection, light readings, and configuration for presence sensor devices
+ * Live tests for {@link MerossDevice#presence} ({@link PresenceFeature}) and presence-sensor helpers on the feature object.
+ * Standalone LatestX sensors only (hub flows are covered in the hub scenario).
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const {
+    findDevicesByAbility,
+    waitForDeviceConnection,
+    getDeviceName,
+    getPrimaryChannel,
+    OnlineStatus,
+    assertFeatureOrSkip
+} = require('./test-helper');
 
 const metadata = {
     name: 'presence',
@@ -14,30 +21,34 @@ const metadata = {
     minDevices: 1
 };
 
+/**
+ * Runs presence sensor scenario tests.
+ *
+ * @param {Object} context - Runner context
+ * @param {Object} context.manager - Connected manager
+ * @param {Array<Object>} [context.devices] - Pre-filtered devices
+ * @param {Object} [context.options] - Options (e.g. timeout)
+ * @returns {Promise<Array<Object>>} Result rows
+ */
 async function runTests(context) {
     const { manager, devices, options = {} } = context;
     const timeout = options.timeout || 30000;
     const results = [];
-    
-    // If no devices provided, discover them
+
     let presenceDevices = devices || [];
     if (presenceDevices.length === 0) {
         presenceDevices = await findDevicesByAbility(manager, 'Appliance.Control.Sensor.LatestX', OnlineStatus.ONLINE);
     }
-    
-    // Filter out hub devices - presence test is for standalone presence sensors
-    presenceDevices = presenceDevices.filter(device => {
-        // Skip hub devices - they're tested separately
+
+    presenceDevices = presenceDevices.filter((device) => {
         return device.constructor.name !== 'MerossHubDevice' && typeof device.getSubdevice !== 'function';
     });
-    
-    // Wait for devices to be connected
+
     for (const device of presenceDevices) {
         await waitForDeviceConnection(device, timeout);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    
-    // Test 1: Check if devices were found
+
     if (presenceDevices.length === 0) {
         results.push({
             name: 'should find devices with presence sensor capability',
@@ -48,7 +59,7 @@ async function runTests(context) {
         });
         return results;
     }
-    
+
     results.push({
         name: 'should find devices with presence sensor capability',
         passed: true,
@@ -56,121 +67,104 @@ async function runTests(context) {
         error: null,
         device: null
     });
-    
+
     const testDevice = presenceDevices[0];
     const deviceName = getDeviceName(testDevice);
-    
-    // Test 2: Get latest sensor readings
+    const channel = getPrimaryChannel(testDevice);
+
+    if (!assertFeatureOrSkip(results, testDevice, 'presence', deviceName, 'should expose presence feature')) {
+        return results;
+    }
+
+    const presence = testDevice.presence;
+
     try {
-        if (testDevice.presence && typeof testDevice.presence.get === 'function') {
-            const readings = await testDevice.presence.get({ dataTypes: ['presence', 'light'], channel: 0 });
-            
-            if (!readings || !readings.latest) {
-                results.push({
-                    name: 'should get latest sensor readings',
-                    passed: false,
-                    skipped: false,
-                    error: 'getLatestSensorReadings returned invalid response',
-                    device: deviceName
-                });
-            } else {
-                results.push({
-                    name: 'should get latest sensor readings',
-                    passed: true,
-                    skipped: false,
-                    error: null,
-                    device: deviceName,
-                    details: {
-                        hasLatest: !!readings.latest,
-                        latestLength: readings.latest?.length || 0
-                    }
-                });
-            }
+        const state = await presence.get({ dataTypes: ['presence', 'light'], channel });
+
+        if (state === undefined || state === null) {
+            results.push({
+                name: 'should get presence sensor state via presence.get',
+                passed: true,
+                skipped: false,
+                error: null,
+                device: deviceName,
+                details: { note: 'No cached PresenceSensorState yet after get()' }
+            });
+        } else if (typeof state !== 'object') {
+            results.push({
+                name: 'should get presence sensor state via presence.get',
+                passed: false,
+                skipped: false,
+                error: `presence.get() returned unexpected type: ${typeof state}`,
+                device: deviceName
+            });
         } else {
             results.push({
-                name: 'should get latest sensor readings',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support getLatestSensorReadings',
-                device: deviceName
+                name: 'should get presence sensor state via presence.get',
+                passed: true,
+                skipped: false,
+                error: null,
+                device: deviceName,
+                details: { hasState: true }
             });
         }
     } catch (error) {
         results.push({
-            name: 'should get latest sensor readings',
+            name: 'should get presence sensor state via presence.get',
             passed: false,
             skipped: false,
             error: error.message,
             device: deviceName
         });
     }
-    
-    // Wait a bit for state to update after reading
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Test 3: Get presence data
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     try {
-        if (testDevice.presence && typeof testDevice.presence.getPresence === 'function') {
-            const presence = testDevice.presence.getPresence({ channel: 0 });
-            
-            // Presence can be null if no data yet, which is acceptable
-            if (presence === null) {
+        if (typeof presence.getPresence !== 'function') {
+            results.push({
+                name: 'should get presence data',
+                passed: false,
+                skipped: true,
+                error: 'presence.getPresence is not implemented',
+                device: deviceName
+            });
+        } else {
+            const p = presence.getPresence({ channel });
+
+            if (p === null) {
                 results.push({
                     name: 'should get presence data',
                     passed: true,
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { note: 'No presence data available yet (device may need time to detect)' }
+                    details: { note: 'No presence data in cache yet' }
                 });
-            } else if (typeof presence === 'object') {
-                // Validate presence data structure
-                const isValid = (
-                    typeof presence.isPresent === 'boolean' &&
-                    typeof presence.state === 'string' &&
-                    (presence.state === 'presence' || presence.state === 'absence')
-                );
-                
-                if (!isValid) {
-                    results.push({
-                        name: 'should get presence data',
-                        passed: false,
-                        skipped: false,
-                        error: `Invalid presence data structure: ${JSON.stringify(presence)}`,
-                        device: deviceName
-                    });
-                } else {
-                    results.push({
-                        name: 'should get presence data',
-                        passed: true,
-                        skipped: false,
-                        error: null,
-                        device: deviceName,
-                        details: {
-                            state: presence.state,
-                            isPresent: presence.isPresent,
-                            hasDistance: presence.distance !== null && presence.distance !== undefined,
-                            hasTimestamp: presence.timestamp !== null && presence.timestamp !== undefined
-                        }
-                    });
-                }
+            } else if (typeof p === 'object' && typeof p.isPresent === 'boolean' &&
+                (p.state === 'presence' || p.state === 'absence')) {
+                results.push({
+                    name: 'should get presence data',
+                    passed: true,
+                    skipped: false,
+                    error: null,
+                    device: deviceName,
+                    details: {
+                        state: p.state,
+                        isPresent: p.isPresent,
+                        hasDistance: p.distance !== null && p.distance !== undefined,
+                        hasTimestamp: p.timestamp !== null && p.timestamp !== undefined
+                    }
+                });
             } else {
                 results.push({
                     name: 'should get presence data',
                     passed: false,
                     skipped: false,
-                    error: `getPresence returned unexpected type: ${typeof presence}`,
+                    error: `getPresence returned unexpected shape: ${JSON.stringify(p)}`,
                     device: deviceName
                 });
             }
-        } else {
-            results.push({
-                name: 'should get presence data',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support getPresence',
-                device: deviceName
-            });
         }
     } catch (error) {
         results.push({
@@ -181,65 +175,69 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
-    // Test 4: Check if present
+
     try {
-        if (typeof testDevice.isPresent === 'function') {
-            const isPresent = testDevice.isPresent();
-            
-            // isPresent can return null if no data, which is acceptable
+        if (typeof presence.isPresent !== 'function') {
+            results.push({
+                name: 'should check presence via presence.isPresent',
+                passed: false,
+                skipped: true,
+                error: 'presence.isPresent is not implemented',
+                device: deviceName
+            });
+        } else {
+            const isPresent = presence.isPresent({ channel });
+
             if (isPresent === null) {
                 results.push({
-                    name: 'should check if presence is detected',
+                    name: 'should check presence via presence.isPresent',
                     passed: true,
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { note: 'No presence data available yet' }
+                    details: { note: 'No presence data in cache yet' }
                 });
             } else if (typeof isPresent === 'boolean') {
                 results.push({
-                    name: 'should check if presence is detected',
+                    name: 'should check presence via presence.isPresent',
                     passed: true,
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { isPresent: isPresent }
+                    details: { isPresent }
                 });
             } else {
                 results.push({
-                    name: 'should check if presence is detected',
+                    name: 'should check presence via presence.isPresent',
                     passed: false,
                     skipped: false,
                     error: `isPresent returned unexpected type: ${typeof isPresent}`,
                     device: deviceName
                 });
             }
-        } else {
-            results.push({
-                name: 'should check if presence is detected',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support isPresent',
-                device: deviceName
-            });
         }
     } catch (error) {
         results.push({
-            name: 'should check if presence is detected',
+            name: 'should check presence via presence.isPresent',
             passed: false,
             skipped: false,
             error: error.message,
             device: deviceName
         });
     }
-    
-    // Test 5: Get light reading
+
     try {
-        if (testDevice.presence && typeof testDevice.presence.getLight === 'function') {
-            const light = testDevice.presence.getLight({ channel: 0 });
-            
-            // Light can be null if no data yet, which is acceptable
+        if (typeof presence.getLight !== 'function') {
+            results.push({
+                name: 'should get light reading',
+                passed: false,
+                skipped: true,
+                error: 'presence.getLight is not implemented',
+                device: deviceName
+            });
+        } else {
+            const light = presence.getLight({ channel });
+
             if (light === null) {
                 results.push({
                     name: 'should get light reading',
@@ -247,7 +245,7 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { note: 'No light data available yet' }
+                    details: { note: 'No light data in cache yet' }
                 });
             } else if (typeof light === 'object' && light.value !== undefined) {
                 results.push({
@@ -270,14 +268,6 @@ async function runTests(context) {
                     device: deviceName
                 });
             }
-        } else {
-            results.push({
-                name: 'should get light reading',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support getLight',
-                device: deviceName
-            });
         }
     } catch (error) {
         results.push({
@@ -288,12 +278,19 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
-    // Test 6: Get all sensor readings
+
     try {
-        if (testDevice.presence && typeof testDevice.presence.getAllSensorReadings === 'function') {
-            const allReadings = testDevice.presence.getAllSensorReadings({ channel: 0 });
-            
+        if (typeof presence.getAllSensorReadings !== 'function') {
+            results.push({
+                name: 'should get all sensor readings',
+                passed: false,
+                skipped: true,
+                error: 'presence.getAllSensorReadings is not implemented',
+                device: deviceName
+            });
+        } else {
+            const allReadings = presence.getAllSensorReadings({ channel });
+
             if (!allReadings || typeof allReadings !== 'object') {
                 results.push({
                     name: 'should get all sensor readings',
@@ -315,14 +312,6 @@ async function runTests(context) {
                     }
                 });
             }
-        } else {
-            results.push({
-                name: 'should get all sensor readings',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support getAllSensorReadings',
-                device: deviceName
-            });
         }
     } catch (error) {
         results.push({
@@ -333,18 +322,25 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
-    // Test 7: Get presence configuration
+
     try {
-        if (testDevice.presence && typeof testDevice.presence.getConfig === 'function') {
-            const config = await testDevice.presence.getConfig({ channel: 0 });
-            
+        if (typeof presence.getConfig !== 'function') {
+            results.push({
+                name: 'should get presence configuration',
+                passed: false,
+                skipped: true,
+                error: 'presence.getConfig is not implemented',
+                device: deviceName
+            });
+        } else {
+            const config = await presence.getConfig({ channel });
+
             if (!config) {
                 results.push({
                     name: 'should get presence configuration',
                     passed: false,
                     skipped: false,
-                    error: 'getPresenceConfig returned null or undefined',
+                    error: 'presence.getConfig() returned null or undefined',
                     device: deviceName
                 });
             } else {
@@ -357,24 +353,15 @@ async function runTests(context) {
                     details: { hasConfig: !!config }
                 });
             }
-        } else {
-            results.push({
-                name: 'should get presence configuration',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support getPresenceConfig',
-                device: deviceName
-            });
         }
     } catch (error) {
-        // Some devices may not support this, so we'll mark as skipped if it's a not-supported error
         const errorMsg = error.message || String(error);
         if (errorMsg.includes('not supported') || errorMsg.includes('not found') || errorMsg.includes('timeout')) {
             results.push({
                 name: 'should get presence configuration',
                 passed: false,
                 skipped: true,
-                error: `getPresenceConfig not supported or timed out: ${errorMsg}`,
+                error: `getConfig not supported or timed out: ${errorMsg}`,
                 device: deviceName
             });
         } else {
@@ -387,18 +374,25 @@ async function runTests(context) {
             });
         }
     }
-    
-    // Test 8: Get presence study/calibration status
+
     try {
-        if (typeof testDevice.getPresenceStudy === 'function') {
-            const study = await testDevice.getPresenceStudy(timeout);
-            
+        if (typeof presence.getStudy !== 'function') {
+            results.push({
+                name: 'should get presence study status',
+                passed: false,
+                skipped: true,
+                error: 'presence.getStudy is not implemented',
+                device: deviceName
+            });
+        } else {
+            const study = await presence.getStudy();
+
             if (!study) {
                 results.push({
                     name: 'should get presence study status',
                     passed: false,
                     skipped: false,
-                    error: 'getPresenceStudy returned null or undefined',
+                    error: 'presence.getStudy() returned null or undefined',
                     device: deviceName
                 });
             } else {
@@ -411,24 +405,15 @@ async function runTests(context) {
                     details: { hasStudy: !!study }
                 });
             }
-        } else {
-            results.push({
-                name: 'should get presence study status',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support getPresenceStudy',
-                device: deviceName
-            });
         }
     } catch (error) {
-        // Some devices may not support this, so we'll mark as skipped if it's a not-supported error
         const errorMsg = error.message || String(error);
         if (errorMsg.includes('not supported') || errorMsg.includes('not found') || errorMsg.includes('timeout')) {
             results.push({
                 name: 'should get presence study status',
                 passed: false,
                 skipped: true,
-                error: `getPresenceStudy not supported or timed out: ${errorMsg}`,
+                error: `getStudy not supported or timed out: ${errorMsg}`,
                 device: deviceName
             });
         } else {
@@ -441,7 +426,7 @@ async function runTests(context) {
             });
         }
     }
-    
+
     return results;
 }
 
@@ -449,4 +434,3 @@ module.exports = {
     metadata,
     runTests
 };
-

@@ -58,6 +58,7 @@
     "release": "release-script",
     "prepublishOnly": "node -e \"require('./index.js')\" && echo 'Package validation passed'",
     "publish:npm": "npm publish --access public",
+    "test": "node --test \"test/**/*.test.js\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

@@ -327,6 +327,10 @@ function getRollerShutterCapabilities(device, channelIds) {
 }
 
 module.exports = createRollerShutterAbility;
+/**
+ * Private exports for unit tests. Do not rename or change shape without updating
+ * `test/roller-shutter-ability.test.js`.
+ */
 module.exports._updateRollerShutterState = updateRollerShutterState;
 module.exports._updateRollerShutterPosition = updateRollerShutterPosition;
 module.exports.getCapabilities = getRollerShutterCapabilities;

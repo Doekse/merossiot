@@ -716,6 +716,10 @@ function getThermostatCapabilities(device, channelIds) {
 }
 
 module.exports = createThermostatAbility;
+/**
+ * Private exports for unit tests. Do not rename or change shape without updating
+ * `test/thermostat-ability.test.js`.
+ */
 module.exports._updateThermostatMode = updateThermostatMode;
 module.exports._updateThermostatModeB = updateThermostatModeB;
 module.exports.getCapabilities = getThermostatCapabilities;

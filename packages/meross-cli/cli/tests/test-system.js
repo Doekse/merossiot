@@ -1,15 +1,23 @@
 'use strict';
 
 /**
- * System Device Tests
- * Tests system information, hardware, firmware, abilities, and configuration
+ * System live tests — `MerossDevice.system` (`SystemFeature`): System.All, Ability, hardware,
+ * firmware, online, time, LED. Encrypt namespaces are covered in `test-encryption.js`; this
+ * file only exercises core system getters used by most devices.
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const {
+    findDevicesByAbility,
+    waitForDeviceConnection,
+    getDeviceName,
+    OnlineStatus,
+    deviceHasAbility
+} = require('./test-helper');
 
 const metadata = {
     name: 'system',
-    description: 'Tests system information, hardware, firmware, abilities, and configuration',
+    description:
+        'Tests MerossDevice.system: getAllData, getAbilities, getHardware, getFirmware, getOnlineStatus, getTime, getLedMode',
     requiredAbilities: ['Appliance.System.All', 'Appliance.System.Ability'],
     minDevices: 1
 };
@@ -365,7 +373,88 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
+
+    // Optional: encrypt-related GETs also live on `system` (see test-encryption.js for full scenario)
+    try {
+        if (!testDevice.system || typeof testDevice.system.getEncryptSuite !== 'function') {
+            results.push({
+                name: 'should get encrypt suite (optional)',
+                passed: false,
+                skipped: true,
+                error: 'system.getEncryptSuite not available',
+                device: deviceName
+            });
+        } else if (!deviceHasAbility(testDevice, 'Appliance.Encrypt.Suite')) {
+            results.push({
+                name: 'should get encrypt suite (optional)',
+                passed: false,
+                skipped: true,
+                error: 'Device does not advertise Appliance.Encrypt.Suite',
+                device: deviceName
+            });
+        } else {
+            const enc = await testDevice.system.getEncryptSuite();
+            results.push({
+                name: 'should get encrypt suite (optional)',
+                passed: !!(enc && typeof enc === 'object'),
+                skipped: false,
+                error:
+                    enc && typeof enc === 'object'
+                        ? null
+                        : 'getEncryptSuite() did not return an object',
+                device: deviceName
+            });
+        }
+    } catch (error) {
+        results.push({
+            name: 'should get encrypt suite (optional)',
+            passed: false,
+            skipped: false,
+            error: error.message,
+            device: deviceName
+        });
+    }
+
+    try {
+        if (!testDevice.system || typeof testDevice.system.getEncryptECDHE !== 'function') {
+            results.push({
+                name: 'should get encrypt ECDHE (optional)',
+                passed: false,
+                skipped: true,
+                error: 'system.getEncryptECDHE not available',
+                device: deviceName
+            });
+        } else if (!deviceHasAbility(testDevice, 'Appliance.Encrypt.ECDHE')) {
+            results.push({
+                name: 'should get encrypt ECDHE (optional)',
+                passed: false,
+                skipped: true,
+                error: 'Device does not advertise Appliance.Encrypt.ECDHE',
+                device: deviceName
+            });
+        } else {
+            const enc = await testDevice.system.getEncryptECDHE();
+            results.push({
+                name: 'should get encrypt ECDHE (optional)',
+                passed: !!(enc && typeof enc === 'object'),
+                skipped: false,
+                error:
+                    enc && typeof enc === 'object'
+                        ? null
+                        : 'getEncryptECDHE() did not return an object',
+                device: deviceName
+            });
+        }
+    } catch (error) {
+        results.push({
+            name: 'should get encrypt ECDHE (optional)',
+            passed: false,
+            skipped: false,
+            error: error.message,
+            device: deviceName
+        });
+    }
+
     return results;
 }
 

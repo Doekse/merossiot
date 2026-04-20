@@ -1,73 +1,108 @@
 'use strict';
 
 /**
- * Electricity/Consumption Device Tests
- * Tests electricity metrics and power consumption tracking
+ * Electricity / consumption live tests.
+ *
+ * Exercises two separate optional features on `MerossDevice` (see `meross-iot` `index.d.ts`):
+ * - **`device.electricity`** — instant readings (`ElectricityFeature.get`, optional `getRaw`)
+ * - **`device.consumption`** — daily energy series (`ConsumptionFeature.get`) and meter settings (`getConfig`)
+ *
+ * Registry entry **`electricity`** is canonical; **`consumption`** is an alias to this same file
+ * (`test-registry.js` `TEST_METADATA.electricity.aliases`).
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const {
+    findDevicesByAbility,
+    waitForDeviceConnection,
+    getDeviceName,
+    getPrimaryChannel,
+    OnlineStatus,
+    assertFeatureOrSkip
+} = require('./test-helper');
+
+const ABILITY_FALLBACK_ORDER = [
+    'Appliance.Control.ConsumptionH',
+    'Appliance.Control.ConsumptionX',
+    'Appliance.Control.Consumption',
+    'Appliance.Control.Electricity'
+];
 
 const metadata = {
     name: 'electricity',
-    description: 'Tests electricity metrics and power consumption tracking',
-    requiredAbilities: ['Appliance.Control.ConsumptionH', 'Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption', 'Appliance.Control.Electricity'],
+    description:
+        'Instant metrics via device.electricity; daily/config via device.consumption. CLI alias: consumption.',
+    requiredAbilities: [
+        'Appliance.Control.ConsumptionH',
+        'Appliance.Control.ConsumptionX',
+        'Appliance.Control.Consumption',
+        'Appliance.Control.Electricity'
+    ],
     minDevices: 1
 };
 
+/**
+ * Runs electricity and consumption feature checks against one discovered device.
+ *
+ * @param {Object} context - Runner context (`manager`, optional `devices`, `options`)
+ * @returns {Promise<Array<Object>>} Structured test rows
+ */
 async function runTests(context) {
     const { manager, devices, options = {} } = context;
     const timeout = options.timeout || 30000;
     const results = [];
-    
-    // If no devices provided, discover them
+
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        // Find consumption/electricity devices (try ConsumptionH first, then ConsumptionX, then Consumption, then Electricity)
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.ConsumptionH', OnlineStatus.ONLINE);
-        
-        if (testDevices.length === 0) {
-            testDevices = await findDevicesByAbility(manager, 'Appliance.Control.ConsumptionX', OnlineStatus.ONLINE);
-        }
-        
-        if (testDevices.length === 0) {
-            testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Consumption', OnlineStatus.ONLINE);
-        }
-        
-        if (testDevices.length === 0) {
-            testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Electricity', OnlineStatus.ONLINE);
+        for (const ability of ABILITY_FALLBACK_ORDER) {
+            testDevices = await findDevicesByAbility(manager, ability, OnlineStatus.ONLINE);
+            if (testDevices.length > 0) {
+                break;
+            }
         }
     }
-    
+
     if (testDevices.length === 0) {
         results.push({
             name: 'should get instant electricity metrics',
             passed: false,
             skipped: true,
-            error: 'No ConsumptionH/ConsumptionX/Consumption/Electricity device has been found to run this test on',
+            error:
+                'No ConsumptionH/ConsumptionX/Consumption/Electricity device has been found to run this test on',
             device: null
         });
         return results;
     }
-    
+
     const testDevice = testDevices[0];
     const deviceName = getDeviceName(testDevice);
-    
+    const channel = getPrimaryChannel(testDevice);
+
     await waitForDeviceConnection(testDevice, timeout);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Test 1: Get instant electricity metrics
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // --- device.electricity: instant metrics ---
     try {
-        if (!testDevice.electricity || typeof testDevice.electricity.get !== 'function') {
+        if (
+            !assertFeatureOrSkip(
+                results,
+                testDevice,
+                'electricity',
+                deviceName,
+                'should get instant electricity metrics'
+            )
+        ) {
+            // skip row already pushed
+        } else if (typeof testDevice.electricity.get !== 'function') {
             results.push({
                 name: 'should get instant electricity metrics',
                 passed: false,
-                skipped: true,
-                error: 'Device does not support electricity feature',
+                skipped: false,
+                error: 'electricity feature has no get()',
                 device: deviceName
             });
         } else {
-            const metrics = await testDevice.electricity.get({ channel: 0 });
-            
+            const metrics = await testDevice.electricity.get({ channel });
+
             if (!metrics || typeof metrics !== 'object') {
                 results.push({
                     name: 'should get instant electricity metrics',
@@ -83,7 +118,7 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { metrics: metrics }
+                    details: { metrics }
                 });
             }
         }
@@ -96,50 +131,100 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
-    // Test 2: Get daily power consumption
+
+    // --- device.electricity: raw payload (optional on some firmware) ---
     try {
-        if (!testDevice.consumption) {
+        if (
+            !assertFeatureOrSkip(
+                results,
+                testDevice,
+                'electricity',
+                deviceName,
+                'should get raw electricity payload'
+            )
+        ) {
+            // skip
+        } else if (typeof testDevice.electricity.getRaw !== 'function') {
             results.push({
-                name: 'should get daily power consumption',
+                name: 'should get raw electricity payload',
                 passed: false,
                 skipped: true,
-                error: 'Device does not support daily power consumption tracking',
+                error: 'electricity.getRaw is not exposed on this device',
                 device: deviceName
             });
         } else {
-            const consumption = await testDevice.consumption.get({ channel: 0 });
-            
+            const raw = await testDevice.electricity.getRaw({ channel });
+            if (raw === undefined || raw === null) {
+                results.push({
+                    name: 'should get raw electricity payload',
+                    passed: false,
+                    skipped: false,
+                    error: 'electricity.getRaw() returned null or undefined',
+                    device: deviceName
+                });
+            } else {
+                results.push({
+                    name: 'should get raw electricity payload',
+                    passed: true,
+                    skipped: false,
+                    error: null,
+                    device: deviceName,
+                    details: { raw }
+                });
+            }
+        }
+    } catch (error) {
+        results.push({
+            name: 'should get raw electricity payload',
+            passed: false,
+            skipped: false,
+            error: error.message,
+            device: deviceName
+        });
+    }
+
+    // --- device.consumption: daily series ---
+    try {
+        if (
+            !assertFeatureOrSkip(
+                results,
+                testDevice,
+                'consumption',
+                deviceName,
+                'should get daily power consumption'
+            )
+        ) {
+            // skip
+        } else if (typeof testDevice.consumption.get !== 'function') {
+            results.push({
+                name: 'should get daily power consumption',
+                passed: false,
+                skipped: false,
+                error: 'consumption feature has no get()',
+                device: deviceName
+            });
+        } else {
+            const consumption = await testDevice.consumption.get({ channel });
+
             if (!Array.isArray(consumption)) {
                 results.push({
                     name: 'should get daily power consumption',
                     passed: false,
                     skipped: false,
-                    error: 'Consumption is not an array',
+                    error: 'consumption.get() did not return an array',
                     device: deviceName
                 });
-            } else {
-                // If we got data, verify structure
-                if (consumption.length > 0) {
-                    const first = consumption[0];
-                    if (!first.date || first.totalConsumptionKwh === undefined) {
-                        results.push({
-                            name: 'should get daily power consumption',
-                            passed: false,
-                            skipped: false,
-                            error: 'Consumption entries missing required properties (date or totalConsumptionKwh)',
-                            device: deviceName
-                        });
-                    } else {
-                        results.push({
-                            name: 'should get daily power consumption',
-                            passed: true,
-                            skipped: false,
-                            error: null,
-                            device: deviceName,
-                            details: { entryCount: consumption.length }
-                        });
-                    }
+            } else if (consumption.length > 0) {
+                const first = consumption[0];
+                if (!first.date || first.totalConsumptionKwh === undefined) {
+                    results.push({
+                        name: 'should get daily power consumption',
+                        passed: false,
+                        skipped: false,
+                        error:
+                            'Consumption entries missing required properties (date or totalConsumptionKwh)',
+                        device: deviceName
+                    });
                 } else {
                     results.push({
                         name: 'should get daily power consumption',
@@ -147,9 +232,18 @@ async function runTests(context) {
                         skipped: false,
                         error: null,
                         device: deviceName,
-                        details: { entryCount: 0, note: 'No consumption data available' }
+                        details: { entryCount: consumption.length }
                     });
                 }
+            } else {
+                results.push({
+                    name: 'should get daily power consumption',
+                    passed: true,
+                    skipped: false,
+                    error: null,
+                    device: deviceName,
+                    details: { entryCount: 0, note: 'No consumption data available' }
+                });
             }
         }
     } catch (error) {
@@ -161,26 +255,36 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
-    // Test 3: Get consumption config
+
+    // --- device.consumption: meter config ---
     try {
-        if (!testDevice.consumption) {
+        if (
+            !assertFeatureOrSkip(
+                results,
+                testDevice,
+                'consumption',
+                deviceName,
+                'should get consumption config'
+            )
+        ) {
+            // skip
+        } else if (typeof testDevice.consumption.getConfig !== 'function') {
             results.push({
                 name: 'should get consumption config',
                 passed: false,
-                skipped: true,
-                error: 'Device does not support consumption config',
+                skipped: false,
+                error: 'consumption feature has no getConfig()',
                 device: deviceName
             });
         } else {
             const response = await testDevice.consumption.getConfig();
-            
+
             if (!response) {
                 results.push({
                     name: 'should get consumption config',
                     passed: false,
                     skipped: false,
-                    error: 'getConfig returned null or undefined',
+                    error: 'getConfig() returned null or undefined',
                     device: deviceName
                 });
             } else {
@@ -203,7 +307,7 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
+
     return results;
 }
 

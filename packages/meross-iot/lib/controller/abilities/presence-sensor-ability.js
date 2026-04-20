@@ -304,5 +304,9 @@ function getPresenceSensorCapabilities(device, channelIds) {
 }
 
 module.exports = createPresenceSensorAbility;
+/**
+ * Private export for unit tests. Do not rename or change shape without updating
+ * `test/presence-sensor-ability.test.js`.
+ */
 module.exports._updatePresenceState = updatePresenceState;
 module.exports.getCapabilities = getPresenceSensorCapabilities;

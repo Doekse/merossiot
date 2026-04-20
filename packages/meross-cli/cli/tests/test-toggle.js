@@ -5,7 +5,7 @@
  * Tests on/off control for switches and smart plugs
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
 
 /**
  * Test metadata
@@ -84,41 +84,38 @@ async function runTests(context) {
     
     const testDevice = toggleDevices[0];
     const deviceName = getDeviceName(testDevice);
-    
+    const channel = getPrimaryChannel(testDevice);
+
+    if (!assertFeatureOrSkip(results, testDevice, 'toggle', deviceName, 'should get toggle state')) {
+        assertFeatureOrSkip(results, testDevice, 'toggle', deviceName, 'should control toggle state (turn on)');
+        assertFeatureOrSkip(results, testDevice, 'toggle', deviceName, 'should control toggle state (turn off)');
+        return results;
+    }
+
     // Test 2: Get toggle state
     try {
-        if (testDevice.toggle) {
-            const toggleState = await testDevice.toggle.get({ channel: 0 });
-            const isOn = testDevice.toggle.isOn({ channel: 0 });
-            
-            if (!toggleState) {
-                results.push({
-                    name: 'should get toggle state',
-                    passed: false,
-                    skipped: false,
-                    error: 'toggle.get() returned null or undefined',
-                    device: deviceName
-                });
-            } else {
-                results.push({
-                    name: 'should get toggle state',
-                    passed: true,
-                    skipped: false,
-                    error: null,
-                    device: deviceName,
-                    details: {
-                        toggleState: toggleState,
-                        isOn: isOn
-                    }
-                });
-            }
-        } else {
+        const toggleState = await testDevice.toggle.get({ channel });
+        const isOn = testDevice.toggle.isOn({ channel });
+
+        if (!toggleState) {
             results.push({
                 name: 'should get toggle state',
                 passed: false,
-                skipped: true,
-                error: 'Device does not support toggle feature',
+                skipped: false,
+                error: 'toggle.get() returned null or undefined',
                 device: deviceName
+            });
+        } else {
+            results.push({
+                name: 'should get toggle state',
+                passed: true,
+                skipped: false,
+                error: null,
+                device: deviceName,
+                details: {
+                    toggleState: toggleState,
+                    isOn: isOn
+                }
             });
         }
     } catch (error) {
@@ -130,74 +127,59 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
+
     // Test 3: Control toggle state (turn on/off)
     try {
-        if (!testDevice.toggle) {
+        const initialState = testDevice.toggle.isOn({ channel });
+
+        await testDevice.toggle.set({ on: true, channel });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const isOnAfter = testDevice.toggle.isOn({ channel });
+        if (!isOnAfter) {
             results.push({
-                name: 'should control toggle state',
+                name: 'should control toggle state (turn on)',
                 passed: false,
-                skipped: true,
-                error: 'Device does not support toggle feature',
+                skipped: false,
+                error: 'Device did not turn on after toggle.set({ on: true, channel })',
                 device: deviceName
             });
         } else {
-            // Get initial state
-            let initialState = testDevice.toggle.isOn({ channel: 0 });
-            
-            // Test turn on
-            await testDevice.toggle.set({ channel: 0, on: true });
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            const isOnAfter = testDevice.toggle.isOn({ channel: 0 });
-            if (!isOnAfter) {
-                results.push({
-                    name: 'should control toggle state (turn on)',
-                    passed: false,
-                    skipped: false,
-                    error: 'Device did not turn on after set({ on: true })',
-                    device: deviceName
-                });
-            } else {
-                results.push({
-                    name: 'should control toggle state (turn on)',
-                    passed: true,
-                    skipped: false,
-                    error: null,
-                    device: deviceName
-                });
-            }
-            
-            // Test turn off
-            await testDevice.toggle.set({ channel: 0, on: false });
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            const isOffAfter = testDevice.toggle.isOn({ channel: 0 });
-            if (isOffAfter) {
-                results.push({
-                    name: 'should control toggle state (turn off)',
-                    passed: false,
-                    skipped: false,
-                    error: 'Device did not turn off after set({ on: false })',
-                    device: deviceName
-                });
-            } else {
-                results.push({
-                    name: 'should control toggle state (turn off)',
-                    passed: true,
-                    skipped: false,
-                    error: null,
-                    device: deviceName
-                });
-            }
-            
-            // Restore initial state if we changed it
-            if (initialState !== undefined) {
-                await testDevice.toggle.set({ channel: 0, on: initialState });
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+            results.push({
+                name: 'should control toggle state (turn on)',
+                passed: true,
+                skipped: false,
+                error: null,
+                device: deviceName
+            });
         }
-        
+
+        await testDevice.toggle.set({ on: false, channel });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const isOffAfter = testDevice.toggle.isOn({ channel });
+        if (isOffAfter) {
+            results.push({
+                name: 'should control toggle state (turn off)',
+                passed: false,
+                skipped: false,
+                error: 'Device did not turn off after toggle.set({ on: false, channel })',
+                device: deviceName
+            });
+        } else {
+            results.push({
+                name: 'should control toggle state (turn off)',
+                passed: true,
+                skipped: false,
+                error: null,
+                device: deviceName
+            });
+        }
+
+        if (initialState !== undefined) {
+            await testDevice.toggle.set({ on: initialState, channel });
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
     } catch (error) {
         results.push({
             name: 'should control toggle state',

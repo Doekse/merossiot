@@ -324,6 +324,10 @@ function getTriggerCapabilities(device, channelIds) {
 }
 
 module.exports = createTriggerAbility;
+/**
+ * Private export for unit tests. Do not rename or change shape without updating
+ * `test/trigger-ability.test.js`.
+ */
 module.exports._updateTriggerXState = updateTriggerXState;
 module.exports.getCapabilities = getTriggerCapabilities;
 

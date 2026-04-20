@@ -9,6 +9,7 @@
   "scripts": {
     "lint": "npm run lint --workspaces",
     "lint:fix": "npm run lint:fix --workspaces",
+    "test": "npm run test --workspaces --if-present",
     "cli": "node packages/meross-cli/cli/meross-cli.js"
   },
   "engines": {

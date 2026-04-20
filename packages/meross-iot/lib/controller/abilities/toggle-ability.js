@@ -181,6 +181,10 @@ function getToggleCapabilities(device, channelIds) {
 }
 
 module.exports = createToggleAbility;
+/**
+ * Private export for unit tests: the mock-device helper wires this onto synthetic devices.
+ * Do not rename or change shape without updating `test/helpers/mock-ability-device.js`.
+ */
 module.exports._updateToggleState = updateToggleState;
 module.exports.getCapabilities = getToggleCapabilities;
 

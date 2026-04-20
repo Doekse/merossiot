@@ -77,9 +77,11 @@ const TEST_METADATA = {
     },
     'electricity': {
         file: 'test-electricity.js',
-        description: 'Tests power consumption metrics and daily consumption data',
+        description:
+            'Tests MerossDevice.electricity (instant metrics) and MerossDevice.consumption (daily series, config)',
         requiredAbilities: ['Appliance.Control.ConsumptionH', 'Appliance.Control.ConsumptionX', 'Appliance.Control.Consumption', 'Appliance.Control.Electricity'],
-        minDevices: 1
+        minDevices: 1,
+        aliases: ['consumption']
     },
     'dnd': {
         file: 'test-dnd.js',
@@ -113,13 +115,14 @@ const TEST_METADATA = {
     },
     'runtime': {
         file: 'test-runtime.js',
-        description: 'Tests device runtime and system runtime information',
+        description: 'Tests MerossDevice.runtime.get/getCached and runtime.refreshState (Appliance.System.Runtime)',
         requiredAbilities: ['Appliance.System.Runtime'],
         minDevices: 1
     },
     'encryption': {
         file: 'test-encryption.js',
-        description: 'Tests encryption capabilities and secure communication',
+        description:
+            'Tests system.getEncryptSuite/getEncryptECDHE (typed) and device.encryption for LAN keying and message crypto',
         requiredAbilities: ['Appliance.Encrypt.ECDHE', 'Appliance.Encrypt.Suite'],
         minDevices: 1
     },
@@ -163,13 +166,14 @@ const TEST_METADATA = {
     },
     'config': {
         file: 'test-config.js',
-        description: 'Tests device configuration and settings',
+        description: 'Tests MerossDevice.config for Appliance.Config.OverTemp (get/set surface)',
         requiredAbilities: ['Appliance.Config.OverTemp'],
         minDevices: 1
     },
     'control': {
         file: 'test-control.js',
-        description: 'Tests multiple control features and device capabilities',
+        description:
+            'Tests MerossDevice.control (setMultiple, acknowledgeOverTemp, setUpgrade) — runtime extension vs typings',
         requiredAbilities: ['Appliance.Control.Multiple', 'Appliance.Control.Upgrade', 'Appliance.Control.OverTemp'],
         minDevices: 1
     },
@@ -181,7 +185,8 @@ const TEST_METADATA = {
     },
     'system': {
         file: 'test-system.js',
-        description: 'Tests system information, hardware, firmware, abilities, and configuration',
+        description:
+            'Tests MerossDevice.system core getters; optional encrypt GETs when Suite/ECDHE abilities are present',
         requiredAbilities: ['Appliance.System.All', 'Appliance.System.Ability'],
         minDevices: 1
     }

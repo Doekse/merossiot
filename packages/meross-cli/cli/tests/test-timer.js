@@ -1,31 +1,66 @@
 'use strict';
 
 /**
- * Timer Tests
- * Tests timer creation, management, and push notifications
+ * Live tests for {@link MerossDevice#timer}: create, query, delete, and digest push handling.
  */
 
-const { findDevicesByAbility, getDeviceName, OnlineStatus } = require('./test-helper');
+const {
+    findDevicesByAbility,
+    waitForDeviceConnection,
+    getDeviceName,
+    getPrimaryChannel,
+    OnlineStatus,
+    assertFeatureOrSkip
+} = require('./test-helper');
 const { TimerType } = require('meross-iot');
 
 const metadata = {
     name: 'timer',
-    description: 'Tests timer creation, management, and push notifications',
-    requiredAbilities: ['Appliance.Control.TimerX'],
+    description: 'Tests timer creation, management, and execution',
+    requiredAbilities: ['Appliance.Control.TimerX', 'Appliance.Digest.TimerX'],
     minDevices: 1
 };
 
+const TEST_ALIAS = 'Test Timer - CLI Test';
+
+/**
+ * Merges two ability-based device lists by UUID (deduplicated).
+ *
+ * @param {Array<Object>} a - First list
+ * @param {Array<Object>} b - Second list
+ * @returns {Array<Object>} Combined devices
+ */
+function mergeDevicesByUuid(a, b) {
+    const out = [...a];
+    for (const device of b) {
+        if (!out.some((d) => d.uuid === device.uuid)) {
+            out.push(device);
+        }
+    }
+    return out;
+}
+
+/**
+ * Runs timer scenario tests.
+ *
+ * @param {Object} context - Runner context
+ * @param {Object} context.manager - Connected manager
+ * @param {Array<Object>} [context.devices] - Pre-filtered devices
+ * @param {Object} [context.options] - Options (e.g. timeout)
+ * @returns {Promise<Array<Object>>} Result rows
+ */
 async function runTests(context) {
     const { manager, devices, options = {} } = context;
     const timeout = options.timeout || 30000;
     const results = [];
-    
-    // If no devices provided, discover them
+
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.TimerX', OnlineStatus.ONLINE);
+        const control = await findDevicesByAbility(manager, 'Appliance.Control.TimerX', OnlineStatus.ONLINE);
+        const digest = await findDevicesByAbility(manager, 'Appliance.Digest.TimerX', OnlineStatus.ONLINE);
+        testDevices = mergeDevicesByUuid(control, digest);
     }
-    
+
     if (testDevices.length === 0) {
         results.push({
             name: 'should find devices with timer capability',
@@ -36,7 +71,12 @@ async function runTests(context) {
         });
         return results;
     }
-    
+
+    for (const device of testDevices) {
+        await waitForDeviceConnection(device, timeout);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
     results.push({
         name: 'should find devices with timer capability',
         passed: true,
@@ -44,83 +84,78 @@ async function runTests(context) {
         error: null,
         device: null
     });
-    
+
     const testDevice = testDevices[0];
     const deviceName = getDeviceName(testDevice);
-    
+    const channel = getPrimaryChannel(testDevice);
+
+    if (!assertFeatureOrSkip(results, testDevice, 'timer', deviceName, 'should expose timer feature')) {
+        return results;
+    }
+
     let createdTimerId = null;
-    
-    // Test 1: Create a timer and verify it exists
+
     try {
-        // Create a test timer using the utility function
         const testTimer = testDevice.timer.createTimer({
-            alias: 'Test Timer - CLI Test',
+            alias: TEST_ALIAS,
             time: '12:00',
             days: ['weekday'],
             on: true,
             type: TimerType.SINGLE_POINT_WEEKLY_CYCLE,
-            channel: 0,
+            channel,
             enabled: true
         });
-        
-        // Wait for push notification after SET (as per API spec: "PUSH after SET")
+
         let timerIdFromPush = null;
         const pushNotificationPromise = new Promise((resolve) => {
             const handler = (event) => {
                 if (event.type === 'timer' && event.value) {
                     const timerData = Array.isArray(event.value) ? event.value : [event.value];
-                    const createdTimer = timerData.find(t => 
-                        t.channel === 0 && 
-                        t.alias === 'Test Timer - CLI Test' &&
-                        t.id
+                    const created = timerData.find(
+                        (t) => t.channel === channel && t.alias === TEST_ALIAS && t.id
                     );
-                    if (createdTimer && createdTimer.id) {
-                        timerIdFromPush = createdTimer.id;
+                    if (created && created.id) {
+                        timerIdFromPush = created.id;
                         testDevice.removeListener('stateChange', handler);
                         resolve();
                     }
                 }
             };
             testDevice.on('stateChange', handler);
-            
-            // Timeout after 5 seconds if no push notification arrives
             setTimeout(() => {
                 testDevice.removeListener('stateChange', handler);
                 resolve();
             }, 5000);
         });
-        
+
         const createResult = await testDevice.timer.set({ timerx: testTimer });
-        
+
         if (!createResult) {
             results.push({
                 name: 'should create timer',
                 passed: false,
                 skipped: false,
-                error: 'setTimerX returned null or undefined',
+                error: 'timer.set() returned null or undefined',
                 device: deviceName
             });
             return results;
         }
-        
-        // Wait for push notification (contains timer with ID)
+
         await pushNotificationPromise;
-        
-        // Get the timer ID from push notification, or fallback to generated ID
+
         if (timerIdFromPush) {
             createdTimerId = timerIdFromPush;
         } else if (testTimer.id) {
             createdTimerId = testTimer.id;
         } else {
-            // Wait a bit and query by alias to find it
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const timers = await testDevice.timer.get({ channel: 0 });
-            const foundTimer = timers?.timerx?.find(t => t.alias === 'Test Timer - CLI Test');
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const timers = await testDevice.timer.get({ channel });
+            const foundTimer = timers?.timerx?.find((t) => t.alias === TEST_ALIAS);
             if (foundTimer && foundTimer.id) {
                 createdTimerId = foundTimer.id;
             }
         }
-        
+
         if (!createdTimerId) {
             results.push({
                 name: 'should create timer',
@@ -131,32 +166,30 @@ async function runTests(context) {
             });
             return results;
         }
-        
-        // Verify timer exists by querying it
+
         const timerInfo = await testDevice.timer.get({ timerId: createdTimerId });
-        
+
         if (!timerInfo || !timerInfo.timerx) {
             results.push({
                 name: 'should create timer',
                 passed: false,
                 skipped: false,
-                error: 'getTimerX returned null or undefined for created timer',
+                error: 'timer.get({ timerId }) returned no timerx payload',
                 device: deviceName
             });
             return results;
         }
-        
-        // Verify cached timer state
-        const timerResponse = await testDevice.timer.get({ channel: 0 });
+
+        const timerResponse = await testDevice.timer.get({ channel });
         const cachedTimers = timerResponse?.timerx || [];
-        
+
         results.push({
             name: 'should create timer',
             passed: true,
             skipped: false,
             error: null,
             device: deviceName,
-            details: { 
+            details: {
                 timerId: createdTimerId,
                 cachedTimerCount: cachedTimers.length
             }
@@ -171,24 +204,22 @@ async function runTests(context) {
         });
         return results;
     }
-    
-    // Test 2: Delete the timer
+
     if (createdTimerId) {
         try {
-            // Wait a bit after creation before deleting
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
             let deleteResponse;
             try {
-                deleteResponse = await testDevice.timer.delete({ timerId: createdTimerId, channel: 0 });
+                deleteResponse = await testDevice.timer.delete({ timerId: createdTimerId, channel });
             } catch (deleteError) {
                 results.push({
                     name: 'should delete timer',
                     passed: false,
                     skipped: false,
-                    error: `DELETE command threw error: ${deleteError.message}`,
+                    error: `timer.delete threw: ${deleteError.message}`,
                     device: deviceName,
-                    details: { 
+                    details: {
                         timerId: createdTimerId,
                         error: deleteError.message,
                         stack: deleteError.stack
@@ -196,69 +227,60 @@ async function runTests(context) {
                 });
                 return results;
             }
-            
-            // Log the full response for debugging
+
             const deleteResponseString = JSON.stringify(deleteResponse, null, 2);
-            
-            // Check if response is null/undefined (might indicate timeout or no response)
+
             if (!deleteResponse) {
                 results.push({
                     name: 'should delete timer',
                     passed: false,
                     skipped: false,
-                    error: 'DELETE command returned null or undefined response',
+                    error: 'timer.delete returned null or undefined',
                     device: deviceName,
-                    details: { 
+                    details: {
                         timerId: createdTimerId,
-                        note: 'DELETE command may have timed out or not received DELETEACK'
+                        note: 'DELETE may have timed out or not received DELETEACK'
                     }
                 });
                 return results;
             }
-            
-            // Check what the DELETE response contains
-            // Error 5050 "id not found" is returned even when deletion succeeds
-            // Empty DELETEACK (no error) also means deletion succeeded
+
             const deleteResponseError = deleteResponse?.error;
             const hasError = deleteResponseError !== null && deleteResponseError !== undefined;
-            const isIdNotFound = deleteResponseError?.code === 5050 || 
-                                 deleteResponseError?.detail === 'id not found';
-            
-            // If DELETE returned an error other than "id not found", this is a real failure
+            const isIdNotFound =
+                deleteResponseError?.code === 5050 || deleteResponseError?.detail === 'id not found';
+
             if (hasError && !isIdNotFound) {
                 results.push({
                     name: 'should delete timer',
                     passed: false,
                     skipped: false,
-                    error: `DELETE command failed: ${JSON.stringify(deleteResponseError)}`,
+                    error: `timer.delete failed: ${JSON.stringify(deleteResponseError)}`,
                     device: deviceName,
-                    details: { 
+                    details: {
                         timerId: createdTimerId,
                         deleteResponse: deleteResponseString
                     }
                 });
                 return results;
             }
-            
-            // DELETE command was accepted (no error, or error 5050)
-            // Error 5050 means the timer is deleted (success)
-            // Wait longer for device to process deletion (some devices need more time)
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            // Clear cached state and query fresh from device
+
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+
             try {
-                // Force a refresh by querying the device directly
-                const timersResponse = await testDevice.timer.get({ channel: 0 });
-                
+                const timersResponse = await testDevice.timer.get({ channel });
+
                 let timerStillExists = false;
                 let allTimerIds = [];
-                
+
                 if (timersResponse && timersResponse.timerx) {
-                    const timers = Array.isArray(timersResponse.timerx) ? timersResponse.timerx : [timersResponse.timerx];
-                    allTimerIds = timers.map(t => t.id);
-                    timerStillExists = timers.some(t => t.id === createdTimerId);
+                    const timers = Array.isArray(timersResponse.timerx)
+                        ? timersResponse.timerx
+                        : [timersResponse.timerx];
+                    allTimerIds = timers.map((t) => t.id);
+                    timerStillExists = timers.some((t) => t.id === createdTimerId);
                 }
-                
+
                 if (timerStillExists) {
                     results.push({
                         name: 'should delete timer',
@@ -266,11 +288,11 @@ async function runTests(context) {
                         skipped: false,
                         error: `Timer with ID ${createdTimerId} still exists after deletion`,
                         device: deviceName,
-                        details: { 
+                        details: {
                             timerId: createdTimerId,
                             deleteResponse: deleteResponseString,
-                            allTimerIds: allTimerIds,
-                            note: 'DELETE command was sent and acknowledged, but timer still exists on device after 3 seconds'
+                            allTimerIds,
+                            note: 'DELETE acknowledged but timer still listed after wait'
                         }
                     });
                 } else {
@@ -280,27 +302,30 @@ async function runTests(context) {
                         skipped: false,
                         error: null,
                         device: deviceName,
-                        details: { 
+                        details: {
                             timerId: createdTimerId,
-                            deleteResponse: isIdNotFound ? 'Deleted (error 5050 - id not found)' : 'Deleted (empty DELETEACK)',
+                            deleteResponse: isIdNotFound
+                                ? 'Deleted (error 5050 - id not found)'
+                                : 'Deleted (empty DELETEACK)',
                             verified: 'Timer confirmed removed from device',
-                            allTimerIds: allTimerIds
+                            allTimerIds
                         }
                     });
                 }
             } catch (queryError) {
-                // If query fails, still consider deletion successful since DELETEACK was received
                 results.push({
                     name: 'should delete timer',
                     passed: true,
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { 
+                    details: {
                         timerId: createdTimerId,
-                        deleteResponse: isIdNotFound ? 'Deleted (error 5050 - id not found)' : 'Deleted (empty DELETEACK)',
+                        deleteResponse: isIdNotFound
+                            ? 'Deleted (error 5050 - id not found)'
+                            : 'Deleted (empty DELETEACK)',
                         verificationQueryFailed: queryError.message,
-                        note: 'DELETE command acknowledged, but verification query failed'
+                        note: 'DELETE acknowledged; verification query failed'
                     }
                 });
             }
@@ -311,14 +336,14 @@ async function runTests(context) {
                 skipped: false,
                 error: error.message,
                 device: deviceName,
-                details: { 
+                details: {
                     timerId: createdTimerId,
                     stack: error.stack
                 }
             });
         }
     }
-    
+
     return results;
 }
 

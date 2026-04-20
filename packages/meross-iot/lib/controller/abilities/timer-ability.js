@@ -519,6 +519,10 @@ function getTimerCapabilities(device, channelIds) {
 }
 
 module.exports = createTimerAbility;
+/**
+ * Private export for unit tests. Do not rename or change shape without updating
+ * `test/timer-ability.test.js`.
+ */
 module.exports._updateTimerXState = updateTimerXState;
 module.exports.getCapabilities = getTimerCapabilities;
 

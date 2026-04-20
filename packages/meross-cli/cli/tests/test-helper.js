@@ -4,9 +4,14 @@ const { OnlineStatus } = require('meross-iot');
 
 /**
  * Test Helper Utilities
- * 
+ *
  * Pure utility functions for device discovery and connection management.
- * All functions accept explicit parameters - no globals or environment variables.
+ * All functions accept explicit parameters — no globals or environment variables.
+ *
+ * **Channel options:** For `{ channel }` arguments on feature APIs, prefer
+ * {@link getPrimaryChannel} so multi-outlet devices use a valid index. Use a
+ * literal `0` (or iterate `device.capabilities.channels.ids`) only when the
+ * scenario intentionally targets a fixed or every-channel case.
  */
 
 /**
@@ -287,6 +292,77 @@ function getDeviceName(device) {
     return device.name || device.uuid || 'Unknown device';
 }
 
+/**
+ * Returns the first channel index for channel-scoped feature APIs. Prefer
+ * `capabilities.channels.ids` when present, then
+ * `channels[0].index`, so multi-outlet plugs and similar devices use a valid channel.
+ *
+ * @param {Object} device - Meross device instance
+ * @returns {number} Channel index (defaults to 0)
+ */
+function getPrimaryChannel(device) {
+    if (!device) {
+        return 0;
+    }
+    const ids = device.capabilities?.channels?.ids;
+    if (Array.isArray(ids) && ids.length > 0) {
+        const first = ids[0];
+        if (typeof first === 'number' && !Number.isNaN(first)) {
+            return first;
+        }
+    }
+    if (Array.isArray(device.channels) && device.channels.length > 0) {
+        const idx = device.channels[0].index;
+        if (typeof idx === 'number' && !Number.isNaN(idx)) {
+            return idx;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Whether the device exposes a public feature API object (e.g. `device.toggle`).
+ * Used to gate live tests without throwing when a capability exists but the
+ * feature surface was not attached.
+ *
+ * @param {Object} device - Meross device instance
+ * @param {string} featureKey - Property name on the device (e.g. `'toggle'`, `'light'`)
+ * @returns {boolean} True when `device[featureKey]` is truthy
+ */
+function hasFeature(device, featureKey) {
+    return !!(device && featureKey && device[featureKey]);
+}
+
+/**
+ * If the feature is missing, appends a structured skip row to `results` and
+ * returns false; otherwise returns true. Keeps scenario files aligned with the
+ * “guard then assert” pattern from the live-test plan.
+ *
+ * @param {Array<Object>} results - Test result objects (mutated when skipping)
+ * @param {Object} device - Meross device instance
+ * @param {string} featureKey - Property name on the device (e.g. `'light'`)
+ * @param {string} [deviceLabel] - Display name for the result row; defaults to {@link getDeviceName}
+ * @param {string} [testResultName] - `name` field for the skip row; defaults to a feature-guard label
+ * @returns {boolean} True when the feature exists
+ */
+function assertFeatureOrSkip(results, device, featureKey, deviceLabel, testResultName) {
+    const label = deviceLabel !== undefined ? deviceLabel : getDeviceName(device);
+    const name = testResultName !== undefined
+        ? testResultName
+        : `feature: ${featureKey}`;
+    if (hasFeature(device, featureKey)) {
+        return true;
+    }
+    results.push({
+        name,
+        passed: false,
+        skipped: true,
+        error: `Device does not support ${featureKey} feature`,
+        device: label
+    });
+    return false;
+}
+
 module.exports = {
     // Device discovery
     waitForDevices,
@@ -299,9 +375,12 @@ module.exports = {
     
     // Device utilities
     getDeviceName,
+    getPrimaryChannel,
     getDeviceOnlineStatus,
     deviceHasAbility,
-    
+    hasFeature,
+    assertFeatureOrSkip,
+
     // Enums
     OnlineStatus
 };

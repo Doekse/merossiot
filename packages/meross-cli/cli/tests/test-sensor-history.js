@@ -1,11 +1,17 @@
 'use strict';
 
 /**
- * Sensor History Device Tests
- * Tests sensor history data retrieval
+ * Live tests for {@link MerossDevice#sensorHistory} ({@link SensorHistoryFeature#get} and optional {@code delete}).
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const {
+    findDevicesByAbility,
+    waitForDeviceConnection,
+    getDeviceName,
+    getPrimaryChannel,
+    OnlineStatus,
+    assertFeatureOrSkip
+} = require('./test-helper');
 
 const metadata = {
     name: 'sensor-history',
@@ -14,26 +20,33 @@ const metadata = {
     minDevices: 1
 };
 
+/**
+ * Runs sensor history scenario tests.
+ *
+ * @param {Object} context - Runner context
+ * @param {Object} context.manager - Connected manager
+ * @param {Array<Object>} [context.devices] - Pre-filtered devices
+ * @param {Object} [context.options] - Options (e.g. timeout)
+ * @returns {Promise<Array<Object>>} Result rows
+ */
 async function runTests(context) {
     const { manager, devices, options = {} } = context;
     const timeout = options.timeout || 30000;
     const results = [];
-    
-    // If no devices provided, discover them
+
     let testDevices = devices || [];
     if (testDevices.length === 0) {
         testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Sensor.History', OnlineStatus.ONLINE);
     }
-    
-    // Wait for devices to be connected
+
     for (const device of testDevices) {
         await waitForDeviceConnection(device, timeout);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
     }
-    
+
     if (testDevices.length === 0) {
         results.push({
-            name: 'should get sensor history',
+            name: 'should find sensor history devices',
             passed: false,
             skipped: true,
             error: 'No Sensor History device has been found to run this test on',
@@ -41,34 +54,41 @@ async function runTests(context) {
         });
         return results;
     }
-    
+
+    results.push({
+        name: 'should find sensor history devices',
+        passed: true,
+        skipped: false,
+        error: null,
+        device: null
+    });
+
     const testDevice = testDevices[0];
     const deviceName = getDeviceName(testDevice);
-    
-    // Test 1: Get sensor history
+    const channel = getPrimaryChannel(testDevice);
+
+    if (!assertFeatureOrSkip(results, testDevice, 'sensorHistory', deviceName, 'should expose sensorHistory feature')) {
+        return results;
+    }
+
     try {
         let historyRetrieved = false;
         let lastError = null;
-        
-        // Try different capacity values (1, 2, 3 are common)
+
         for (const capacity of [1, 2, 3]) {
             try {
-                if (!testDevice.sensorHistory) {
-                    lastError = 'Device does not support sensor history feature';
-                    continue;
-                }
-                const response = await testDevice.sensorHistory.get({ channel: 0, capacity });
-                
+                const response = await testDevice.sensorHistory.get({ channel, capacity });
+
                 if (!response) {
-                    lastError = `getSensorHistory returned null or undefined for capacity ${capacity}`;
+                    lastError = `sensorHistory.get() returned null or undefined for capacity ${capacity}`;
                     continue;
                 }
-                
+
                 if (!Array.isArray(response.history)) {
                     lastError = `Response history is not an array for capacity ${capacity}`;
                     continue;
                 }
-                
+
                 historyRetrieved = true;
                 results.push({
                     name: 'should get sensor history',
@@ -76,18 +96,17 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { 
-                        capacity: capacity,
-                        historyEntries: response.history.length 
+                    details: {
+                        capacity,
+                        historyEntries: response.history.length
                     }
                 });
-                break; // If successful, stop trying other capacities
+                break;
             } catch (error) {
                 lastError = `Capacity ${capacity} not supported: ${error.message}`;
-                // Continue to next capacity
             }
         }
-        
+
         if (!historyRetrieved) {
             results.push({
                 name: 'should get sensor history',
@@ -106,41 +125,38 @@ async function runTests(context) {
             device: deviceName
         });
     }
-    
-    // Test 2: Delete sensor history
+
     try {
-        // Note: We don't actually delete history to avoid data loss
-        // We just verify the method exists and can be called
-        if (testDevice.sensorHistory && typeof testDevice.sensorHistory.delete === 'function') {
+        if (typeof testDevice.sensorHistory.delete !== 'function') {
             results.push({
-                name: 'should delete sensor history',
+                name: 'should expose sensorHistory.delete when supported',
+                passed: false,
+                skipped: true,
+                error: 'sensorHistory.delete is not implemented',
+                device: deviceName
+            });
+        } else {
+            results.push({
+                name: 'should expose sensorHistory.delete when supported',
                 passed: true,
                 skipped: false,
                 error: null,
                 device: deviceName,
-                details: { 
-                    note: 'Method exists, but not deleting history to avoid data loss' 
+                details: {
+                    note: 'delete() not invoked to avoid data loss'
                 }
-            });
-        } else {
-            results.push({
-                name: 'should delete sensor history',
-                passed: false,
-                skipped: true,
-                error: 'Device does not support deleteSensorHistory',
-                device: deviceName
             });
         }
     } catch (error) {
         results.push({
-            name: 'should delete sensor history',
+            name: 'should expose sensorHistory.delete when supported',
             passed: false,
             skipped: false,
             error: error.message,
             device: deviceName
         });
     }
-    
+
     return results;
 }
 

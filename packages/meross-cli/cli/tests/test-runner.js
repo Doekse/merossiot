@@ -136,9 +136,13 @@ async function loadTestFile(testFile) {
     
     const testModule = require(testFile);
     
-    // For now, allow test files without metadata (they'll use registry metadata)
-    // This provides backward compatibility during migration
-    // TODO: After migration, require metadata in all test files
+    const meta = testModule.metadata;
+    if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
+        throw new Error(`Test file ${testFile} must export a plain object 'metadata'`);
+    }
+    if (typeof meta.name !== 'string' || meta.name.length === 0) {
+        throw new Error(`Test file ${testFile} metadata must include a non-empty string 'name'`);
+    }
     
     if (typeof testModule.runTests !== 'function') {
         throw new Error(`Test file ${testFile} must export a 'runTests' function`);
@@ -175,15 +179,18 @@ async function runTest(testType, context) {
     const startTime = Date.now();
     
     try {
-        // Load test module
+        // Load test module (metadata required on the module; validated in loadTestFile)
         const testModule = await loadTestFile(testFile);
-        const metadata = testModule.metadata || {};
+        const metadata = testModule.metadata;
         
-        // Get metadata from registry if not in test file
         const registryMetadata = testRegistry.getTestMetadata(resolvedType);
-        const minDevices = metadata.minDevices || (registryMetadata ? registryMetadata.minDevices : 1);
-        const testName = metadata.name || resolvedType;
-        const description = metadata.description || (registryMetadata ? registryMetadata.description : 'No description');
+        const minDevices = metadata.minDevices != null
+            ? metadata.minDevices
+            : (registryMetadata ? registryMetadata.minDevices : 1);
+        const testName = metadata.name;
+        const description = metadata.description != null && metadata.description !== ''
+            ? metadata.description
+            : (registryMetadata ? registryMetadata.description : 'No description');
         
         // Validate devices
         if (devices.length < minDevices) {

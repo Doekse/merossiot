@@ -337,5 +337,9 @@ function getLightCapabilities(device, channelIds) {
 }
 
 module.exports = createLightAbility;
+/**
+ * Private export for unit tests. Do not rename or change shape without updating
+ * `test/light-ability.test.js`.
+ */
 module.exports._updateLightState = updateLightState;
 module.exports.getCapabilities = getLightCapabilities;

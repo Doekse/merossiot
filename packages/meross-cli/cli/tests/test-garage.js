@@ -2,10 +2,19 @@
 
 /**
  * Garage Door Opener Tests
- * Tests open/close control for garage door openers
+ *
+ * Uses {@link MerossDevice#garage} (get, isOpen, open, close, config) per the public API.
  */
 
-const { findDevicesByAbility, findDevicesByType, waitForDeviceConnection, getDeviceName, OnlineStatus } = require('./test-helper');
+const {
+    findDevicesByAbility,
+    findDevicesByType,
+    waitForDeviceConnection,
+    getDeviceName,
+    getPrimaryChannel,
+    hasFeature,
+    OnlineStatus
+} = require('./test-helper');
 
 const metadata = {
     name: 'garage',
@@ -22,41 +31,44 @@ async function runTests(context) {
     // If no devices provided, discover them
     let garageDevices = devices || [];
     if (garageDevices.length === 0) {
-        // Find garage door devices (try by ability first, then by type)
         garageDevices = await findDevicesByAbility(manager, 'Appliance.GarageDoor.State', OnlineStatus.ONLINE);
-        
+
         if (garageDevices.length === 0) {
             garageDevices = await findDevicesByType(manager, 'msg100', OnlineStatus.ONLINE);
         }
     }
-    
+
+    garageDevices = garageDevices.filter((d) => hasFeature(d, 'garage'));
+
     // Wait for devices to be connected
     for (const device of garageDevices) {
         await waitForDeviceConnection(device, timeout);
-        await device.garage.get({ channel: 0 });
+        const ch = getPrimaryChannel(device);
+        await device.garage.get({ channel: ch });
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
+
     if (garageDevices.length === 0) {
         results.push({
-            name: 'should open and close garage door',
+            name: 'should find a garage opener with garage feature',
             passed: false,
             skipped: true,
-            error: 'Could not find any Garage Opener within the given set of devices',
+            error: 'Could not find any Garage Opener with device.garage within the given set of devices',
             device: null
         });
         return results;
     }
-    
+
     const garage = garageDevices[0];
     const deviceName = getDeviceName(garage);
-    
+    const channel = getPrimaryChannel(garage);
+
     // Test 1: Open and close garage door
     try {
         // Trigger the full update
-        await garage.garage.get({ channel: 0 });
+        await garage.garage.get({ channel });
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const currentStatus = await garage.garage.get({ channel: 0 });
+        const currentStatus = await garage.garage.get({ channel });
         
         if (!currentStatus) {
             results.push({
@@ -69,33 +81,32 @@ async function runTests(context) {
             return results;
         }
         
-        // Get current state
-        let isOpen = garage.isGarageDoorOpened(0);
+        // Get current state (cached after get above)
+        let isOpen = garage.garage.isOpen({ channel });
         if (isOpen === undefined) {
             results.push({
                 name: 'should open and close garage door',
                 passed: false,
                 skipped: false,
-                error: 'isGarageDoorOpened returned undefined',
+                error: 'garage.isOpen returned undefined',
                 device: deviceName
             });
             return results;
         }
-        
-        // Toggle
+
         if (isOpen) {
-            await garage.closeGarageDoor({ channel: 0 });
+            await garage.garage.close({ channel });
         } else {
-            await garage.openGarageDoor({ channel: 0 });
+            await garage.garage.open({ channel });
         }
         
         // Wait for door operation (garage doors take time)
         await new Promise(resolve => setTimeout(resolve, 40000));
         
-        await garage.garage.get({ channel: 0 });
+        await garage.garage.get({ channel });
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const newIsOpen = garage.isGarageDoorOpened(0);
+        const newIsOpen = garage.garage.isOpen({ channel });
         
         if (newIsOpen === undefined) {
             results.push({
@@ -122,17 +133,17 @@ async function runTests(context) {
         // Toggle back
         isOpen = newIsOpen;
         if (isOpen) {
-            await garage.closeGarageDoor({ channel: 0 });
+            await garage.garage.close({ channel });
         } else {
-            await garage.openGarageDoor({ channel: 0 });
+            await garage.garage.open({ channel });
         }
         
         await new Promise(resolve => setTimeout(resolve, 40000));
         
-        await garage.garage.get({ channel: 0 });
+        await garage.garage.get({ channel });
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const finalIsOpen = garage.isGarageDoorOpened(0);
+        const finalIsOpen = garage.garage.isOpen({ channel });
         
         if (finalIsOpen === undefined || finalIsOpen === isOpen) {
             results.push({
