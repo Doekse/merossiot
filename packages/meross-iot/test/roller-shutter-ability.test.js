@@ -8,9 +8,25 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createRollerShutterAbility = require('../lib/controller/abilities/roller-shutter-ability');
-const { _updateRollerShutterState: updateRollerShutterState } = require('../lib/controller/abilities/roller-shutter-ability');
 const { MerossDeviceError } = require('..');
 const { createDeviceEmitter, createPublishRecorder } = require('./helpers/mock-ability-device');
+const { dispatch, getNamespaceDescriptors } = require('../lib/controller/state-dispatcher');
+
+const ROLLER_SHUTTER_STATE_NS = 'Appliance.RollerShutter.State';
+
+/**
+ * Simulates production routing for RollerShutter.State: same path as SETACK/PUSH/digest.
+ *
+ * @param {object} device
+ * @param {object} payload
+ * @param {string} [source='push']
+ * @returns {void}
+ */
+function routeRollerShutterState(device, payload, source = 'push') {
+    for (const d of getNamespaceDescriptors(ROLLER_SHUTTER_STATE_NS)) {
+        dispatch(device, d, payload, source, null, undefined);
+    }
+}
 
 describe('roller shutter ability (mocked device)', () => {
     it('set sends SET Appliance.RollerShutter.Position', async () => {
@@ -62,7 +78,7 @@ describe('roller shutter ability (mocked device)', () => {
             _rollerShutterStateByChannel: new Map()
         };
 
-        updateRollerShutterState(device, { channel: 0, state: 0, position: 40 }, 'push');
+        routeRollerShutterState(device, { state: [{ channel: 0, state: 0, position: 40 }] });
 
         assert.strictEqual(device._rollerShutterStateByChannel.get(0).position, 40);
         assert.strictEqual(events.length, 1);

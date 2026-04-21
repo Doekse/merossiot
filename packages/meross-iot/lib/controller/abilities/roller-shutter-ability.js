@@ -140,117 +140,6 @@ function createRollerShutterAbility(device) {
 }
 
 /**
- * Updates the cached roller shutter state from state data.
- *
- * Called automatically when roller shutter push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of state data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} stateData - State data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateRollerShutterState(device, stateData, source = 'response') {
-    if (!device._rollerShutterStateByChannel) {return;}
-    if (!stateData) {return;}
-
-    const stateArray = Array.isArray(stateData) ? stateData : [stateData];
-
-    for (const stateItem of stateArray) {
-        const channelIndex = stateItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._rollerShutterStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            state: oldState.state,
-            position: oldState.position
-        } : undefined;
-
-        let state = device._rollerShutterStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new RollerShutterState(stateItem);
-            device._rollerShutterStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(stateItem);
-        }
-
-        const newValue = {};
-        if (oldValue === undefined || oldValue.state !== state.state) {
-            newValue.state = state.state;
-        }
-        if (oldValue === undefined || oldValue.position !== state.position) {
-            newValue.position = state.position;
-        }
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'rollerShutter',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
- * Updates the cached roller shutter position from position data.
- *
- * Called automatically when roller shutter position responses are received. Updates both
- * the position cache and the state cache.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} positionData - Position data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateRollerShutterPosition(device, positionData, source = 'response') {
-    if (!device._rollerShutterPositionByChannel || !device._rollerShutterStateByChannel) {return;}
-    if (!positionData) {return;}
-
-    const positionArray = Array.isArray(positionData) ? positionData : [positionData];
-
-    for (const positionItem of positionArray) {
-        const channelIndex = positionItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldPosition = device._rollerShutterPositionByChannel.get(channelIndex);
-        const oldState = device._rollerShutterStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            state: oldState.state,
-            position: oldState.position
-        } : (oldPosition !== undefined ? { position: oldPosition } : undefined);
-
-        device._rollerShutterPositionByChannel.set(channelIndex, positionItem.position);
-
-        let state = device._rollerShutterStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new RollerShutterState(positionItem);
-            device._rollerShutterStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(positionItem);
-        }
-
-        const newValue = {};
-        if (oldValue === undefined || oldValue.state !== state.state) {
-            newValue.state = state.state;
-        }
-        if (oldValue === undefined || oldValue.position !== state.position) {
-            newValue.position = state.position;
-        }
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'rollerShutter',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Updates the cached roller shutter configuration from config data.
  *
  * Called automatically when roller shutter configuration responses are received.
@@ -344,7 +233,5 @@ module.exports = createRollerShutterAbility;
  * Private exports for unit tests. Do not rename or change shape without updating
  * `test/roller-shutter-ability.test.js`.
  */
-module.exports._updateRollerShutterState = updateRollerShutterState;
-module.exports._updateRollerShutterPosition = updateRollerShutterPosition;
 module.exports._updateRollerShutterConfig = updateRollerShutterConfig;
 module.exports.getCapabilities = getRollerShutterCapabilities;
