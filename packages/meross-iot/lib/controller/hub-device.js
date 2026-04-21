@@ -50,8 +50,8 @@ class MerossHubDevice extends MerossDevice {
         this.hub = createHubAbility(this);
 
         // Assign handlePushNotification to instance so device.js can call it
-        this.handlePushNotification = (namespace, data) => {
-            return handlePushNotification(this, namespace, data);
+        this.handlePushNotification = (notification) => {
+            return handlePushNotification(this, notification);
         };
     }
 
@@ -130,35 +130,6 @@ class MerossHubDevice extends MerossDevice {
         if (this.hub && typeof this.hub.refreshState === 'function') {
             await this.hub.refreshState();
         }
-    }
-
-    /**
-     * Handles incoming messages and routes hub-specific notifications to subdevices.
-     *
-     * Parent implementation routes push notifications to handlePushNotification if provided
-     * by feature modules, which can then distribute to subdevices.
-     *
-     * @param {Object} message - The message object
-     */
-    handleMessage(message) {
-        super.handleMessage(message);
-    }
-
-    /**
-     * Sets up push notification routing when device connects.
-     *
-     * Registers fallback routing for push notifications that support subdevice routing.
-     * Primary routing is handled by feature modules via handlePushNotification override.
-     *
-     */
-    connect() {
-        super.connect();
-
-        this.on('pushNotificationReceived', (notification) => {
-            if (notification && typeof notification.routeToSubdevices === 'function') {
-                notification.routeToSubdevices(this);
-            }
-        });
     }
 
     /**

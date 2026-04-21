@@ -4,6 +4,7 @@ const { MerossDevice } = require('./device');
 const { OnlineStatus, SmokeAlarmStatus } = require('../model/enums');
 const DeviceRegistry = require('../device-registry');
 const { MerossDeviceError } = require('../model/exception');
+const { getMessageTimestamp, shouldApplyUpdate } = require('../utilities/state-ordering');
 
 /**
  * Base class for all Meross subdevices.
@@ -264,17 +265,23 @@ class MerossSubDevice extends MerossDevice {
     }
 
     /**
-     * Updates online status from notification data.
+     * Updates online status from notification data when the message timestamp is not stale.
      *
-     * Handles both data.online.status pattern (from Sensor.All, Mts100.All) and
-     * data.status pattern (from Hub.Online namespace) for compatibility with different
-     * notification formats.
+     * Handles both `data.online.status` (Sensor.All, Mts100.All) and `data.status` (Hub.Online).
+     * All writes share the `'online'` ordering key so a stale aggregate payload cannot overwrite
+     * a fresher per-namespace online update.
      *
      * @private
      * @param {Object} data - Notification data payload
-     * @returns {Object|null} Object with status and lastActiveTime if present, null otherwise
+     * @param {number|null|undefined} messageTs - Milliseconds from {@link getMessageTimestamp}, or
+     *   null/undefined to apply without ordering
+     * @param {Object} [options]
+     * @param {boolean} [options.touchLastActiveTime=false] - When true, assigns `_lastActiveTime`
+     *   from the payload (possibly `undefined`), matching Hub.Online / Mts100.All call sites; when
+     *   false, only `_onlineStatus` is updated (Sensor.All paths that omitted last-active).
+     * @returns {void}
      */
-    _updateOnlineStatus(data) {
+    _updateOnlineStatus(data, messageTs, { touchLastActiveTime = false } = {}) {
         let statusValue;
         let lastActiveTime;
 
@@ -286,26 +293,50 @@ class MerossSubDevice extends MerossDevice {
             lastActiveTime = data.lastActiveTime;
         }
 
-        if (statusValue !== undefined) {
-            return {
-                status: this._mapOnlineStatus(statusValue),
-                lastActiveTime
-            };
+        if (statusValue === undefined) {
+            return;
         }
 
-        return null;
+        if (!shouldApplyUpdate(this, 'online', messageTs)) {
+            return;
+        }
+
+        this._onlineStatus = this._mapOnlineStatus(statusValue);
+        if (touchLastActiveTime) {
+            this._lastActiveTime = lastActiveTime;
+        }
     }
 
     /**
-     * Handles notifications routed from hub to this subdevice.
+     * Applies a hub-forwarded message to this subdevice.
      *
-     * Subclasses override this method to process notification data and update cached state.
+     * Subdevices do not receive raw MQTT; the hub strips the envelope and
+     * forwards `{ header, namespace, payload }` (possibly a single item from
+     * a larger hub payload). This override intentionally shadows
+     * {@link MerossDevice#handleMessage} — see JSDoc there for the MQTT-raw shape.
      *
-     * @param {string} namespace - The namespace of the notification
-     * @param {object} data - The data payload for this subdevice
+     * Ordering gate key is the handler method name, not the namespace. This
+     * means two namespaces that dispatch to the same handler (for example
+     * Hub.Sensor.All + Hub.Sensor.TempHum both mapping to `_handleSensorAll`)
+     * share one timestamp gate, so a stale broader push cannot clobber state
+     * set by a fresher targeted push.
+     *
+     * @param {{ header?: object, namespace: string, payload: object }} message - Hub-forwarded envelope
+     * @returns {Promise<void>}
      */
-    async handleSubdeviceNotification(namespace, data) {
-        this.emit('subdeviceNotification', namespace, data);
+    async handleMessage({ header, namespace, payload }) {
+        this.emit('message', { header, namespace, payload });
+        const handlers = this.constructor.NAMESPACE_HANDLERS || [];
+        const messageTs = getMessageTimestamp(header);
+        for (const { namespace: ns, handler } of handlers) {
+            if (ns !== namespace) {
+                continue;
+            }
+            if (!shouldApplyUpdate(this, handler, messageTs)) {
+                continue;
+            }
+            await this[handler](payload, messageTs);
+        }
     }
 }
 
@@ -380,33 +411,14 @@ class HubTempHumSensor extends MerossSubDevice {
     }
 
     /**
-     * Handles subdevice-specific notifications from the hub.
-     *
-     * Routes notifications to appropriate handler methods based on namespace registry.
-     *
-     * @param {string} namespace - Notification namespace
-     * @param {Object} data - Notification data payload
-     */
-    async handleSubdeviceNotification(namespace, data) {
-        await super.handleSubdeviceNotification(namespace, data);
-
-        const handler = HubTempHumSensor.NAMESPACE_HANDLERS.find(route => route.namespace === namespace);
-        if (handler && typeof this[handler.handler] === 'function') {
-            await this[handler.handler](data);
-        }
-    }
-
-    /**
      * Handles Appliance.Hub.Sensor.All and Appliance.Hub.Sensor.TempHum namespaces.
      *
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleSensorAll(data) {
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-        }
+    _handleSensorAll(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs);
 
         // Merge to preserve existing properties like min/max temperature ranges
         if (data.temperature) {
@@ -689,36 +701,16 @@ class HubThermostatValve extends MerossSubDevice {
     }
 
     /**
-     * Handles subdevice-specific notifications from the hub.
-     *
-     * Routes notifications to appropriate handler methods based on namespace registry.
-     *
-     * @param {string} namespace - Notification namespace
-     * @param {Object} data - Notification data payload
-     */
-    async handleSubdeviceNotification(namespace, data) {
-        await super.handleSubdeviceNotification(namespace, data);
-
-        const handler = HubThermostatValve.NAMESPACE_HANDLERS.find(route => route.namespace === namespace);
-        if (handler && typeof this[handler.handler] === 'function') {
-            await this[handler.handler](data);
-        }
-    }
-
-    /**
      * Handles Appliance.Hub.Mts100.All namespace.
      *
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleMts100All(data) {
+    _handleMts100All(data, messageTs) {
         this._scheduleBMode = data.scheduleBMode;
 
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-            this._lastActiveTime = onlineStatus.lastActiveTime;
-        }
+        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
 
         if (data.togglex) {
             this._togglex = { ...this._togglex, ...data.togglex };
@@ -774,13 +766,10 @@ class HubThermostatValve extends MerossSubDevice {
      * Handles Appliance.Hub.Online namespace
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleOnline(data) {
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-            this._lastActiveTime = onlineStatus.lastActiveTime;
-        }
+    _handleOnline(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
     }
 
     /**
@@ -1064,23 +1053,6 @@ class HubWaterLeakSensor extends MerossSubDevice {
     }
 
     /**
-     * Handles subdevice-specific notifications from the hub.
-     *
-     * Routes notifications to appropriate handler methods based on namespace registry.
-     *
-     * @param {string} namespace - Notification namespace
-     * @param {Object} data - Notification data payload
-     */
-    async handleSubdeviceNotification(namespace, data) {
-        await super.handleSubdeviceNotification(namespace, data);
-
-        const handler = HubWaterLeakSensor.NAMESPACE_HANDLERS.find(route => route.namespace === namespace);
-        if (handler && typeof this[handler.handler] === 'function') {
-            await this[handler.handler](data);
-        }
-    }
-
-    /**
      * Handles Appliance.Hub.Sensor.WaterLeak namespace
      * @private
      * @param {Object} data - Notification data payload
@@ -1098,13 +1070,10 @@ class HubWaterLeakSensor extends MerossSubDevice {
      * Handles Appliance.Hub.Sensor.All namespace
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleSensorAll(data) {
-        // Update online status if present
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-        }
+    _handleSensorAll(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs);
 
         // Extract water leak data if present
         if (data.waterLeak) {
@@ -1121,13 +1090,10 @@ class HubWaterLeakSensor extends MerossSubDevice {
      * Handles Appliance.Hub.Online namespace
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleOnline(data) {
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-            this._lastActiveTime = onlineStatus.lastActiveTime;
-        }
+    _handleOnline(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
     }
 
     /**
@@ -1280,23 +1246,6 @@ class HubSmokeDetector extends MerossSubDevice {
     }
 
     /**
-     * Handles subdevice-specific notifications from the hub.
-     *
-     * Routes notifications to appropriate handler methods based on namespace registry.
-     *
-     * @param {string} namespace - Notification namespace
-     * @param {Object} data - Notification data payload
-     */
-    async handleSubdeviceNotification(namespace, data) {
-        await super.handleSubdeviceNotification(namespace, data);
-
-        const handler = HubSmokeDetector.NAMESPACE_HANDLERS.find(route => route.namespace === namespace);
-        if (handler && typeof this[handler.handler] === 'function') {
-            await this[handler.handler](data);
-        }
-    }
-
-    /**
      * Handles Appliance.Hub.Sensor.Smoke namespace
      * @private
      * @param {Object} data - Notification data payload
@@ -1309,13 +1258,10 @@ class HubSmokeDetector extends MerossSubDevice {
      * Handles Appliance.Hub.Sensor.All namespace
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleSensorAll(data) {
-        // Update online status if present
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-        }
+    _handleSensorAll(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs);
 
         // Extract smoke alarm data if present
         if (data.smokeAlarm) {
@@ -1327,13 +1273,10 @@ class HubSmokeDetector extends MerossSubDevice {
      * Handles Appliance.Hub.Online namespace
      * @private
      * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
      */
-    _handleOnline(data) {
-        const onlineStatus = this._updateOnlineStatus(data);
-        if (onlineStatus) {
-            this._onlineStatus = onlineStatus.status;
-            this._lastActiveTime = onlineStatus.lastActiveTime;
-        }
+    _handleOnline(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
     }
 
     /**
@@ -1501,14 +1444,18 @@ class HubSmokeDetector extends MerossSubDevice {
      * @returns {Promise<Object>} Promise that resolves with the alarm status response
      */
     async refreshAlarmStatus() {
-        const { payload: response } = await this.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', {
+        const { header, payload: response } = await this.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', {
             smokeAlarm: [{
                 id: this._subdeviceId
             }]
         }, null);
 
         if (response && response.smokeAlarm) {
-            this._handleSmokeAlarmData(response.smokeAlarm);
+            await this.handleMessage({
+                header,
+                namespace: 'Appliance.Hub.Sensor.Smoke',
+                payload: response.smokeAlarm
+            });
         }
 
         return response;

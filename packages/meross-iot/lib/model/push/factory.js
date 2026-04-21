@@ -106,18 +106,20 @@ const DATA_EXTRACTION_STRATEGIES = {
  * @param {string} namespace - The namespace of the push notification (e.g., 'Appliance.Control.ToggleX')
  * @param {Object} messagePayload - The raw message payload from MQTT
  * @param {string} deviceUuid - The UUID of the device that originated the notification
+ * @param {Object} [header] - Optional MQTT message header (e.g. timestamp) to attach for hub routing
  * @returns {GenericPushNotification|null} The parsed notification object, or null if invalid
  * @example
  * const notification = parsePushNotification(
  *     'Appliance.Control.ToggleX',
  *     { togglex: [{ channel: 0, onoff: 1 }] },
- *     'device-uuid-123'
+ *     'device-uuid-123',
+ *     messageHeader
  * );
  * if (notification instanceof ToggleXPushNotification) {
  *     console.log('Toggle state changed');
  * }
  */
-function parsePushNotification(namespace, messagePayload, deviceUuid) {
+function parsePushNotification(namespace, messagePayload, deviceUuid, header) {
     if (!namespace || typeof namespace !== 'string') {
         return null;
     }
@@ -130,15 +132,17 @@ function parsePushNotification(namespace, messagePayload, deviceUuid) {
 
     if (NotificationClass) {
         try {
-            return new NotificationClass(deviceUuid, messagePayload);
+            const notification = new NotificationClass(deviceUuid, messagePayload);
+            notification.setMessageHeader(header);
+            return notification;
         } catch (error) {
             // Fall back to generic notification if specific class fails to parse
-            return new GenericPushNotification(namespace, deviceUuid, messagePayload);
+            return new GenericPushNotification(namespace, deviceUuid, messagePayload, header);
         }
     }
 
     // Return generic notification for unmapped namespaces (unknown notification types)
-    return new GenericPushNotification(namespace, deviceUuid, messagePayload);
+    return new GenericPushNotification(namespace, deviceUuid, messagePayload, header);
 }
 
 /**
@@ -173,7 +177,7 @@ function extractDataArray(namespace, rawData) {
  *
  * Extracts subdevice data from a hub notification and forwards it to the corresponding
  * subdevice instances. Each subdevice processes the notification asynchronously via
- * handleSubdeviceNotification. Skips unregistered subdevices and logs warnings.
+ * {@link MerossSubDevice#handleMessage}. Skips unregistered subdevices and logs warnings.
  *
  * @param {GenericPushNotification} notification - The push notification instance
  * @param {MerossHubDevice} hubDevice - The hub device instance
@@ -213,8 +217,8 @@ function routeToSubdevices(notification, hubDevice) {
         }
 
         // Process asynchronously and catch errors to prevent one failure from blocking others
-        if (typeof subdevice.handleSubdeviceNotification === 'function') {
-            subdevice.handleSubdeviceNotification(namespace, item).catch(err => {
+        if (typeof subdevice.handleMessage === 'function') {
+            subdevice.handleMessage({ header: notification.header, namespace, payload: item }).catch(err => {
                 const logger = hubDevice.cloudInst?.options?.logger || console.error;
                 logger(`Error routing hub ${namespace} notification to subdevice ${subdeviceId}: ${err.message}`);
             });

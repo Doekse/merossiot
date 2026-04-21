@@ -131,6 +131,14 @@ describe('push notification models', () => {
         assert.strictEqual(parsePushNotification('Appliance.Control.ToggleX', {}, ''), null);
     });
 
+    it('parsePushNotification attaches optional MQTT header on mapped and generic notifications', () => {
+        const hdr = { timestamp: 12, timestampMs: 34 };
+        const mapped = parsePushNotification('Appliance.Control.ToggleX', { togglex: [] }, UUID, hdr);
+        assert.strictEqual(mapped.header, hdr);
+        const generic = parsePushNotification('Appliance.Totally.Unknown', {}, UUID, hdr);
+        assert.strictEqual(generic.header, hdr);
+    });
+
     it('ToggleXPushNotification normalizes togglex and extractChanges maps channels to booleans', () => {
         assertSingleAndArrayPayloadMatch(
             ToggleXPushNotification,

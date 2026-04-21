@@ -1437,16 +1437,15 @@ class MerossDevice extends EventEmitter {
         this._pushNotificationReceived(namespace);
         const payload = message.payload || message;
 
-        this.emit('pushNotificationReceived', namespace);
-
-        parsePushNotification(namespace, payload, this.uuid);
+        const notification = parsePushNotification(namespace, payload, this.uuid, message.header);
+        this.emit('pushNotificationReceived', namespace, notification);
 
         this._routeMessageToAbility(message.header, payload, 'push');
 
         // Feature modules can override for custom routing (e.g., hub subdevices that
         // need to route notifications to child devices)
         if (typeof this.handlePushNotification === 'function') {
-            this.handlePushNotification(namespace, payload);
+            this.handlePushNotification(notification);
         }
     }
 

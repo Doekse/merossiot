@@ -1,7 +1,5 @@
 'use strict';
 
-const { parsePushNotification } = require('../../model/push');
-
 const PUSH_MAP = {
     'Appliance.Hub.Online': 'online',
     'Appliance.Hub.ToggleX': 'togglex',
@@ -23,25 +21,25 @@ const PUSH_MAP = {
  * Routes notifications to appropriate subdevices based on the namespace.
  *
  * @param {Object} device - The device instance
- * @param {string} namespace - The namespace of the push notification
- * @param {Object} data - The push notification data
+ * @param {Object} notification - The parsed push notification instance
  * @returns {boolean} True if the notification was handled locally, false otherwise
  */
-function handlePushNotification(device, namespace, data) {
+function handlePushNotification(device, notification) {
+    const namespace = notification?.namespace || '';
     const dataKey = PUSH_MAP[namespace];
 
     if (!dataKey) {
         return false;
     }
 
-    const payload = data[dataKey];
+    const rawData = notification?.rawData || {};
+    const payload = rawData[dataKey];
     if (!payload) {
         const logger = device.cloudInst?.options?.logger || console.warn;
-        logger(`${device.constructor.name} could not find ${dataKey} attribute in push notification data: ${JSON.stringify(data)}`);
+        logger(`${device.constructor.name} could not find ${dataKey} attribute in push notification data: ${JSON.stringify(rawData)}`);
         return false;
     }
 
-    const notification = parsePushNotification(namespace, data, device.uuid);
     if (notification && typeof notification.routeToSubdevices === 'function') {
         notification.routeToSubdevices(device);
     }
@@ -167,14 +165,14 @@ function createHubAbility(device) {
          */
         async getBattery() {
             const payload = { 'battery': [] };
-            const { payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Battery', payload, null);
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Battery', payload, null);
 
             if (response && response.battery && Array.isArray(response.battery)) {
                 for (const batteryData of response.battery) {
                     const subdeviceId = batteryData.id;
                     const subdevice = device.getSubdevice(subdeviceId);
-                    if (subdevice && typeof subdevice.handleSubdeviceNotification === 'function') {
-                        await subdevice.handleSubdeviceNotification('Appliance.Hub.Battery', batteryData);
+                    if (subdevice && typeof subdevice.handleMessage === 'function') {
+                        await subdevice.handleMessage({ header, namespace: 'Appliance.Hub.Battery', payload: batteryData });
                     }
                 }
             }
@@ -331,14 +329,14 @@ function createHubAbility(device) {
                 payload.all.push({ id: sensorIds });
             }
 
-            const { payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.All', payload);
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.All', payload);
 
             if (response && response.all && Array.isArray(response.all)) {
                 for (const sensorData of response.all) {
                     const subdeviceId = sensorData.id;
                     const subdevice = device.getSubdevice(subdeviceId);
-                    if (subdevice && typeof subdevice.handleSubdeviceNotification === 'function') {
-                        await subdevice.handleSubdeviceNotification('Appliance.Hub.Sensor.All', sensorData);
+                    if (subdevice && typeof subdevice.handleMessage === 'function') {
+                        await subdevice.handleMessage({ header, namespace: 'Appliance.Hub.Sensor.All', payload: sensorData });
                     }
                 }
             }
@@ -367,14 +365,14 @@ function createHubAbility(device) {
                 });
             });
 
-            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload, null);
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload, null);
 
             if (response && response.latest && Array.isArray(response.latest)) {
                 for (const latestData of response.latest) {
                     const subdeviceId = latestData.subId;
                     const subdevice = device.getSubdevice(subdeviceId);
-                    if (subdevice && typeof subdevice.handleSubdeviceNotification === 'function') {
-                        await subdevice.handleSubdeviceNotification('Appliance.Control.Sensor.LatestX', latestData);
+                    if (subdevice && typeof subdevice.handleMessage === 'function') {
+                        await subdevice.handleMessage({ header, namespace: 'Appliance.Control.Sensor.LatestX', payload: latestData });
                     }
                 }
             }
@@ -436,14 +434,14 @@ function createHubAbility(device) {
                 payload.smokeAlarm.push({ id: sensorIds });
             }
 
-            const { payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', payload);
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', payload);
 
             if (response && response.smokeAlarm && Array.isArray(response.smokeAlarm)) {
                 for (const smokeData of response.smokeAlarm) {
                     const subdeviceId = smokeData.id;
                     const subdevice = device.getSubdevice(subdeviceId);
-                    if (subdevice && typeof subdevice.handleSubdeviceNotification === 'function') {
-                        await subdevice.handleSubdeviceNotification('Appliance.Hub.Sensor.Smoke', smokeData);
+                    if (subdevice && typeof subdevice.handleMessage === 'function') {
+                        await subdevice.handleMessage({ header, namespace: 'Appliance.Hub.Sensor.Smoke', payload: smokeData });
                     }
                 }
             }

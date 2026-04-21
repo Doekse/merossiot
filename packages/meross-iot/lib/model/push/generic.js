@@ -23,11 +23,25 @@ class GenericPushNotification {
      * @param {string} namespace - The namespace of the notification (e.g., 'Appliance.Control.ToggleX')
      * @param {string} originatingDeviceUuid - UUID of the device that sent the notification
      * @param {Object} [rawData={}] - Raw notification data from the device
+     * @param {Object} [header] - MQTT message header (e.g. timestamp), when supplied by the push factory
      */
-    constructor(namespace, originatingDeviceUuid, rawData) {
+    constructor(namespace, originatingDeviceUuid, rawData, header) {
         this._namespace = namespace;
         this._originatingDeviceUuid = originatingDeviceUuid;
         this._rawData = rawData || {};
+        this._header = header;
+    }
+
+    /**
+     * Attaches the MQTT envelope header for downstream routing (hub subdevice ordering).
+     * Used when the notification class constructor does not accept the header argument.
+     *
+     * @param {Object|undefined} header - Message header from the enclosing MQTT frame
+     */
+    setMessageHeader(header) {
+        if (header !== undefined) {
+            this._header = header;
+        }
     }
 
     /**
@@ -55,6 +69,15 @@ class GenericPushNotification {
      */
     get rawData() {
         return this._rawData;
+    }
+
+    /**
+     * Gets the MQTT message header when the push was parsed with header attachment enabled.
+     *
+     * @returns {Object|undefined} Header object, or undefined if not provided at parse time
+     */
+    get header() {
+        return this._header;
     }
 
     /**
