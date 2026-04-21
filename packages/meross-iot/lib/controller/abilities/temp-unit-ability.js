@@ -61,10 +61,10 @@ function createTempUnitAbility(device) {
  * Gets temp unit capability information for a device.
  *
  * @param {Object} device - The device instance
- * @param {Array<number>} channelIds - Array of channel IDs
+ * @param {Array<number>} _channelIds - Array of channel IDs (unused; consistent with `getCapabilities` signature)
  * @returns {Object|null} Temp unit capability object or null if not supported
  */
-function getTempUnitCapabilities(device, channelIds) {
+function getTempUnitCapabilities(device, _channelIds) {
     if (!device.abilities || !device.abilities['Appliance.Control.TempUnit']) {return null;}
 
     return {

@@ -21,7 +21,9 @@ const CACHE_MAX_AGE = 5000;
  */
 function readCache(device, stateMapName, channel, { maxAgeMs = CACHE_MAX_AGE } = {}) {
     const ts = device.lastFullUpdateTimestamp;
-    if (!ts || Date.now() - ts >= maxAgeMs) return undefined;
+    if (!ts || Date.now() - ts >= maxAgeMs) {
+        return undefined;
+    }
     const map = device[stateMapName];
     return map ? map.get(channel) : undefined;
 }
@@ -38,7 +40,9 @@ function readCache(device, stateMapName, channel, { maxAgeMs = CACHE_MAX_AGE } =
  */
 async function getCachedOrFetch(device, stateMapName, channel, fetcher, opts) {
     const cached = readCache(device, stateMapName, channel, opts);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+        return cached;
+    }
     await fetcher();
     const map = device[stateMapName];
     return map ? map.get(channel) : undefined;

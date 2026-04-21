@@ -26,10 +26,10 @@ function createDigestTimerAbility(device) {
  * Gets digest timer capability information for a device.
  *
  * @param {Object} device - The device instance
- * @param {Array<number>} channelIds - Array of channel IDs
+ * @param {Array<number>} _channelIds - Array of channel IDs (unused; consistent with `getCapabilities` signature)
  * @returns {Object|null} Digest timer capability object or null if not supported
  */
-function getDigestTimerCapabilities(device, channelIds) {
+function getDigestTimerCapabilities(device, _channelIds) {
     if (!device.abilities) {return null;}
 
     const hasDigestTimerX = !!device.abilities['Appliance.Digest.TimerX'];

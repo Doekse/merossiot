@@ -85,7 +85,7 @@ describe('ManagerMeross.authenticate', () => {
         const email = 'user@example.com';
         const password = 'plain-secret';
 
-        t.mock.method(globalThis, 'fetch', async (url, init) => {
+        t.mock.method(globalThis, 'fetch', async (url, _init) => {
             const href = typeof url === 'string' ? url : String(url);
             if (href.includes(LOGIN_URL)) {
                 return jsonFetchResponse({

@@ -26,10 +26,10 @@ function createDigestTriggerAbility(device) {
  * Gets digest trigger capability information for a device.
  *
  * @param {Object} device - The device instance
- * @param {Array<number>} channelIds - Array of channel IDs
+ * @param {Array<number>} _channelIds - Array of channel IDs (unused; consistent with `getCapabilities` signature)
  * @returns {Object|null} Digest trigger capability object or null if not supported
  */
-function getDigestTriggerCapabilities(device, channelIds) {
+function getDigestTriggerCapabilities(device, _channelIds) {
     if (!device.abilities) {return null;}
 
     const hasDigestTriggerX = !!device.abilities['Appliance.Digest.TriggerX'];
