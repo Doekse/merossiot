@@ -9,6 +9,97 @@ const { buildStateChanges } = require('../../utilities/state-changes');
 const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
+ * Mapping of mutable light attributes to the capacity bit required to send them.
+ *
+ * Centralizing this table means {@link createLightAbility~set} stays flat rather
+ * than repeating the same "is value present AND mode supported?" pattern three times.
+ *
+ * @type {Array<{option: string, payloadKey: string, mode: number, transform?: Function}>}
+ */
+const LIGHT_ATTRIBUTES = [
+    { option: 'rgb',         payloadKey: 'rgb',         mode: LightMode.MODE_RGB,         transform: rgbToInt },
+    { option: 'luminance',   payloadKey: 'luminance',   mode: LightMode.MODE_LUMINANCE },
+    { option: 'temperature', payloadKey: 'temperature', mode: LightMode.MODE_TEMPERATURE }
+];
+
+/**
+ * Resolves the on/off portion of the light payload and, where applicable, fires
+ * the toggle command as a side-effect.
+ *
+ * Toggle/ToggleX devices carry on/off out-of-band so the light payload must omit
+ * it; legacy devices need it inlined, falling back to cached state to avoid
+ * clobbering the current value on a partial update.
+ *
+ * @param {Object} device - The device instance
+ * @param {number} channel - Target channel index
+ * @param {boolean|undefined} on - Desired on/off state, or undefined if not changing
+ * @returns {Promise<{ onoff?: number }>} Partial payload fragment
+ */
+async function resolveOnOff(device, channel, on) {
+    const hasToggleSupport = Boolean(
+        device.abilities?.['Appliance.Control.ToggleX'] ||
+        device.abilities?.['Appliance.Control.Toggle']
+    );
+
+    if (hasToggleSupport) {
+        if (on !== undefined && device.toggle) {
+            await device.toggle.set({ channel, on });
+        }
+        return {};
+    }
+
+    if (on !== undefined) {
+        return { onoff: on ? 1 : 0 };
+    }
+
+    const current = device._lightStateByChannel.get(channel);
+    return current?.isOn !== undefined ? { onoff: current.isOn ? 1 : 0 } : {};
+}
+
+/**
+ * Builds the capability-gated portion of the light payload by iterating
+ * {@link LIGHT_ATTRIBUTES}.
+ *
+ * Attributes unsupported by the channel's capacity mask are silently skipped so
+ * the device never receives a field it cannot honor.
+ *
+ * @param {Function} supportsMode - Function(mode, channel) → boolean
+ * @param {number} channel - Target channel index
+ * @param {Object} options - Raw options from the caller
+ * @returns {{ rgb?: number, luminance?: number, temperature?: number, capacity?: number }}
+ */
+function buildAttributePayload(supportsMode, channel, options) {
+    const payload = {};
+    let capacity = 0;
+
+    for (const { option, payloadKey, mode, transform } of LIGHT_ATTRIBUTES) {
+        const value = options[option];
+        if (value === undefined || !supportsMode(mode, channel)) {continue;}
+        payload[payloadKey] = transform ? transform(value) : value;
+        capacity |= mode;
+    }
+
+    if (capacity !== 0) {payload.capacity = capacity;}
+    return payload;
+}
+
+/**
+ * Normalizes the `gradual` option to the 0/1 integer the Meross firmware expects.
+ *
+ * When not specified, gradual defaults to enabled only for RGB changes — matching
+ * the original behavior.
+ *
+ * @param {boolean|number|undefined} gradual - Raw gradual value from options
+ * @param {boolean} hasRgb - Whether an RGB change is present in this update
+ * @returns {0|1}
+ */
+function resolveGradual(gradual, hasRgb) {
+    if (gradual === undefined) {return hasRgb ? 1 : 0;}
+    if (typeof gradual === 'boolean') {return gradual ? 1 : 0;}
+    return gradual;
+}
+
+/**
  * Creates a light feature object for a device.
  *
  * Provides control over light settings including color, brightness, temperature, and on/off state.
@@ -51,64 +142,23 @@ function createLightAbility(device) {
          */
         async set(options = {}) {
             const channel = normalizeChannel(options);
-            const { on, rgb, luminance, temperature, gradual } = options;
 
-            const hasToggleX = device.abilities?.['Appliance.Control.ToggleX'];
-            const hasToggle = device.abilities?.['Appliance.Control.Toggle'];
-            const hasToggleSupport = hasToggleX || hasToggle;
+            const lightPayload = {
+                ...(await resolveOnOff(device, channel, options.on)),
+                ...buildAttributePayload(supportsLightMode, channel, options)
+            };
 
-            // Handle on/off via toggle if supported
-            if (hasToggleSupport && on !== undefined) {
-                if (device.toggle) {
-                    await device.toggle.set({ channel, on });
-                }
-            }
-
-            const lightPayload = {};
-
-            // Include onoff in light payload if toggle not supported
-            if (!hasToggleSupport && on !== undefined) {
-                lightPayload.onoff = on ? 1 : 0;
-            } else if (!hasToggleSupport) {
-                // Preserve current state if not specified
-                const currentState = device._lightStateByChannel.get(channel);
-                if (currentState && currentState.isOn !== undefined) {
-                    lightPayload.onoff = currentState.isOn ? 1 : 0;
-                }
-            }
-
-            if (rgb !== undefined && supportsLightMode(LightMode.MODE_RGB, channel)) {
-                lightPayload.rgb = rgbToInt(rgb);
-                lightPayload.capacity = (lightPayload.capacity || 0) | LightMode.MODE_RGB;
-            }
-
-            if (luminance !== undefined && supportsLightMode(LightMode.MODE_LUMINANCE, channel)) {
-                lightPayload.luminance = luminance;
-                lightPayload.capacity = (lightPayload.capacity || 0) | LightMode.MODE_LUMINANCE;
-            }
-
-            if (temperature !== undefined && supportsLightMode(LightMode.MODE_TEMPERATURE, channel)) {
-                lightPayload.temperature = temperature;
-                lightPayload.capacity = (lightPayload.capacity || 0) | LightMode.MODE_TEMPERATURE;
-            }
-
-            if (Object.keys(lightPayload).length === 0) {
-                return null;
-            }
+            if (Object.keys(lightPayload).length === 0) {return null;}
 
             lightPayload.channel = channel;
+            lightPayload.gradual = resolveGradual(options.gradual, options.rgb !== undefined);
 
-            // Handle gradual transition parameter
-            if (gradual !== undefined) {
-                lightPayload.gradual = typeof gradual === 'boolean' ? (gradual ? 1 : 0) : gradual;
-            } else if (rgb !== undefined) {
-                lightPayload.gradual = 1;
-            } else {
-                lightPayload.gradual = 0;
-            }
-
-            const payload = { light: lightPayload };
-            const { payload: lightResponsePayload } = await device.publishMessage('SET', 'Appliance.Control.Light', payload, null);
+            const { payload: lightResponsePayload } = await device.publishMessage(
+                'SET',
+                'Appliance.Control.Light',
+                { light: lightPayload },
+                null
+            );
             return lightResponsePayload;
         },
 
