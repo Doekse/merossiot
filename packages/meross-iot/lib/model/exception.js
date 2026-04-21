@@ -123,6 +123,29 @@ class MerossNetworkError extends MerossError {
 }
 
 /**
+ * Exact `errorCode` → typed error mapping. Optional `pick` lists context keys
+ * merged with `|| null` so omitted values stay serializable like the legacy branches.
+ *
+ * @type {Map<number, { ErrorClass: typeof MerossAuthError | typeof MerossApiError | typeof MerossDeviceError, code: string, pick?: string[] }>}
+ */
+const ERROR_CODE_MAP = new Map([
+    [1019, { ErrorClass: MerossAuthError, code: 'TOKEN_EXPIRED' }],
+    [1022, { ErrorClass: MerossAuthError, code: 'TOKEN_EXPIRED' }],
+    [1200, { ErrorClass: MerossAuthError, code: 'TOKEN_EXPIRED' }],
+    [1301, { ErrorClass: MerossAuthError, code: 'TOO_MANY_TOKENS' }],
+    [1032, { ErrorClass: MerossAuthError, code: 'MFA_WRONG' }],
+    [1033, { ErrorClass: MerossAuthError, code: 'MFA_REQUIRED' }],
+    [1030, { ErrorClass: MerossApiError, code: 'BAD_DOMAIN', pick: ['apiDomain', 'mqttDomain'] }],
+    [1042, { ErrorClass: MerossApiError, code: 'API_LIMIT_REACHED' }],
+    [1043, { ErrorClass: MerossApiError, code: 'RESOURCE_ACCESS_DENIED' }],
+    [1028, { ErrorClass: MerossApiError, code: 'RATE_LIMIT' }],
+    [1035, { ErrorClass: MerossApiError, code: 'OPERATION_LOCKED' }],
+    [20101, { ErrorClass: MerossDeviceError, code: 'VALIDATION_ERROR', pick: ['field'] }],
+    [20106, { ErrorClass: MerossDeviceError, code: 'NOT_FOUND', pick: ['resourceType', 'resourceId'] }],
+    [20112, { ErrorClass: MerossDeviceError, code: 'UNSUPPORTED', pick: ['operation', 'reason'] }]
+]);
+
+/**
  * Maps error codes to appropriate error classes.
  *
  * Converts API error codes into specific error class instances based on the
@@ -140,81 +163,36 @@ class MerossNetworkError extends MerossError {
  * @returns {MerossError} Appropriate error instance
  */
 function mapErrorCodeToError(errorCode, context = {}) {
-    const { info, httpStatusCode } = context;
     const { getErrorMessage } = require('./http/error-codes');
+    const { info, httpStatusCode } = context;
     const message = info || getErrorMessage(errorCode);
-    const properties = { ...context, errorCode };
-    delete properties.info;
-    delete properties.httpStatusCode;
+    const { info: _i, httpStatusCode: _h, ...rest } = context;
+    const base = { ...rest, errorCode };
 
     if (httpStatusCode === 401) {
         return new MerossAuthError(message, 'UNAUTHORIZED', {
-            ...properties,
+            ...base,
             httpStatusCode
         });
     }
     if (httpStatusCode && httpStatusCode >= 400) {
         return new MerossApiError(message, 'HTTP_API_ERROR', {
-            ...properties,
+            ...base,
             httpStatusCode
         });
     }
 
-    if (errorCode === 1019 || errorCode === 1022 || errorCode === 1200) {
-        return new MerossAuthError(message, 'TOKEN_EXPIRED', properties);
+    const entry = ERROR_CODE_MAP.get(errorCode);
+    if (entry) {
+        const extras = (entry.pick || []).reduce(
+            (acc, key) => ({ ...acc, [key]: context[key] || null }),
+            {}
+        );
+        return new entry.ErrorClass(message, entry.code, { ...base, ...extras });
     }
-    if (errorCode === 1301) {
-        return new MerossAuthError(message, 'TOO_MANY_TOKENS', properties);
-    }
+
     if (errorCode >= 1000 && errorCode <= 1008) {
-        return new MerossAuthError(message, 'AUTHENTICATION', properties);
-    }
-    if (errorCode === 1032) {
-        return new MerossAuthError(message, 'MFA_WRONG', properties);
-    }
-    if (errorCode === 1033) {
-        return new MerossAuthError(message, 'MFA_REQUIRED', properties);
-    }
-
-    if (errorCode === 1030) {
-        return new MerossApiError(message, 'BAD_DOMAIN', {
-            ...properties,
-            apiDomain: context.apiDomain || null,
-            mqttDomain: context.mqttDomain || null
-        });
-    }
-    if (errorCode === 1042) {
-        return new MerossApiError(message, 'API_LIMIT_REACHED', properties);
-    }
-    if (errorCode === 1043) {
-        return new MerossApiError(message, 'RESOURCE_ACCESS_DENIED', properties);
-    }
-    if (errorCode === 1028) {
-        return new MerossApiError(message, 'RATE_LIMIT', properties);
-    }
-    if (errorCode === 1035) {
-        return new MerossApiError(message, 'OPERATION_LOCKED', properties);
-    }
-
-    if (errorCode === 20101) {
-        return new MerossDeviceError(message, 'VALIDATION_ERROR', {
-            ...properties,
-            field: context.field || null
-        });
-    }
-    if (errorCode === 20106) {
-        return new MerossDeviceError(message, 'NOT_FOUND', {
-            ...properties,
-            resourceType: context.resourceType || null,
-            resourceId: context.resourceId || null
-        });
-    }
-    if (errorCode === 20112) {
-        return new MerossDeviceError(message, 'UNSUPPORTED', {
-            ...properties,
-            operation: context.operation || null,
-            reason: context.reason || null
-        });
+        return new MerossAuthError(message, 'AUTHENTICATION', base);
     }
 
     return new MerossError(
