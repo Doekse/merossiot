@@ -27,7 +27,7 @@ describe('config ability (mocked device)', () => {
     });
 
     it('throws when enable is missing', async () => {
-        const config = createConfigAbility({ publishMessage: async () => ({}) });
+        const config = createConfigAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => config.set({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });

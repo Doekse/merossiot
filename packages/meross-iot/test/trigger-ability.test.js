@@ -50,7 +50,7 @@ describe('trigger ability (mocked device)', () => {
     });
 
     it('delete throws when triggerId is missing', async () => {
-        const trigger = createTriggerAbility({ publishMessage: async () => ({}) });
+        const trigger = createTriggerAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => trigger.delete({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });

@@ -25,13 +25,13 @@ describe('DND ability (mocked device)', () => {
     });
 
     it('throws when mode is missing', async () => {
-        const dnd = createDNDAbility({ uuid: 'u1', publishMessage: async () => ({}) });
+        const dnd = createDNDAbility({ uuid: 'u1', publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => dnd.set({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
 
     it('throws for invalid mode value', async () => {
-        const dnd = createDNDAbility({ uuid: 'u1', publishMessage: async () => ({}) });
+        const dnd = createDNDAbility({ uuid: 'u1', publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => dnd.set({ mode: 99 }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });

@@ -32,7 +32,7 @@ describe('roller shutter ability (mocked device)', () => {
     });
 
     it('throws when position is missing', async () => {
-        const rs = createRollerShutterAbility({ publishMessage: async () => ({}) });
+        const rs = createRollerShutterAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => rs.set({ channel: 0 }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
@@ -48,7 +48,7 @@ describe('roller shutter ability (mocked device)', () => {
     });
 
     it('setConfig throws when config is missing', async () => {
-        const rs = createRollerShutterAbility({ publishMessage: async () => ({}) });
+        const rs = createRollerShutterAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => rs.setConfig({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });

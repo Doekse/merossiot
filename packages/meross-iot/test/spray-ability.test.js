@@ -29,7 +29,7 @@ describe('spray ability (mocked device)', () => {
     });
 
     it('throws when mode is missing', async () => {
-        const spray = createSprayAbility({ publishMessage: async () => ({}) });
+        const spray = createSprayAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => spray.set({ channel: 0 }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });

@@ -4,6 +4,7 @@ const TimerState = require('../../model/states/timer-state');
 const { normalizeChannel } = require('../../utilities/options');
 const timerUtils = require('../../utilities/timer');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a timer feature object for a device.
@@ -47,7 +48,7 @@ function createTimerAbility(device) {
                         id: timerId
                     }
                 };
-                const response = await device.publishMessage('GET', 'Appliance.Control.TimerX', payload);
+                const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.TimerX', payload);
                 if (response && response.timerx) {
                     updateTimerXState(device, response.timerx, 'response');
                     return response;
@@ -168,7 +169,9 @@ function createTimerAbility(device) {
         async _queryTimersByIds(timerIds) {
             const timerPromises = timerIds.map(id => {
                 const payload = { timerx: { id } };
-                return device.publishMessage('GET', 'Appliance.Control.TimerX', payload).catch(() => null);
+                return device.publishMessage('GET', 'Appliance.Control.TimerX', payload)
+                    .then(res => (res && res.payload) || null)
+                    .catch(() => null);
             });
 
             const timerResponses = await Promise.all(timerPromises);
@@ -229,7 +232,7 @@ function createTimerAbility(device) {
             }
 
             const payload = { timerx };
-            const response = await device.publishMessage('SET', 'Appliance.Control.TimerX', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.TimerX', payload);
             if (response && response.timerx) {
                 updateTimerXState(device, response.timerx);
             } else if (timerx) {
@@ -256,7 +259,7 @@ function createTimerAbility(device) {
                     id: options.timerId
                 }
             };
-            const response = await device.publishMessage('DELETE', 'Appliance.Control.TimerX', payload);
+            const { payload: response } = await device.publishMessage('DELETE', 'Appliance.Control.TimerX', payload);
 
             const channelTimers = device._timerxStateByChannel.get(channel);
             if (channelTimers && Array.isArray(channelTimers)) {
@@ -517,6 +520,19 @@ function getTimerCapabilities(device, channelIds) {
         channels: channelIds
     };
 }
+
+/**
+ * TimerX state is list-shaped per channel and re-emitted whole on every update, so the
+ * per-item form of the dispatcher applies here: each incoming channel is ordered on its
+ * own so an older PUSH for channel A never masks a newer update for channel B.
+ */
+registerNamespaceDescriptor('Appliance.Control.TimerX', {
+    namespace: 'Appliance.Control.TimerX',
+    payloadKey: 'timerx',
+    customApplyItem: (device, item, source) => {
+        updateTimerXState(device, item, source);
+    }
+});
 
 module.exports = createTimerAbility;
 /**

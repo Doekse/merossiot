@@ -35,7 +35,7 @@ describe('garage ability (mocked device)', () => {
     it('throws when open is missing', async () => {
         const garage = createGarageAbility({
             uuid: 'u1',
-            publishMessage: async () => ({})
+            publishMessage: async () => ({ header: {}, payload: {} })
         });
 
         await assert.rejects(() => garage.set({ channel: 0 }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');

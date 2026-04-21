@@ -26,7 +26,8 @@ function createTempUnitAbility(device) {
                     channel
                 }]
             };
-            return await device.publishMessage('GET', 'Appliance.Control.TempUnit', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.TempUnit', payload);
+            return out;
         },
 
         /**
@@ -50,7 +51,8 @@ function createTempUnitAbility(device) {
                 }];
             }
             const payload = { tempUnit: tempUnitData };
-            return await device.publishMessage('SET', 'Appliance.Control.TempUnit', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.TempUnit', payload);
+            return out;
         }
     };
 }

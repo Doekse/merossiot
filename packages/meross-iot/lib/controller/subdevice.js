@@ -233,10 +233,10 @@ class MerossSubDevice extends MerossDevice {
      * @param {string} namespace - Message namespace (e.g., 'Appliance.Hub.Sensor.TempHum')
      * @param {Object} payload - Message payload (must include subdevice ID)
      * @param {number|null} [transportMode=null] - Transport mode from {@link TransportMode} enum
-     * @returns {Promise<Object>} Promise that resolves with the response payload
+     * @returns {Promise<{header: Object, payload: Object}>} Resolves with the full message
+     *   envelope so the header carries namespace and ordering timestamps alongside the payload.
      * @example
-     * // Get sensor data
-     * const response = await sensor.publishMessage(
+     * const { payload } = await sensor.publishMessage(
      *     'GET',
      *     'Appliance.Hub.Sensor.TempHum',
      *     { id: sensor.subdeviceId }
@@ -1473,7 +1473,7 @@ class HubSmokeDetector extends MerossSubDevice {
     async muteAlarm(muteSmoke = true) {
         const status = muteSmoke ? SmokeAlarmStatus.MUTE_SMOKE_ALARM : SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM;
 
-        const response = await this.publishMessage('SET', 'Appliance.Hub.Sensor.Smoke', {
+        const { payload: response } = await this.publishMessage('SET', 'Appliance.Hub.Sensor.Smoke', {
             smokeAlarm: [{
                 id: this._subdeviceId,
                 status
@@ -1501,7 +1501,7 @@ class HubSmokeDetector extends MerossSubDevice {
      * @returns {Promise<Object>} Promise that resolves with the alarm status response
      */
     async refreshAlarmStatus() {
-        const response = await this.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', {
+        const { payload: response } = await this.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', {
             smokeAlarm: [{
                 id: this._subdeviceId
             }]

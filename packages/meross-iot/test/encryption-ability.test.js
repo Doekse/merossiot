@@ -12,7 +12,7 @@ const { MerossDeviceError } = require('..');
 
 describe('encryption ability (mocked device)', () => {
     it('encryptMessage throws when key is not set', () => {
-        const device = { uuid: 'u1', publishMessage: async () => ({}) };
+        const device = { uuid: 'u1', publishMessage: async () => ({ header: {}, payload: {} }) };
         const enc = createEncryptionAbility(device);
 
         assert.throws(() => enc.encryptMessage('hello'), MerossDeviceError);
@@ -22,7 +22,7 @@ describe('encryption ability (mocked device)', () => {
         const device = {
             uuid: '12345678-0000-0000-0000-000000000000',
             cloudInst: { key: '0123456789abcdefghijklmnopqr' },
-            publishMessage: async () => ({})
+            publishMessage: async () => ({ header: {}, payload: {} })
         };
         const enc = createEncryptionAbility(device);
 
@@ -37,7 +37,7 @@ describe('encryption ability (mocked device)', () => {
     });
 
     it('_updateAbilitiesWithEncryption tracks ECDHE support', () => {
-        const device = { uuid: 'u1', publishMessage: async () => ({}) };
+        const device = { uuid: 'u1', publishMessage: async () => ({ header: {}, payload: {} }) };
         const enc = createEncryptionAbility(device);
 
         enc._updateAbilitiesWithEncryption({ 'Appliance.Encrypt.ECDHE': {} });

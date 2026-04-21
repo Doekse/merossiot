@@ -3,6 +3,7 @@
 const { MerossDeviceError } = require('../../model/exception');
 const ToggleState = require('../../model/states/toggle-state');
 const { normalizeChannel, validateRequired } = require('../../utilities/options');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a toggle feature object for a device.
@@ -35,27 +36,12 @@ function createToggleAbility(device) {
             const hasToggleX = device.abilities?.['Appliance.Control.ToggleX'];
             const hasToggle = device.abilities?.['Appliance.Control.Toggle'];
 
-            let response;
             if (hasToggleX) {
                 const payload = { 'togglex': { channel, onoff } };
-                response = await device.publishMessage('SET', 'Appliance.Control.ToggleX', payload);
-
-                if (response && response.togglex) {
-                    device._updateToggleState(response.togglex, 'response');
-                    device.lastFullUpdateTimestamp = Date.now();
-                } else {
-                    device._updateToggleState({ channel, onoff }, 'response');
-                    device.lastFullUpdateTimestamp = Date.now();
-                }
+                await device.publishMessage('SET', 'Appliance.Control.ToggleX', payload);
             } else if (hasToggle) {
                 const payload = { 'toggle': { onoff } };
-                response = await device.publishMessage('SET', 'Appliance.Control.Toggle', payload);
-
-                if (response && response.toggle) {
-                    device._updateToggleState(response.toggle, 'response');
-                } else {
-                    device._updateToggleState({ channel: 0, onoff }, 'response');
-                }
+                await device.publishMessage('SET', 'Appliance.Control.Toggle', payload);
             } else {
                 throw new MerossDeviceError('Device does not support Toggle or ToggleX', 'UNKNOWN_DEVICE_TYPE', { deviceType: device.deviceType });
             }
@@ -86,12 +72,7 @@ function createToggleAbility(device) {
 
             // Fetch fresh state
             const payload = { 'togglex': { channel } };
-            const response = await device.publishMessage('GET', 'Appliance.Control.ToggleX', payload);
-
-            if (response?.togglex) {
-                device._updateToggleState(response.togglex, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.Control.ToggleX', payload);
 
             return device._toggleStateByChannel.get(channel);
         },
@@ -179,6 +160,23 @@ function getToggleCapabilities(device, channelIds) {
         multiChannel: channelIds.length > 1
     };
 }
+
+const toggleDescriptor = {
+    namespace: 'Appliance.Control.ToggleX',
+    payloadKey: 'togglex',
+    stateMap: '_toggleStateByChannel',
+    StateClass: ToggleState,
+    eventType: 'toggle',
+    snapshot: (s) => ({ isOn: s.isOn }),
+    emitValue: (oldSnap, newSnap) => (oldSnap?.isOn !== newSnap.isOn ? newSnap.isOn : undefined)
+};
+
+registerNamespaceDescriptor('Appliance.Control.ToggleX', toggleDescriptor);
+registerNamespaceDescriptor('Appliance.Control.Toggle', {
+    ...toggleDescriptor,
+    namespace: 'Appliance.Control.Toggle',
+    payloadKey: 'toggle'
+});
 
 module.exports = createToggleAbility;
 /**

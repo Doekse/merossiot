@@ -1,5 +1,7 @@
 'use strict';
 
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
+
 /**
  * Creates a system feature object for a device.
  *
@@ -16,10 +18,14 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing all system data
          */
         async getAllData() {
-            const response = await device.publishMessage('GET', 'Appliance.System.All', {});
+            const { header: systemAllHeader, payload: response } = await device.publishMessage(
+                'GET',
+                'Appliance.System.All',
+                {}
+            );
 
             if (response && response.all) {
-                this.handleSystemAllUpdate(response);
+                this.handleSystemAllUpdate(response, systemAllHeader);
             }
 
             return response;
@@ -33,9 +39,10 @@ function createSystemAbility(device) {
          * Called automatically when System.All responses are received.
          *
          * @param {Object} payload - Message payload containing System.All data
+         * @param {Object} [allHeader] - Response header (timestamps for digest ordering)
          * @returns {boolean} True if any properties were updated
          */
-        handleSystemAllUpdate(payload) {
+        handleSystemAllUpdate(payload, allHeader) {
             if (payload.ability) {
                 device._updateAbilities(payload.ability);
             }
@@ -53,7 +60,7 @@ function createSystemAbility(device) {
             }
 
             if (payload.all.digest) {
-                device._routeDigestToFeatures(payload.all.digest);
+                device._routeDigestToFeatures(payload.all.digest, allHeader);
             }
 
             return hardwareUpdates || firmwareUpdates;
@@ -136,7 +143,7 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing debug information
          */
         async getDebug() {
-            const response = await device.publishMessage('GET', 'Appliance.System.Debug', {});
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.System.Debug', {});
             if (response && response.debug) {
                 device._systemDebug = response.debug;
                 if (response.debug.network) {
@@ -194,7 +201,7 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing device abilities
          */
         async getAbilities() {
-            const response = await device.publishMessage('GET', 'Appliance.System.Ability', {});
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.System.Ability', {});
             if (response && response.ability) {
                 device._updateAbilities(response.ability);
             }
@@ -207,7 +214,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing encryption suite info
          */
         async getEncryptSuite() {
-            return await device.publishMessage('GET', 'Appliance.Encrypt.Suite', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Encrypt.Suite', {});
+            return payload;
         },
 
         /**
@@ -216,7 +224,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing ECDHE encryption info
          */
         async getEncryptECDHE() {
-            return await device.publishMessage('GET', 'Appliance.Encrypt.ECDHE', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Encrypt.ECDHE', {});
+            return payload;
         },
 
         /**
@@ -225,7 +234,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing online status
          */
         async getOnlineStatus() {
-            return await device.publishMessage('GET', 'Appliance.System.Online', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.System.Online', {});
+            return payload;
         },
 
         /**
@@ -234,7 +244,7 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing WiFi list with decoded SSIDs
          */
         async getConfigWifiList() {
-            const response = await device.publishMessage('GET', 'Appliance.Config.WifiList', {});
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Config.WifiList', {});
 
             if (response && response.wifiList) {
                 const { decodeSSID } = require('../../utilities/ssid');
@@ -255,7 +265,7 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing trace config with decoded SSID
          */
         async getConfigTrace() {
-            const response = await device.publishMessage('GET', 'Appliance.Config.Trace', {});
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Config.Trace', {});
 
             if (response && response.trace && response.trace.ssid) {
                 const { decodeSSID } = require('../../utilities/ssid');
@@ -271,7 +281,7 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing hardware information
          */
         async getHardware() {
-            const response = await device.publishMessage('GET', 'Appliance.System.Hardware', {});
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.System.Hardware', {});
             if (response && response.hardware) {
                 device._systemHardware = response.hardware;
                 this._updateHardwareProperties(response.hardware);
@@ -285,7 +295,7 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing firmware information
          */
         async getFirmware() {
-            const response = await device.publishMessage('GET', 'Appliance.System.Firmware', {});
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.System.Firmware', {});
             if (response && response.firmware) {
                 device._systemFirmware = response.firmware;
                 this._updateFirmwareProperties(response.firmware);
@@ -299,7 +309,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing time information
          */
         async getTime() {
-            return await device.publishMessage('GET', 'Appliance.System.Time', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.System.Time', {});
+            return payload;
         },
 
         /**
@@ -308,7 +319,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing position information
          */
         async getPosition() {
-            return await device.publishMessage('GET', 'Appliance.System.Position', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.System.Position', {});
+            return payload;
         },
 
         /**
@@ -317,7 +329,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing factory test information
          */
         async getFactory() {
-            return await device.publishMessage('GET', 'Appliance.System.Factory', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.System.Factory', {});
+            return payload;
         },
 
         /**
@@ -326,7 +339,8 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing LED mode configuration
          */
         async getLedMode() {
-            return await device.publishMessage('GET', 'Appliance.System.LedMode', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.System.LedMode', {});
+            return payload;
         },
 
         /**
@@ -339,7 +353,8 @@ function createSystemAbility(device) {
         async setLedMode(options) {
             const { ledModeData } = options;
             const payload = { LedMode: ledModeData };
-            return await device.publishMessage('SET', 'Appliance.System.LedMode', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.System.LedMode', payload);
+            return out;
         },
 
         /**
@@ -348,9 +363,28 @@ function createSystemAbility(device) {
          * @returns {Promise<Object>} Response containing MCU firmware information
          */
         async getMcuFirmware() {
-            return await device.publishMessage('GET', 'Appliance.Mcu.Firmware', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Mcu.Firmware', {});
+            return payload;
         }
     };
 }
+
+/**
+ * Appliance.System.Online carries a single scalar status with no channel, so it uses a
+ * whole-payload `customApply` with one gate key. The heartbeat bypasses this path on
+ * purpose: heartbeat-driven offline transitions are local and must not be rejected by
+ * the ordering gate.
+ */
+registerNamespaceDescriptor('Appliance.System.Online', {
+    namespace: 'Appliance.System.Online',
+    gateKey: 'Appliance.System.Online',
+    customApply: (device, payload) => {
+        const status = payload?.online?.status;
+        if (status === undefined || status === null) {
+            return;
+        }
+        device._updateOnlineStatus(status);
+    }
+});
 
 module.exports = createSystemAbility;

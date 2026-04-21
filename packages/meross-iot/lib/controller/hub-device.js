@@ -173,7 +173,8 @@ class MerossHubDevice extends MerossDevice {
      * console.log('Subdevices from hub:', subdeviceList);
      */
     async getHubSubdeviceList() {
-        return await this.publishMessage('GET', 'Appliance.Hub.SubdeviceList', {}, null);
+        const { payload } = await this.publishMessage('GET', 'Appliance.Hub.SubdeviceList', {}, null);
+        return payload;
     }
 
     /**
@@ -193,7 +194,8 @@ class MerossHubDevice extends MerossDevice {
         if (this.hub && typeof this.hub.getException === 'function') {
             return await this.hub.getException();
         }
-        return await this.publishMessage('GET', 'Appliance.Hub.Exception', {}, null);
+        const { payload } = await this.publishMessage('GET', 'Appliance.Hub.Exception', {}, null);
+        return payload;
     }
 }
 

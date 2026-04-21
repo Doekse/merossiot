@@ -3,6 +3,7 @@
 const GarageDoorState = require('../../model/states/garage-door-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a garage door feature object for a device.
@@ -29,17 +30,8 @@ function createGarageAbility(device) {
             }
             const channel = normalizeChannel(options);
             const payload = { 'state': { channel, 'open': options.open ? 1 : 0, 'uuid': device.uuid } };
-            const response = await device.publishMessage('SET', 'Appliance.GarageDoor.State', payload);
-
-            if (response?.state) {
-                updateGarageDoorState(device, response.state, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            } else {
-                updateGarageDoorState(device, [{ channel, open: options.open ? 1 : 0 }], 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
-
-            return response;
+            const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.GarageDoor.State', payload);
+            return responsePayload;
         },
 
         /**
@@ -67,11 +59,7 @@ function createGarageAbility(device) {
 
             // Fetch fresh state
             const payload = { 'state': { channel } };
-            const response = await device.publishMessage('GET', 'Appliance.GarageDoor.State', payload);
-            if (response?.state) {
-                updateGarageDoorState(device, response.state, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.GarageDoor.State', payload);
 
             return device._garageDoorStateByChannel.get(channel);
         },
@@ -150,12 +138,8 @@ function createGarageAbility(device) {
          * @returns {Promise<Object>} Response containing garage door config with `config` array
          */
         async getMultipleConfig(_options = {}) {
-            const response = await device.publishMessage('GET', 'Appliance.GarageDoor.MultipleConfig', {});
-            if (response?.config) {
-                updateGarageDoorConfig(device, response.config);
-                device.lastFullUpdateTimestamp = Date.now();
-            }
-            return response;
+            const { payload } = await device.publishMessage('GET', 'Appliance.GarageDoor.MultipleConfig', {});
+            return payload;
         },
 
         /**
@@ -165,7 +149,8 @@ function createGarageAbility(device) {
          * @returns {Promise<Object>} Response containing garage door configuration
          */
         async getConfig(_options = {}) {
-            return await device.publishMessage('GET', 'Appliance.GarageDoor.Config', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.GarageDoor.Config', {});
+            return payload;
         },
 
         /**
@@ -197,7 +182,8 @@ function createGarageAbility(device) {
                 });
             }
             const payload = { config: configData };
-            return await device.publishMessage('SET', 'Appliance.GarageDoor.Config', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.GarageDoor.Config', payload);
+            return out;
         }
     };
 }
@@ -292,6 +278,30 @@ function getGarageCapabilities(device, channelIds) {
     };
 }
 
+registerNamespaceDescriptor('Appliance.GarageDoor.State', {
+    namespace: 'Appliance.GarageDoor.State',
+    payloadKey: 'state',
+    stateMap: '_garageDoorStateByChannel',
+    StateClass: GarageDoorState,
+    eventType: 'garageDoor',
+    snapshot: (s) => ({ isOpen: s.isOpen }),
+    emitValue: (o, n) => (o?.isOpen !== n.isOpen ? { isOpen: n.isOpen } : undefined)
+});
+
+/**
+ * MultipleConfig writes a per-channel config cache without emitting stateChange; the
+ * per-item dispatcher form gives each channel its own ordering key so stale pushes for
+ * one door can't overwrite a newer config write on another.
+ */
+registerNamespaceDescriptor('Appliance.GarageDoor.MultipleConfig', {
+    namespace: 'Appliance.GarageDoor.MultipleConfig',
+    payloadKey: 'config',
+    customApplyItem: (device, item) => {
+        updateGarageDoorConfig(device, item);
+    }
+});
+
 module.exports = createGarageAbility;
 module.exports._updateGarageDoorState = updateGarageDoorState;
+module.exports._updateGarageDoorConfig = updateGarageDoorConfig;
 module.exports.getCapabilities = getGarageCapabilities;

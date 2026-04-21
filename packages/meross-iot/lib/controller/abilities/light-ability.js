@@ -5,6 +5,7 @@ const { LightMode } = require('../../model/enums');
 const { rgbToInt } = require('../../utilities/conversion');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a light feature object for a device.
@@ -106,15 +107,8 @@ function createLightAbility(device) {
             }
 
             const payload = { light: lightPayload };
-            const response = await device.publishMessage('SET', 'Appliance.Control.Light', payload, null);
-
-            if (response?.light) {
-                updateLightState(device, response.light, 'response');
-            } else {
-                updateLightState(device, lightPayload, 'response');
-            }
-
-            return response;
+            const { payload: lightResponsePayload } = await device.publishMessage('SET', 'Appliance.Control.Light', payload, null);
+            return lightResponsePayload;
         },
 
         /**
@@ -141,12 +135,7 @@ function createLightAbility(device) {
             }
 
             // Fetch fresh state
-            const response = await device.publishMessage('GET', 'Appliance.Control.Light', {}, null);
-
-            if (response?.light) {
-                updateLightState(device, response.light, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.Control.Light', {}, null);
 
             return device._lightStateByChannel.get(channel);
         },
@@ -335,6 +324,21 @@ function getLightCapabilities(device, channelIds) {
         temperature: lightFeature.supportsTemperature ? lightFeature.supportsTemperature({ channel: 0 }) : false
     };
 }
+
+registerNamespaceDescriptor('Appliance.Control.Light', {
+    namespace: 'Appliance.Control.Light',
+    payloadKey: 'light',
+    stateMap: '_lightStateByChannel',
+    StateClass: LightState,
+    eventType: 'light',
+    snapshot: (s) => ({
+        isOn: s.isOn,
+        brightness: s.luminance,
+        rgb: s.rgbTuple,
+        temperature: s.temperature
+    }),
+    emitValue: (o, n) => buildStateChanges(o, n, ['rgb'])
+});
 
 module.exports = createLightAbility;
 /**

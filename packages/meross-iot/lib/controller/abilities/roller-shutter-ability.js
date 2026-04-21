@@ -3,6 +3,7 @@
 const RollerShutterState = require('../../model/states/roller-shutter-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a roller shutter feature object for a device.
@@ -29,17 +30,8 @@ function createRollerShutterAbility(device) {
             }
             const channel = normalizeChannel(options);
             const payload = { 'position': { position: options.position, channel } };
-            const response = await device.publishMessage('SET', 'Appliance.RollerShutter.Position', payload);
-
-            if (response?.position) {
-                updateRollerShutterPosition(device, response.position, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            } else {
-                updateRollerShutterPosition(device, [{ channel, position: options.position }], 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
-
-            return response;
+            const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.RollerShutter.Position', payload);
+            return responsePayload;
         },
 
         /**
@@ -66,11 +58,7 @@ function createRollerShutterAbility(device) {
             }
 
             // Fetch fresh state
-            const response = await device.publishMessage('GET', 'Appliance.RollerShutter.State', {});
-            if (response?.state) {
-                updateRollerShutterState(device, response.state, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.RollerShutter.State', {});
 
             return device._rollerShutterStateByChannel.get(channel);
         },
@@ -115,11 +103,8 @@ function createRollerShutterAbility(device) {
          * @returns {Promise<Object>} Response containing roller shutter position with `position` array
          */
         async getPosition(_options = {}) {
-            const response = await device.publishMessage('GET', 'Appliance.RollerShutter.Position', {});
-            if (response?.position) {
-                updateRollerShutterPosition(device, response.position, 'response');
-            }
-            return response;
+            const { payload } = await device.publishMessage('GET', 'Appliance.RollerShutter.Position', {});
+            return payload;
         },
 
         /**
@@ -129,11 +114,8 @@ function createRollerShutterAbility(device) {
          * @returns {Promise<Object>} Response containing roller shutter config with `config` array
          */
         async getConfig(_options = {}) {
-            const response = await device.publishMessage('GET', 'Appliance.RollerShutter.Config', {});
-            if (response?.config) {
-                updateRollerShutterConfig(device, response.config);
-            }
-            return response;
+            const { payload } = await device.publishMessage('GET', 'Appliance.RollerShutter.Config', {});
+            return payload;
         },
 
         /**
@@ -148,14 +130,8 @@ function createRollerShutterAbility(device) {
                 throw new MerossDeviceError('config is required', 'VALIDATION_ERROR', { field: 'config' });
             }
             const payload = { config: options.config };
-            const response = await device.publishMessage('SET', 'Appliance.RollerShutter.Config', payload);
-            if (response?.config) {
-                updateRollerShutterConfig(device, response.config);
-            } else if (options.config) {
-                const configArray = Array.isArray(options.config) ? options.config : [options.config];
-                updateRollerShutterConfig(device, configArray);
-            }
-            return response;
+            const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.RollerShutter.Config', payload);
+            return responsePayload;
         },
 
         /**
@@ -165,7 +141,8 @@ function createRollerShutterAbility(device) {
          * @returns {Promise<Object>} Response containing roller shutter adjustment data
          */
         async getAdjust(_options = {}) {
-            return await device.publishMessage('GET', 'Appliance.RollerShutter.Adjust', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.RollerShutter.Adjust', {});
+            return payload;
         }
     };
 }
@@ -326,6 +303,50 @@ function getRollerShutterCapabilities(device, channelIds) {
     };
 }
 
+const rollerShutterSnapshot = (s) => ({ state: s.state, position: s.position });
+
+/**
+ * Caches the latest reported position in parallel to {@link _rollerShutterStateByChannel}
+ * so getPosition-style reads stay consistent with movement commands.
+ */
+function afterRollerShutterPositionCache(device, item) {
+    if (device._rollerShutterPositionByChannel && item.channel !== null && item.channel !== undefined) {
+        device._rollerShutterPositionByChannel.set(item.channel, item.position);
+    }
+}
+
+registerNamespaceDescriptor('Appliance.RollerShutter.State', {
+    namespace: 'Appliance.RollerShutter.State',
+    payloadKey: 'state',
+    stateMap: '_rollerShutterStateByChannel',
+    StateClass: RollerShutterState,
+    eventType: 'rollerShutter',
+    snapshot: rollerShutterSnapshot
+});
+
+registerNamespaceDescriptor('Appliance.RollerShutter.Position', {
+    namespace: 'Appliance.RollerShutter.Position',
+    payloadKey: 'position',
+    stateMap: '_rollerShutterStateByChannel',
+    StateClass: RollerShutterState,
+    eventType: 'rollerShutter',
+    snapshot: rollerShutterSnapshot,
+    afterApply: (device, item) => { afterRollerShutterPositionCache(device, item); }
+});
+
+/**
+ * Config writes a per-channel config cache without emitting stateChange. Per-channel
+ * ordering prevents stale messages for one channel from overwriting newer config on
+ * another.
+ */
+registerNamespaceDescriptor('Appliance.RollerShutter.Config', {
+    namespace: 'Appliance.RollerShutter.Config',
+    payloadKey: 'config',
+    customApplyItem: (device, item) => {
+        updateRollerShutterConfig(device, item);
+    }
+});
+
 module.exports = createRollerShutterAbility;
 /**
  * Private exports for unit tests. Do not rename or change shape without updating
@@ -333,4 +354,5 @@ module.exports = createRollerShutterAbility;
  */
 module.exports._updateRollerShutterState = updateRollerShutterState;
 module.exports._updateRollerShutterPosition = updateRollerShutterPosition;
+module.exports._updateRollerShutterConfig = updateRollerShutterConfig;
 module.exports.getCapabilities = getRollerShutterCapabilities;

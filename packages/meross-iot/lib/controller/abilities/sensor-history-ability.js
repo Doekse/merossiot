@@ -29,7 +29,8 @@ function createSensorHistoryAbility(device) {
                     capacity: options.capacity
                 }]
             };
-            return await device.publishMessage('GET', 'Appliance.Control.Sensor.History', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.Sensor.History', payload);
+            return out;
         },
 
         /**
@@ -52,7 +53,8 @@ function createSensorHistoryAbility(device) {
                 }];
             }
             const payload = { history: historyData };
-            return await device.publishMessage('DELETE', 'Appliance.Control.Sensor.History', payload);
+            const { payload: out } = await device.publishMessage('DELETE', 'Appliance.Control.Sensor.History', payload);
+            return out;
         }
     };
 }

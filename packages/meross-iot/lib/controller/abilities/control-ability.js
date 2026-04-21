@@ -31,7 +31,8 @@ function createControlAbility(device) {
                     payload: cmd.payload
                 }))
             };
-            return await device.publishMessage('SET', 'Appliance.Control.Multiple', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Multiple', payload);
+            return out;
         },
 
         /**
@@ -40,7 +41,8 @@ function createControlAbility(device) {
          * @returns {Promise<Object>} Response from the device
          */
         async acknowledgeOverTemp() {
-            return await device.publishMessage('SETACK', 'Appliance.Control.OverTemp', {});
+            const { payload } = await device.publishMessage('SETACK', 'Appliance.Control.OverTemp', {});
+            return payload;
         },
 
         /**
@@ -53,7 +55,8 @@ function createControlAbility(device) {
         async setUpgrade(options) {
             const { upgradeData } = options;
             const payload = { upgrade: upgradeData };
-            return await device.publishMessage('SET', 'Appliance.Control.Upgrade', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Upgrade', payload);
+            return out;
         }
     };
 }

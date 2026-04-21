@@ -87,7 +87,7 @@ function createConsumptionAbility(device) {
          */
         async _getConsumptionH(channel) {
             try {
-                const result = await device.publishMessage('GET', 'Appliance.Control.ConsumptionH', {
+                const { payload: result } = await device.publishMessage('GET', 'Appliance.Control.ConsumptionH', {
                     consumptionH: [{ channel }]
                 });
 
@@ -122,7 +122,7 @@ function createConsumptionAbility(device) {
          */
         async _getConsumptionX(channel) {
             try {
-                const result = await device.publishMessage('GET', 'Appliance.Control.ConsumptionX', { channel });
+                const { payload: result } = await device.publishMessage('GET', 'Appliance.Control.ConsumptionX', { channel });
                 const data = result && result.consumptionx ? result.consumptionx : [];
 
                 updateConsumptionState(device, { channel, consumption: data }, 'response');
@@ -142,7 +142,7 @@ function createConsumptionAbility(device) {
          */
         async _getConsumption(channel) {
             try {
-                const result = await device.publishMessage('GET', 'Appliance.Control.Consumption', { channel });
+                const { payload: result } = await device.publishMessage('GET', 'Appliance.Control.Consumption', { channel });
                 const data = result && result.consumption ? result.consumption : [];
 
                 updateConsumptionState(device, { channel, consumption: data }, 'response');
@@ -180,7 +180,8 @@ function createConsumptionAbility(device) {
          * @returns {Promise<Object>} Response containing consumption configuration
          */
         async getConfig() {
-            return await device.publishMessage('GET', 'Appliance.Control.ConsumptionConfig', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Control.ConsumptionConfig', {});
+            return payload;
         }
     };
 }

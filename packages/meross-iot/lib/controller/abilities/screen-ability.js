@@ -30,7 +30,8 @@ function createScreenAbility(device) {
             if (options.subId) {
                 payload.brightness[0].subId = options.subId;
             }
-            return await device.publishMessage('GET', 'Appliance.Control.Screen.Brightness', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.Screen.Brightness', payload);
+            return out;
         },
 
         /**
@@ -60,7 +61,8 @@ function createScreenAbility(device) {
                 }];
             }
             const payload = { brightness: brightnessData };
-            return await device.publishMessage('SET', 'Appliance.Control.Screen.Brightness', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Screen.Brightness', payload);
+            return out;
         }
     };
 }

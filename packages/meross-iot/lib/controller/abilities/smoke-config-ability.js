@@ -30,7 +30,8 @@ function createSmokeConfigAbility(device) {
             if (options.subId) {
                 payload.config[0].subId = options.subId;
             }
-            return await device.publishMessage('GET', 'Appliance.Control.Smoke.Config', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.Smoke.Config', payload);
+            return out;
         },
 
         /**
@@ -58,7 +59,8 @@ function createSmokeConfigAbility(device) {
                 }];
             }
             const payload = { config: configData };
-            return await device.publishMessage('SET', 'Appliance.Control.Smoke.Config', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Smoke.Config', payload);
+            return out;
         }
     };
 }

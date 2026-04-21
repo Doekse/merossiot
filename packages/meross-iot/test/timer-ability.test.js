@@ -52,7 +52,7 @@ describe('timer ability (mocked device)', () => {
     });
 
     it('delete throws when timerId is missing', async () => {
-        const timer = createTimerAbility({ publishMessage: async () => ({}) });
+        const timer = createTimerAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => timer.delete({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });

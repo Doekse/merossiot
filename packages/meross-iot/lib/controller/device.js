@@ -65,22 +65,21 @@ const getControlCapabilities = require('./abilities/control-ability').getCapabil
 const getHubCapabilities = require('./abilities/hub-ability').getCapabilities;
 const getSensorCapabilities = require('./abilities/hub-ability').getSensorCapabilities;
 
-// Import update functions
-const updateToggleState = require('./abilities/toggle-ability')._updateToggleState;
-const updateLightState = require('./abilities/light-ability')._updateLightState;
-const updateThermostatMode = require('./abilities/thermostat-ability')._updateThermostatMode;
-const updateThermostatModeB = require('./abilities/thermostat-ability')._updateThermostatModeB;
-const updateRollerShutterState = require('./abilities/roller-shutter-ability')._updateRollerShutterState;
-const updateRollerShutterPosition = require('./abilities/roller-shutter-ability')._updateRollerShutterPosition;
-const updateGarageDoorState = require('./abilities/garage-ability')._updateGarageDoorState;
-const updateGarageDoorConfig = require('./abilities/garage-ability').updateGarageDoorConfig;
-const updateDiffuserLightState = require('./abilities/diffuser-ability')._updateDiffuserLightState;
-const updateDiffuserSprayState = require('./abilities/diffuser-ability')._updateDiffuserSprayState;
-const updateSprayState = require('./abilities/spray-ability')._updateSprayState;
-const updateTimerXState = require('./abilities/timer-ability')._updateTimerXState;
-const updateTriggerXState = require('./abilities/trigger-ability')._updateTriggerXState;
-const updatePresenceState = require('./abilities/presence-sensor-ability')._updatePresenceState;
-const updateAlarmEvents = require('./abilities/alarm-ability')._updateAlarmEvents;
+const { dispatch, getNamespaceDescriptors } = require('./state-dispatcher');
+const { getMessageTimestamp } = require('../utilities/state-ordering');
+
+/**
+ * Maps a top-level `digest` field to the Meross namespace and `payload` key used by
+ * ability descriptors registered with {@link module:controller/state-dispatcher}.
+ *
+ * @type {ReadonlyArray<{ digestKey: string, namespace: string, payloadKey: string }>}
+ */
+const DIGEST_FLAT_ROUTES = [
+    { digestKey: 'togglex', namespace: 'Appliance.Control.ToggleX', payloadKey: 'togglex' },
+    { digestKey: 'light', namespace: 'Appliance.Control.Light', payloadKey: 'light' },
+    { digestKey: 'spray', namespace: 'Appliance.Control.Spray', payloadKey: 'spray' },
+    { digestKey: 'timerx', namespace: 'Appliance.Control.TimerX', payloadKey: 'timerx' }
+];
 
 const ABILITY_MAP = [
     {
@@ -1177,12 +1176,7 @@ class MerossDevice extends EventEmitter {
 
         // Extract System.All from any message type to update device metadata
         if (message.payload?.all) {
-            this._handleSystemAllUpdate(message.payload);
-        }
-
-        // Extract System.Online from any message type to update online status
-        if (message.header.namespace === 'Appliance.System.Online' && message.payload?.online) {
-            this._updateOnlineStatus(message.payload.online.status);
+            this._handleSystemAllUpdate(message.payload, message.header);
         }
 
         if (this.waitingMessageIds[message.header.messageId]) {
@@ -1269,8 +1263,9 @@ class MerossDevice extends EventEmitter {
      *
      * @private
      * @param {Object} payload - Message payload containing System.All data
+     * @param {Object} [allHeader] - Envelope header so digest slices share ordering timestamps
      */
-    _handleSystemAllUpdate(payload) {
+    _handleSystemAllUpdate(payload, allHeader) {
         const system = payload.all?.system;
         if (!system) {
         // System.All was received but system property is missing; finalize initialization
@@ -1279,7 +1274,7 @@ class MerossDevice extends EventEmitter {
             return;
         }
 
-        const hasUpdates = this.system.handleSystemAllUpdate(payload);
+        const hasUpdates = this.system.handleSystemAllUpdate(payload, allHeader);
         if (hasUpdates) {
             this.emit('stateChange', {
                 type: 'properties',
@@ -1313,129 +1308,84 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
-     * Routes digest data from System.All to appropriate feature modules.
+     * Reuses the System.All message header with a feature namespace so digest updates
+     * participate in the same timestamp ordering as SETACK/GETACK/PUSH.
      *
-     * Digest contains feature state data that needs to be distributed to feature modules
-     * for cache updates. Handles both simple (direct key mapping) and nested structures.
+     * @private
+     * @param {Object|undefined} allHeader - Parent System.All header
+     * @param {string} namespace - Target `header.namespace` for routing
+     * @returns {Object} Header object suitable for {@link MerossDevice#_routeMessageToAbility}
+     */
+    _headerForDigestNamespace(allHeader, namespace) {
+        if (allHeader && typeof allHeader === 'object') {
+            return { ...allHeader, namespace };
+        }
+        return { namespace };
+    }
+
+    /**
+     * Routes one digest slice through {@link _routeMessageToAbility} when the slice is
+     * defined. Collapses the repeated `!= null` guard for each nested digest field.
+     *
+     * @private
+     * @param {Object} [allHeader] - System.All header used as ordering source
+     * @param {string} namespace - Target namespace for the synthesized header
+     * @param {string} payloadKey - Key to wrap the slice under
+     * @param {*} slice - Digest slice value; routed when not null/undefined
+     */
+    _routeDigestSlice(allHeader, namespace, payloadKey, slice) {
+        if (slice === null || slice === undefined) {
+            return;
+        }
+        this._routeMessageToAbility(
+            this._headerForDigestNamespace(allHeader, namespace),
+            { [payloadKey]: slice },
+            'poll'
+        );
+    }
+
+    /**
+     * Routes digest data from System.All through the namespace registry (same path as
+     * responses and push notifications).
      *
      * @private
      * @param {Object} digest - Digest object containing feature state data
+     * @param {Object} [allHeader] - System.All message header (for ordering digested slices)
      */
-    _routeDigestToFeatures(digest) {
+    _routeDigestToFeatures(digest, allHeader) {
         if (!digest) {
             return;
         }
 
-        this._routeSimpleDigestFeatures(digest);
-        this._routeNestedDigestFeatures(digest);
-    }
+        for (const route of DIGEST_FLAT_ROUTES) {
+            this._routeDigestSlice(allHeader, route.namespace, route.payloadKey, digest[route.digestKey]);
+        }
 
-    /**
-     * Routes simple digest features with direct key-to-handler mapping.
-     *
-     * @private
-     * @param {Object} digest - Digest object
-     */
-    _routeSimpleDigestFeatures(digest) {
-        if (digest.togglex) {
-            updateToggleState(this, digest.togglex, 'poll');
-        }
-        if (digest.light) {
-            updateLightState(this, digest.light, 'poll');
-        }
-        if (digest.spray) {
-            updateSprayState(this, digest.spray, 'poll');
-        }
-        if (digest.timerx) {
-            updateTimerXState(this, digest.timerx, 'poll');
-        }
-    }
-
-    /**
-     * Routes nested digest features with complex nested structures.
-     *
-     * @private
-     * @param {Object} digest - Digest object
-     */
-    _routeNestedDigestFeatures(digest) {
         if (digest.thermostat) {
-            this._routeThermostatDigest(digest.thermostat);
+            this._routeDigestSlice(allHeader, 'Appliance.Control.Thermostat.Mode', 'mode', digest.thermostat.mode);
+            this._routeDigestSlice(allHeader, 'Appliance.Control.Thermostat.ModeB', 'modeB', digest.thermostat.modeB);
         }
 
         if (digest.diffuser) {
-            this._routeDiffuserDigest(digest.diffuser);
+            this._routeDigestSlice(allHeader, 'Appliance.Control.Diffuser.Light', 'light', digest.diffuser.light);
+            this._routeDigestSlice(allHeader, 'Appliance.Control.Diffuser.Spray', 'spray', digest.diffuser.spray);
         }
 
         if (digest.rollerShutter) {
-            this._routeRollerShutterDigest(digest.rollerShutter);
+            this._routeDigestSlice(allHeader, 'Appliance.RollerShutter.State', 'state', digest.rollerShutter.state);
+            this._routeDigestSlice(allHeader, 'Appliance.RollerShutter.Position', 'position', digest.rollerShutter.position);
         }
 
-        if (digest.garageDoor) {
-            this._routeGarageDoorDigest(digest.garageDoor);
-        }
-    }
-
-    /**
-     * Routes thermostat digest data to feature handlers.
-     *
-     * @private
-     * @param {Object} thermostat - Thermostat digest data
-     */
-    _routeThermostatDigest(thermostat) {
-        if (thermostat.mode) {
-            updateThermostatMode(this, thermostat.mode, 'poll');
-        }
-        if (thermostat.modeB) {
-            updateThermostatModeB(this, thermostat.modeB, 'poll');
-        }
-    }
-
-    /**
-     * Routes diffuser digest data to feature handlers.
-     *
-     * @private
-     * @param {Object} diffuser - Diffuser digest data
-     */
-    _routeDiffuserDigest(diffuser) {
-        if (diffuser.light && typeof this._updateDiffuserLightState === 'function') {
-            this._updateDiffuserLightState(diffuser.light, 'poll');
-        }
-        if (diffuser.spray && typeof this._updateDiffuserSprayState === 'function') {
-            this._updateDiffuserSprayState(diffuser.spray, 'poll');
-        }
-    }
-
-    /**
-     * Routes roller shutter digest data to feature handlers.
-     *
-     * @private
-     * @param {Object} rollerShutter - Roller shutter digest data
-     */
-    _routeRollerShutterDigest(rollerShutter) {
-        if (rollerShutter.state) {
-            updateRollerShutterState(this, rollerShutter.state, 'poll');
-        }
-        if (rollerShutter.position) {
-            updateRollerShutterPosition(this, rollerShutter.position, 'poll');
-        }
-    }
-
-    /**
-     * Routes garage door digest data to feature handlers.
-     *
-     * @private
-     * @param {Object|Array} garageDoor - Garage door digest data
-     */
-    _routeGarageDoorDigest(garageDoor) {
-        if (typeof this._updateGarageDoorState === 'function' && Array.isArray(garageDoor)) {
-            this._updateGarageDoorState(garageDoor, 'poll');
+        if (Array.isArray(digest.garageDoor)) {
+            this._routeDigestSlice(allHeader, 'Appliance.GarageDoor.State', 'state', digest.garageDoor);
         }
     }
 
     /**
      * Handles response messages by resolving pending promises.
      *
-     * Matches response messageId to waiting promises and resolves them with the payload.
+     * Matches response messageId to waiting promises and resolves `publishMessage`
+     * promises with `{ header, payload }`.
      * Clears timeout to prevent duplicate rejections.
      *
      * @private
@@ -1464,7 +1414,9 @@ class MerossDevice extends EventEmitter {
             if (this._heartbeat) {
                 this._heartbeat.recordResponse();
             }
-            pending.resolve(message.payload || message);
+            const responsePayload = message.payload ?? {};
+            this._routeMessageToAbility(message.header, responsePayload, 'response');
+            pending.resolve({ header: message.header, payload: responsePayload });
         }
         delete this.waitingMessageIds[messageId];
     }
@@ -1489,7 +1441,7 @@ class MerossDevice extends EventEmitter {
 
         parsePushNotification(namespace, payload, this.uuid);
 
-        this._routePushNotificationToFeatures(namespace, payload);
+        this._routeMessageToAbility(message.header, payload, 'push');
 
         // Feature modules can override for custom routing (e.g., hub subdevices that
         // need to route notifications to child devices)
@@ -1499,102 +1451,27 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
-     * Routes push notifications to feature modules using registry pattern.
-     *
-     * Maps namespace strings to handler configurations, allowing new namespaces to be
-     * added without modifying routing logic.
+     * Routes SET/GET responses and PUSH notifications through the shared namespace
+     * registry so abilities apply state behind one ordering gate.
      *
      * @private
-     * @param {string} namespace - Message namespace
+     * @param {Object} header - Message header including `namespace` and timestamp fields
      * @param {Object} payload - Message payload
+     * @param {string} source - Provenance for `stateChange` (e.g. `response`, `push`)
+     * @returns {void}
      */
-    _routePushNotificationToFeatures(namespace, payload) {
-        if (namespace === 'Appliance.System.Online' && payload?.online) {
-            this._updateOnlineStatus(payload.online.status);
+    _routeMessageToAbility(header, payload, source) {
+        const namespace = header?.namespace;
+        if (!namespace) {
             return;
         }
-
-        if (namespace === 'Appliance.Control.ToggleX' && payload?.togglex) {
-            updateToggleState(this, payload.togglex, 'push');
+        const descriptors = getNamespaceDescriptors(namespace);
+        if (descriptors.length === 0) {
             return;
         }
-
-        if (namespace === 'Appliance.Control.Toggle' && payload?.toggle) {
-            const toggleData = payload.toggle;
-            if (toggleData.channel === undefined) {
-                toggleData.channel = 0;
-            }
-            updateToggleState(this, toggleData, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Thermostat.Mode' && payload?.mode) {
-            updateThermostatMode(this, payload.mode, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Thermostat.ModeB' && payload?.modeB) {
-            updateThermostatModeB(this, payload.modeB, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Light' && payload?.light) {
-            updateLightState(this, payload.light, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Diffuser.Light' && payload?.light) {
-            updateDiffuserLightState(this, payload.light, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Diffuser.Spray' && payload?.spray) {
-            updateDiffuserSprayState(this, payload.spray, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Spray' && payload?.spray) {
-            updateSprayState(this, payload.spray, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.RollerShutter.State' && payload?.state) {
-            updateRollerShutterState(this, payload.state, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.RollerShutter.Position' && payload?.position) {
-            updateRollerShutterPosition(this, payload.position, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.GarageDoor.State' && payload?.state) {
-            updateGarageDoorState(this, payload.state, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.GarageDoor.MultipleConfig' && payload?.config) {
-            updateGarageDoorConfig(this, payload.config);
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Alarm' && payload?.alarm) {
-            updateAlarmEvents(this, payload.alarm, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.TimerX' && payload?.timerx) {
-            updateTimerXState(this, payload.timerx, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.TriggerX' && payload?.triggerx) {
-            updateTriggerXState(this, payload.triggerx, 'push');
-            return;
-        }
-
-        if (namespace === 'Appliance.Control.Sensor.LatestX' && payload?.latest) {
-            updatePresenceState(this, payload.latest, 'push');
+        const messageTs = getMessageTimestamp(header);
+        for (const descriptor of descriptors) {
+            dispatch(this, descriptor, payload, source, messageTs, header);
         }
     }
 
@@ -1681,7 +1558,8 @@ class MerossDevice extends EventEmitter {
      * @param {string} namespace - Message namespace
      * @param {Object} payload - Message payload
      * @param {number|null} [transportMode=null] - Transport mode from TransportMode enum
-     * @returns {Promise<Object>} Promise that resolves with the response payload
+     * @returns {Promise<{header: Object, payload: Object}>} Promise that resolves with the
+     *   response header and payload
      * @throws {MerossDeviceError} If device has no data connection (DEVICE_UNCONNECTED) or message times out (COMMAND_TIMEOUT)
      */
     async publishMessage(method, namespace, payload, transportMode = null) {

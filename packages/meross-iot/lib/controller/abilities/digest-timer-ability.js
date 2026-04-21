@@ -16,7 +16,8 @@ function createDigestTimerAbility(device) {
          * @returns {Promise<Object>} Response containing timer digest data
          */
         async get() {
-            return await device.publishMessage('GET', 'Appliance.Digest.TimerX', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Digest.TimerX', {});
+            return payload;
         }
     };
 }

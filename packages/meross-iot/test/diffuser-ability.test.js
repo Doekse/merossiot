@@ -54,7 +54,7 @@ describe('diffuser ability (mocked device)', () => {
     });
 
     it('throws when neither light nor mode is provided', async () => {
-        const diffuser = createDiffuserAbility({ uuid: 'x', publishMessage: async () => ({}) });
+        const diffuser = createDiffuserAbility({ uuid: 'x', publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => diffuser.set({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
@@ -65,7 +65,7 @@ describe('diffuser ability (mocked device)', () => {
             lastFullUpdateTimestamp: Date.now(),
             _diffuserLightStateByChannel: new Map(),
             _diffuserSprayStateByChannel: new Map(),
-            publishMessage: async () => ({})
+            publishMessage: async () => ({ header: {}, payload: {} })
         });
 
         await assert.rejects(() => diffuser.get({ type: 'invalid' }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');

@@ -30,7 +30,8 @@ function createChildLockAbility(device) {
             if (options.subId) {
                 payload.lock[0].subId = options.subId;
             }
-            return await device.publishMessage('GET', 'Appliance.Control.PhysicalLock', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.PhysicalLock', payload);
+            return out;
         },
 
         /**
@@ -56,7 +57,8 @@ function createChildLockAbility(device) {
                 }];
             }
             const payload = { lock: lockData };
-            return await device.publishMessage('SET', 'Appliance.Control.PhysicalLock', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.PhysicalLock', payload);
+            return out;
         }
     };
 }

@@ -48,7 +48,7 @@ function createElectricityAbility(device) {
             }
 
             // Fetch fresh state
-            const result = await device.publishMessage('GET', 'Appliance.Control.Electricity', { channel });
+            const { payload: result } = await device.publishMessage('GET', 'Appliance.Control.Electricity', { channel });
             const data = result && result.electricity ? result.electricity : {};
 
             updateElectricityState(device, { channel, ...data }, 'response');
@@ -65,7 +65,8 @@ function createElectricityAbility(device) {
          */
         async getRaw(options = {}) {
             const channel = normalizeChannel(options);
-            return await device.publishMessage('GET', 'Appliance.Control.Electricity', { channel });
+            const { payload } = await device.publishMessage('GET', 'Appliance.Control.Electricity', { channel });
+            return payload;
         }
     };
 }

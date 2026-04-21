@@ -2,6 +2,7 @@
 
 const { MerossDeviceError } = require('../../model/exception');
 const { normalizeChannel, validateRequired } = require('../../utilities/options');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 const MAX_ALARM_EVENTS_MEMORY = 10;
 
@@ -62,7 +63,7 @@ function createAlarmAbility(device) {
                 }]
             };
 
-            const response = await device.publishMessage('SET', 'Appliance.Control.Alarm', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Alarm', payload);
 
             if (response && response.alarm) {
                 updateAlarmEvents(device, response.alarm, 'response');
@@ -102,7 +103,8 @@ function createAlarmAbility(device) {
                 }]
             };
 
-            return await device.publishMessage('SET', 'Appliance.Config.Alarm', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Config.Alarm', payload);
+            return out;
         },
 
         /**
@@ -115,7 +117,8 @@ function createAlarmAbility(device) {
         async get(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { 'alarm': [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Alarm', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.Alarm', payload);
+            return out;
         },
 
         /**
@@ -188,6 +191,19 @@ function getAlarmCapabilities(device, channelIds) {
         channels: channelIds
     };
 }
+
+/**
+ * Alarm events append to a rolling buffer and emit once per item; iterating with
+ * `customApplyItem` gates each incoming channel independently so an older PUSH for one
+ * channel cannot be masked by a newer SETACK for another.
+ */
+registerNamespaceDescriptor('Appliance.Control.Alarm', {
+    namespace: 'Appliance.Control.Alarm',
+    payloadKey: 'alarm',
+    customApplyItem: (device, item, source) => {
+        updateAlarmEvents(device, item, source);
+    }
+});
 
 module.exports = createAlarmAbility;
 module.exports._updateAlarmEvents = updateAlarmEvents;

@@ -19,7 +19,8 @@ function createConfigAbility(device) {
          * @returns {Promise<Object>} Response containing over-temperature protection config
          */
         async get(_options = {}) {
-            return await device.publishMessage('GET', 'Appliance.Config.OverTemp', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Config.OverTemp', {});
+            return payload;
         },
 
         /**
@@ -51,7 +52,8 @@ function createConfigAbility(device) {
             }
 
             const payload = { overTemp: overTempData };
-            return await device.publishMessage('SET', 'Appliance.Config.OverTemp', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Config.OverTemp', payload);
+            return out;
         }
     };
 }

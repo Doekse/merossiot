@@ -4,6 +4,7 @@ const TriggerState = require('../../model/states/trigger-state');
 const { normalizeChannel } = require('../../utilities/options');
 const triggerUtils = require('../../utilities/trigger');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a trigger feature object for a device.
@@ -45,7 +46,7 @@ function createTriggerAbility(device) {
                     channel
                 }
             };
-            const response = await device.publishMessage('GET', 'Appliance.Control.TriggerX', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.TriggerX', payload);
             if (response && response.triggerx) {
                 updateTriggerXState(device, response.triggerx, 'response');
             }
@@ -76,7 +77,7 @@ function createTriggerAbility(device) {
             }
 
             const payload = { triggerx };
-            const response = await device.publishMessage('SET', 'Appliance.Control.TriggerX', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.TriggerX', payload);
             if (response && response.triggerx) {
                 updateTriggerXState(device, response.triggerx);
             } else if (triggerx) {
@@ -103,7 +104,7 @@ function createTriggerAbility(device) {
                     id: options.triggerId
                 }
             };
-            const response = await device.publishMessage('DELETE', 'Appliance.Control.TriggerX', payload);
+            const { payload: response } = await device.publishMessage('DELETE', 'Appliance.Control.TriggerX', payload);
 
             const channelTriggers = device._triggerxStateByChannel.get(channel);
             if (channelTriggers && Array.isArray(channelTriggers)) {
@@ -322,6 +323,18 @@ function getTriggerCapabilities(device, channelIds) {
         channels: channelIds
     };
 }
+
+/**
+ * TriggerX mirrors TimerX: list-shaped state per channel that must be ordered per
+ * channel so independent channels are not cross-masked by a stale message.
+ */
+registerNamespaceDescriptor('Appliance.Control.TriggerX', {
+    namespace: 'Appliance.Control.TriggerX',
+    payloadKey: 'triggerx',
+    customApplyItem: (device, item, source) => {
+        updateTriggerXState(device, item, source);
+    }
+});
 
 module.exports = createTriggerAbility;
 /**

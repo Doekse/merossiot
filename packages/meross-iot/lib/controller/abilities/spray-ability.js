@@ -4,6 +4,7 @@ const SprayState = require('../../model/states/spray-state');
 const { SprayMode } = require('../../model/enums');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a spray feature object for a device.
@@ -32,17 +33,8 @@ function createSprayAbility(device) {
             const modeValue = options.mode || 0;
 
             const payload = { 'spray': { channel, 'mode': modeValue } };
-            const response = await device.publishMessage('SET', 'Appliance.Control.Spray', payload);
-
-            if (response?.spray) {
-                updateSprayState(device, response.spray, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            } else {
-                updateSprayState(device, { channel, mode: modeValue }, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
-
-            return response;
+            const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.Control.Spray', payload);
+            return responsePayload;
         },
 
         /**
@@ -69,11 +61,7 @@ function createSprayAbility(device) {
             }
 
             // Fetch fresh state
-            const response = await device.publishMessage('GET', 'Appliance.Control.Spray', {});
-            if (response?.spray) {
-                updateSprayState(device, response.spray, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.Control.Spray', {});
 
             return device._sprayStateByChannel.get(channel);
         },
@@ -174,6 +162,15 @@ function getSprayCapabilities(device, channelIds) {
         channels: channelIds
     };
 }
+
+registerNamespaceDescriptor('Appliance.Control.Spray', {
+    namespace: 'Appliance.Control.Spray',
+    payloadKey: 'spray',
+    stateMap: '_sprayStateByChannel',
+    StateClass: SprayState,
+    eventType: 'spray',
+    snapshot: (s) => ({ mode: s.mode })
+});
 
 module.exports = createSprayAbility;
 module.exports._updateSprayState = updateSprayState;

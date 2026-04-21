@@ -4,6 +4,7 @@ const ThermostatState = require('../../model/states/thermostat-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a thermostat feature object for a device.
@@ -78,8 +79,9 @@ function createThermostatAbility(device) {
 
             // Handle window opened
             if (options.windowOpened !== undefined) {
-                const payload = { 'windowOpened': [{ channel, 'status': options.windowOpened ? 1 : 0 }] };
-                return await device.publishMessage('SET', 'Appliance.Control.Thermostat.WindowOpened', payload);
+                const requestPayload = { 'windowOpened': [{ channel, 'status': options.windowOpened ? 1 : 0 }] };
+                const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.WindowOpened', requestPayload);
+                return response;
             }
 
             // Handle mode B
@@ -100,11 +102,8 @@ function createThermostatAbility(device) {
                 }
 
                 const payload = { 'modeB': [processedModeData] };
-                const response = await device.publishMessage('SET', 'Appliance.Control.Thermostat.ModeB', payload);
-                if (response?.modeB) {
-                    updateThermostatModeB(device, response.modeB, 'response');
-                }
-                return response;
+                const { payload: modeBPayload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.ModeB', payload);
+                return modeBPayload;
             }
 
             // Handle regular mode
@@ -148,12 +147,8 @@ function createThermostatAbility(device) {
             delete processedModeData.partialUpdate;
 
             const payload = { 'mode': [processedModeData] };
-            const response = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Mode', payload);
-            if (response?.mode) {
-                updateThermostatMode(device, response.mode, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
-            return response;
+            const { payload: modePayload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Mode', payload);
+            return modePayload;
         },
 
         /**
@@ -181,12 +176,7 @@ function createThermostatAbility(device) {
 
             // Fetch fresh state
             const payload = { 'mode': [{ channel }] };
-            const response = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Mode', payload);
-
-            if (response?.mode) {
-                updateThermostatMode(device, response.mode, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.Control.Thermostat.Mode', payload);
 
             return device._thermostatStateByChannel.get(channel);
         },
@@ -210,12 +200,8 @@ function createThermostatAbility(device) {
             }
 
             const payload = { 'modeB': [{ channel }] };
-            const response = await device.publishMessage('GET', 'Appliance.Control.Thermostat.ModeB', payload);
-            if (response?.modeB) {
-                updateThermostatModeB(device, response.modeB, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
-            return response;
+            const { payload: modeBPayload } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.ModeB', payload);
+            return modeBPayload;
         },
 
         /**
@@ -228,7 +214,8 @@ function createThermostatAbility(device) {
         async getWindowOpened(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { 'windowOpened': [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.WindowOpened', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.WindowOpened', payload);
+            return response;
         },
 
         /**
@@ -241,7 +228,8 @@ function createThermostatAbility(device) {
         async getSchedule(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { schedule: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.Schedule', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Schedule', payload);
+            return response;
         },
 
         /**
@@ -252,7 +240,8 @@ function createThermostatAbility(device) {
          */
         async setSchedule(scheduleData) {
             const payload = { schedule: Array.isArray(scheduleData) ? scheduleData : [scheduleData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Schedule', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Schedule', payload);
+            return response;
         },
 
         /**
@@ -265,7 +254,8 @@ function createThermostatAbility(device) {
         async getTimer(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { timer: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.Timer', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Timer', payload);
+            return response;
         },
 
         /**
@@ -276,7 +266,8 @@ function createThermostatAbility(device) {
          */
         async setTimer(timerData) {
             const payload = { timer: Array.isArray(timerData) ? timerData : [timerData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Timer', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Timer', payload);
+            return response;
         },
 
         /**
@@ -295,7 +286,8 @@ function createThermostatAbility(device) {
                     type: 0
                 }]
             };
-            return await device.publishMessage('SETACK', 'Appliance.Control.Thermostat.Alarm', payload);
+            const { payload: response } = await device.publishMessage('SETACK', 'Appliance.Control.Thermostat.Alarm', payload);
+            return response;
         },
 
         /**
@@ -308,7 +300,8 @@ function createThermostatAbility(device) {
         async getHoldAction(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { holdAction: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.HoldAction', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.HoldAction', payload);
+            return response;
         },
 
         /**
@@ -323,7 +316,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('holdActionData is required', 'VALIDATION_ERROR', { field: 'holdActionData' });
             }
             const payload = { holdAction: Array.isArray(options.holdActionData) ? options.holdActionData : [options.holdActionData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.HoldAction', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.HoldAction', payload);
+            return response;
         },
 
         /**
@@ -336,7 +330,8 @@ function createThermostatAbility(device) {
         async getOverheat(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { overheat: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.Overheat', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Overheat', payload);
+            return response;
         },
 
         /**
@@ -351,7 +346,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('overheatData is required', 'VALIDATION_ERROR', { field: 'overheatData' });
             }
             const payload = { overheat: Array.isArray(options.overheatData) ? options.overheatData : [options.overheatData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Overheat', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Overheat', payload);
+            return response;
         },
 
         /**
@@ -364,7 +360,8 @@ function createThermostatAbility(device) {
         async getDeadZone(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { deadZone: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.DeadZone', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.DeadZone', payload);
+            return response;
         },
 
         /**
@@ -379,7 +376,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('deadZoneData is required', 'VALIDATION_ERROR', { field: 'deadZoneData' });
             }
             const payload = { deadZone: Array.isArray(options.deadZoneData) ? options.deadZoneData : [options.deadZoneData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.DeadZone', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.DeadZone', payload);
+            return response;
         },
 
         /**
@@ -392,7 +390,8 @@ function createThermostatAbility(device) {
         async getCalibration(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { calibration: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.Calibration', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Calibration', payload);
+            return response;
         },
 
         /**
@@ -407,7 +406,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('calibrationData is required', 'VALIDATION_ERROR', { field: 'calibrationData' });
             }
             const payload = { calibration: Array.isArray(options.calibrationData) ? options.calibrationData : [options.calibrationData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Calibration', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Calibration', payload);
+            return response;
         },
 
         /**
@@ -420,7 +420,8 @@ function createThermostatAbility(device) {
         async getSensor(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { sensor: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.Sensor', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Sensor', payload);
+            return response;
         },
 
         /**
@@ -435,7 +436,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('sensorData is required', 'VALIDATION_ERROR', { field: 'sensorData' });
             }
             const payload = { sensor: Array.isArray(options.sensorData) ? options.sensorData : [options.sensorData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Sensor', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Sensor', payload);
+            return response;
         },
 
         /**
@@ -448,7 +450,8 @@ function createThermostatAbility(device) {
         async getSummerMode(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { summerMode: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.SummerMode', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.SummerMode', payload);
+            return response;
         },
 
         /**
@@ -463,7 +466,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('summerModeData is required', 'VALIDATION_ERROR', { field: 'summerModeData' });
             }
             const payload = { summerMode: Array.isArray(options.summerModeData) ? options.summerModeData : [options.summerModeData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.SummerMode', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.SummerMode', payload);
+            return response;
         },
 
         /**
@@ -476,7 +480,8 @@ function createThermostatAbility(device) {
         async getFrost(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { frost: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.Frost', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.Frost', payload);
+            return response;
         },
 
         /**
@@ -491,7 +496,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('frostData is required', 'VALIDATION_ERROR', { field: 'frostData' });
             }
             const payload = { frost: Array.isArray(options.frostData) ? options.frostData : [options.frostData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.Frost', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Frost', payload);
+            return response;
         },
 
         /**
@@ -504,7 +510,8 @@ function createThermostatAbility(device) {
         async getAlarmConfig(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { alarmConfig: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.AlarmConfig', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.AlarmConfig', payload);
+            return response;
         },
 
         /**
@@ -519,7 +526,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('alarmConfigData is required', 'VALIDATION_ERROR', { field: 'alarmConfigData' });
             }
             const payload = { alarmConfig: Array.isArray(options.alarmConfigData) ? options.alarmConfigData : [options.alarmConfigData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.AlarmConfig', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.AlarmConfig', payload);
+            return response;
         },
 
         /**
@@ -532,7 +540,8 @@ function createThermostatAbility(device) {
         async getCompressorDelay(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { delay: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.CompressorDelay', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.CompressorDelay', payload);
+            return response;
         },
 
         /**
@@ -547,7 +556,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('delayData is required', 'VALIDATION_ERROR', { field: 'delayData' });
             }
             const payload = { delay: Array.isArray(options.delayData) ? options.delayData : [options.delayData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.CompressorDelay', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.CompressorDelay', payload);
+            return response;
         },
 
         /**
@@ -560,7 +570,8 @@ function createThermostatAbility(device) {
         async getCtlRange(options = {}) {
             const channel = normalizeChannel(options);
             const payload = { ctlRange: [{ channel }] };
-            return await device.publishMessage('GET', 'Appliance.Control.Thermostat.CtlRange', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Thermostat.CtlRange', payload);
+            return response;
         },
 
         /**
@@ -575,7 +586,8 @@ function createThermostatAbility(device) {
                 throw new MerossDeviceError('ctlRangeData is required', 'VALIDATION_ERROR', { field: 'ctlRangeData' });
             }
             const payload = { ctlRange: Array.isArray(options.ctlRangeData) ? options.ctlRangeData : [options.ctlRangeData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Thermostat.CtlRange', payload);
+            const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.CtlRange', payload);
+            return response;
         }
     };
 }
@@ -714,6 +726,33 @@ function getThermostatCapabilities(device, channelIds) {
         overheat: !!device.abilities['Appliance.Control.Thermostat.Overheat']
     };
 }
+
+registerNamespaceDescriptor('Appliance.Control.Thermostat.Mode', {
+    namespace: 'Appliance.Control.Thermostat.Mode',
+    payloadKey: 'mode',
+    stateMap: '_thermostatStateByChannel',
+    StateClass: ThermostatState,
+    eventType: 'thermostat',
+    snapshot: (s) => ({
+        mode: s.mode,
+        targetTemp: s.targetTemperatureCelsius,
+        currentTemp: s.currentTemperatureCelsius
+    })
+});
+
+registerNamespaceDescriptor('Appliance.Control.Thermostat.ModeB', {
+    namespace: 'Appliance.Control.Thermostat.ModeB',
+    payloadKey: 'modeB',
+    stateMap: '_thermostatStateByChannel',
+    StateClass: ThermostatState,
+    eventType: 'thermostat',
+    snapshot: (s) => ({
+        mode: s.mode,
+        state: s.state,
+        targetTemp: s.targetTemperatureCelsius,
+        currentTemp: s.currentTemperatureCelsius
+    })
+});
 
 module.exports = createThermostatAbility;
 /**

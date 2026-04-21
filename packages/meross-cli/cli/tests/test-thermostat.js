@@ -639,13 +639,13 @@ async function runTests(context) {
         } else {
             const response = await testDevice.thermostat.getWindowOpened({ channel });
             const windowStatus = response?.windowOpened?.[0]?.status;
-            
-            if (!windowStatus) {
+
+            if (typeof windowStatus !== 'number') {
                 results.push({
                     name: 'should get and set thermostat window opened status',
                     passed: false,
                     skipped: false,
-                    error: 'getThermostatWindowOpened returned null or undefined',
+                    error: `getThermostatWindowOpened did not return a numeric status (got ${windowStatus})`,
                     device: deviceName
                 });
             } else {

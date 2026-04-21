@@ -30,7 +30,7 @@ function createRuntimeAbility(device) {
          */
         async get() {
             initializeRuntimeInfo();
-            const result = await device.publishMessage('GET', 'Appliance.System.Runtime', {});
+            const { payload: result } = await device.publishMessage('GET', 'Appliance.System.Runtime', {});
             const data = result && result.runtime ? result.runtime : {};
             device._runtimeInfo = data;
 

@@ -21,7 +21,6 @@ const {
  * @returns {Object}
  */
 function baseDevice(partial, publishRecorderOptions) {
-    const { calls, publishMessage } = createPublishRecorder(publishRecorderOptions);
     const emitter = createDeviceEmitter();
     const device = {
         deviceType: 'mock.mss110',
@@ -29,9 +28,13 @@ function baseDevice(partial, publishRecorderOptions) {
         abilities: {},
         ...partial,
         emit: emitter.emit.bind(emitter),
-        on: emitter.on.bind(emitter),
-        publishMessage
+        on: emitter.on.bind(emitter)
     };
+    const { calls, publishMessage } = createPublishRecorder({
+        ...publishRecorderOptions,
+        getDevice: () => device
+    });
+    device.publishMessage = publishMessage;
     wireToggleStateUpdater(device);
     return { device, calls, publishMessage };
 }

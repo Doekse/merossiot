@@ -24,7 +24,7 @@ describe('sensor history ability (mocked device)', () => {
     });
 
     it('get throws when capacity is missing', async () => {
-        const hist = createSensorHistoryAbility({ publishMessage: async () => ({}) });
+        const hist = createSensorHistoryAbility({ publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => hist.get({ channel: 0 }), MerossDeviceError);
     });

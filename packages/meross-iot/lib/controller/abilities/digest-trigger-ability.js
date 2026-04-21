@@ -16,7 +16,8 @@ function createDigestTriggerAbility(device) {
          * @returns {Promise<Object>} Response containing trigger digest data
          */
         async get() {
-            return await device.publishMessage('GET', 'Appliance.Digest.TriggerX', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Digest.TriggerX', {});
+            return payload;
         }
     };
 }

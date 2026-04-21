@@ -30,7 +30,7 @@ describe('runtime ability (mocked device)', () => {
     it('refreshState throws when system.getAllData is missing', async () => {
         const runtime = createRuntimeAbility({
             deviceType: 'x',
-            publishMessage: async () => ({})
+            publishMessage: async () => ({ header: {}, payload: {} })
         });
 
         await assert.rejects(() => runtime.refreshState(), (err) => err instanceof MerossDeviceError && err.code === 'UNKNOWN_DEVICE_TYPE');

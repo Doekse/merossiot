@@ -167,7 +167,7 @@ function createHubAbility(device) {
          */
         async getBattery() {
             const payload = { 'battery': [] };
-            const response = await device.publishMessage('GET', 'Appliance.Hub.Battery', payload, null);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Battery', payload, null);
 
             if (response && response.battery && Array.isArray(response.battery)) {
                 for (const batteryData of response.battery) {
@@ -188,7 +188,8 @@ function createHubAbility(device) {
          * @returns {Promise<Object>} Promise that resolves with online status data
          */
         async getOnline() {
-            return await device.publishMessage('GET', 'Appliance.Hub.Online', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Hub.Online', {});
+            return payload;
         },
 
         /**
@@ -202,7 +203,8 @@ function createHubAbility(device) {
         async setToggle(options) {
             const { subId, on } = options;
             const payload = { 'togglex': [{ 'id': subId, 'onoff': on ? 1 : 0 }] };
-            return await device.publishMessage('SET', 'Appliance.Hub.ToggleX', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.ToggleX', payload);
+            return out;
         },
 
         /**
@@ -211,7 +213,8 @@ function createHubAbility(device) {
          * @returns {Promise<Object>} Promise that resolves with exception data
          */
         async getException() {
-            return await device.publishMessage('GET', 'Appliance.Hub.Exception', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Hub.Exception', {});
+            return payload;
         },
 
         /**
@@ -220,7 +223,8 @@ function createHubAbility(device) {
          * @returns {Promise<Object>} Promise that resolves with report data
          */
         async getReport() {
-            return await device.publishMessage('GET', 'Appliance.Hub.Report', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Hub.Report', {});
+            return payload;
         },
 
         /**
@@ -229,7 +233,8 @@ function createHubAbility(device) {
          * @returns {Promise<Object>} Promise that resolves with response data
          */
         async pairSubDev() {
-            return await device.publishMessage('SET', 'Appliance.Hub.PairSubDev', {});
+            const { payload } = await device.publishMessage('SET', 'Appliance.Hub.PairSubDev', {});
+            return payload;
         },
 
         /**
@@ -245,7 +250,8 @@ function createHubAbility(device) {
             const payload = { 'alarm': [] };
             const ids = Array.isArray(subIds) ? subIds : [subIds];
             ids.forEach(id => payload.alarm.push({ id, onoff: onoff ? 1 : 0 }));
-            return await device.publishMessage('SET', 'Appliance.Hub.SubDevice.Beep', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.SubDevice.Beep', payload);
+            return out;
         },
 
         /**
@@ -260,7 +266,8 @@ function createHubAbility(device) {
             const payload = { 'alarm': [] };
             const ids = Array.isArray(subIds) ? subIds : [subIds];
             ids.forEach(id => payload.alarm.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.SubDevice.Beep', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.SubDevice.Beep', payload);
+            return out;
         },
 
         /**
@@ -275,7 +282,8 @@ function createHubAbility(device) {
             const payload = { 'adjust': [] };
             const ids = Array.isArray(subIds) ? subIds : [subIds];
             ids.forEach(id => payload.adjust.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.SubDevice.MotorAdjust', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.SubDevice.MotorAdjust', payload);
+            return out;
         },
 
         /**
@@ -288,7 +296,8 @@ function createHubAbility(device) {
         async setSubDeviceMotorAdjust(options) {
             const { adjustData } = options;
             const payload = { 'adjust': Array.isArray(adjustData) ? adjustData : [adjustData] };
-            return await device.publishMessage('SET', 'Appliance.Hub.SubDevice.MotorAdjust', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.SubDevice.MotorAdjust', payload);
+            return out;
         },
 
         /**
@@ -304,7 +313,8 @@ function createHubAbility(device) {
             if (Array.isArray(subIds) && subIds.length > 0) {
                 subIds.forEach(id => payload.version.push({ id }));
             }
-            return await device.publishMessage('GET', 'Appliance.Hub.SubDevice.Version', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.SubDevice.Version', payload);
+            return out;
         },
 
         /**
@@ -321,7 +331,7 @@ function createHubAbility(device) {
                 payload.all.push({ id: sensorIds });
             }
 
-            const response = await device.publishMessage('GET', 'Appliance.Hub.Sensor.All', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.All', payload);
 
             if (response && response.all && Array.isArray(response.all)) {
                 for (const sensorData of response.all) {
@@ -357,7 +367,7 @@ function createHubAbility(device) {
                 });
             });
 
-            const response = await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload, null);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload, null);
 
             if (response && response.latest && Array.isArray(response.latest)) {
                 for (const latestData of response.latest) {
@@ -387,7 +397,8 @@ function createHubAbility(device) {
             } else {
                 payload.tempHum.push({ id: sensorIds });
             }
-            return await device.publishMessage('GET', 'Appliance.Hub.Sensor.TempHum', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.TempHum', payload);
+            return out;
         },
 
         /**
@@ -405,7 +416,8 @@ function createHubAbility(device) {
             } else {
                 payload.alert.push({ id: sensorIds });
             }
-            return await device.publishMessage('GET', 'Appliance.Hub.Sensor.Alert', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Alert', payload);
+            return out;
         },
 
         /**
@@ -424,7 +436,7 @@ function createHubAbility(device) {
                 payload.smokeAlarm.push({ id: sensorIds });
             }
 
-            const response = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', payload);
+            const { payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', payload);
 
             if (response && response.smokeAlarm && Array.isArray(response.smokeAlarm)) {
                 for (const smokeData of response.smokeAlarm) {
@@ -454,7 +466,8 @@ function createHubAbility(device) {
             } else {
                 payload.waterleak.push({ id: sensorIds });
             }
-            return await device.publishMessage('GET', 'Appliance.Hub.Sensor.WaterLeak', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.WaterLeak', payload);
+            return out;
         },
 
         /**
@@ -470,7 +483,8 @@ function createHubAbility(device) {
             if (Array.isArray(sensorIds) && sensorIds.length > 0) {
                 sensorIds.forEach(id => payload.adjust.push({ id }));
             }
-            return await device.publishMessage('GET', 'Appliance.Hub.Sensor.Adjust', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Adjust', payload);
+            return out;
         },
 
         /**
@@ -483,7 +497,8 @@ function createHubAbility(device) {
         async setSensorAdjust(options) {
             const { adjustData } = options;
             const payload = { 'adjust': Array.isArray(adjustData) ? adjustData : [adjustData] };
-            return await device.publishMessage('SET', 'Appliance.Hub.Sensor.Adjust', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Sensor.Adjust', payload);
+            return out;
         },
 
         /**
@@ -499,7 +514,8 @@ function createHubAbility(device) {
             if (Array.isArray(sensorIds) && sensorIds.length > 0) {
                 sensorIds.forEach(id => payload.doorWindow.push({ id }));
             }
-            return await device.publishMessage('GET', 'Appliance.Hub.Sensor.DoorWindow', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.DoorWindow', payload);
+            return out;
         },
 
         /**
@@ -512,7 +528,8 @@ function createHubAbility(device) {
         async setSensorDoorWindow(options) {
             const { doorWindowData } = options;
             const payload = { 'doorWindow': Array.isArray(doorWindowData) ? doorWindowData : [doorWindowData] };
-            return await device.publishMessage('SET', 'Appliance.Hub.Sensor.DoorWindow', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Sensor.DoorWindow', payload);
+            return out;
         },
 
         /**
@@ -526,7 +543,8 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'all': [] };
             ids.forEach(id => payload.all.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.Mts100.All', payload, null);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.All', payload, null);
+            return out;
         },
 
         /**
@@ -540,7 +558,8 @@ function createHubAbility(device) {
         async setMts100Mode(options) {
             const { subId, mode } = options;
             const payload = { 'mode': [{ 'id': subId, 'state': mode }] };
-            return await device.publishMessage('SET', 'Appliance.Hub.Mts100.Mode', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Mode', payload);
+            return out;
         },
 
         /**
@@ -555,7 +574,8 @@ function createHubAbility(device) {
             const { subId, temp } = options;
             temp.id = subId;
             const payload = { 'temperature': [temp] };
-            return await device.publishMessage('SET', 'Appliance.Hub.Mts100.Temperature', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Temperature', payload);
+            return out;
         },
 
         /**
@@ -570,7 +590,8 @@ function createHubAbility(device) {
             const { subId, adjustData } = options;
             adjustData.id = subId;
             const payload = { 'adjust': [adjustData] };
-            return await device.publishMessage('SET', 'Appliance.Hub.Mts100.Adjust', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Adjust', payload);
+            return out;
         },
 
         /**
@@ -584,7 +605,8 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'adjust': [] };
             ids.forEach(id => payload.adjust.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.Mts100.Adjust', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Adjust', payload);
+            return out;
         },
 
         /**
@@ -598,7 +620,8 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'superCtl': [] };
             ids.forEach(id => payload.superCtl.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.Mts100.SuperCtl', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.SuperCtl', payload);
+            return out;
         },
 
         /**
@@ -612,7 +635,8 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'scheduleB': [] };
             ids.forEach(id => payload.scheduleB.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.Mts100.ScheduleB', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.ScheduleB', payload);
+            return out;
         },
 
         /**
@@ -626,7 +650,8 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'config': [] };
             ids.forEach(id => payload.config.push({ id }));
-            return await device.publishMessage('GET', 'Appliance.Hub.Mts100.Config', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Config', payload);
+            return out;
         }
     };
 

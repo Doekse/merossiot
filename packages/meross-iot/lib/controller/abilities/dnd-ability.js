@@ -20,7 +20,7 @@ function createDNDAbility(device) {
          * @returns {Promise<import('../lib/enums').DNDMode>} DNDMode enum object
          */
         async get(_options = {}) {
-            const result = await device.publishMessage('GET', 'Appliance.System.DNDMode', {});
+            const { payload: result } = await device.publishMessage('GET', 'Appliance.System.DNDMode', {});
             if (result && result.DNDMode && result.DNDMode.mode !== undefined) {
                 const modeValue = result.DNDMode.mode;
                 const enumKey = Object.keys(DNDMode).find(key => DNDMode[key] === modeValue);
@@ -38,7 +38,7 @@ function createDNDAbility(device) {
          * @returns {Promise<number>} Raw numeric DND mode value (0 = disabled, 1 = enabled)
          */
         async getRaw(_options = {}) {
-            const result = await device.publishMessage('GET', 'Appliance.System.DNDMode', {});
+            const { payload: result } = await device.publishMessage('GET', 'Appliance.System.DNDMode', {});
             if (result && result.DNDMode && result.DNDMode.mode !== undefined) {
                 return result.DNDMode.mode;
             }

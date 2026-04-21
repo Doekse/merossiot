@@ -5,6 +5,7 @@ const DiffuserSprayState = require('../../model/states/diffuser-spray-state');
 const { buildStateChanges } = require('../../utilities/state-changes');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a diffuser feature object for a device.
@@ -37,34 +38,16 @@ function createDiffuserAbility(device) {
                 const light = { ...options.light };
                 light.uuid = device.uuid;
                 const payload = { 'light': [light] };
-                const response = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Light', payload);
-
-                if (response?.light) {
-                    updateDiffuserLightState(device, response.light);
-                    device.lastFullUpdateTimestamp = Date.now();
-                } else if (light) {
-                    updateDiffuserLightState(device, [light]);
-                    device.lastFullUpdateTimestamp = Date.now();
-                }
-
-                return response;
+                const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Light', payload);
+                return responsePayload;
             }
 
             // Handle spray
             if (options.mode !== undefined) {
                 const channel = normalizeChannel(options);
                 const payload = { 'spray': [{ channel, 'mode': options.mode || 0, 'uuid': device.uuid }] };
-                const response = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Spray', payload);
-
-                if (response?.spray) {
-                    updateDiffuserSprayState(device, response.spray, 'response');
-                    device.lastFullUpdateTimestamp = Date.now();
-                } else {
-                    updateDiffuserSprayState(device, [{ channel, mode: options.mode || 0 }], 'response');
-                    device.lastFullUpdateTimestamp = Date.now();
-                }
-
-                return response;
+                const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Spray', payload);
+                return responsePayload;
             }
 
             throw new MerossDeviceError('Either light or mode is required', 'VALIDATION_ERROR', { field: 'light|mode' });
@@ -97,11 +80,7 @@ function createDiffuserAbility(device) {
                 }
 
                 // Fetch fresh state
-                const response = await device.publishMessage('GET', 'Appliance.Control.Diffuser.Light', {});
-                if (response?.light) {
-                    updateDiffuserLightState(device, response.light, 'response');
-                    device.lastFullUpdateTimestamp = Date.now();
-                }
+                await device.publishMessage('GET', 'Appliance.Control.Diffuser.Light', {});
 
                 return device._diffuserLightStateByChannel.get(channel);
             } else if (type === 'spray') {
@@ -114,11 +93,7 @@ function createDiffuserAbility(device) {
                 }
 
                 // Fetch fresh state
-                const response = await device.publishMessage('GET', 'Appliance.Control.Diffuser.Spray', {});
-                if (response?.spray) {
-                    updateDiffuserSprayState(device, response.spray, 'response');
-                    device.lastFullUpdateTimestamp = Date.now();
-                }
+                await device.publishMessage('GET', 'Appliance.Control.Diffuser.Spray', {});
 
                 return device._diffuserSprayStateByChannel.get(channel);
             }
@@ -133,7 +108,8 @@ function createDiffuserAbility(device) {
          * @returns {Promise<Object>} Response containing sensor data with humidity and temperature
          */
         async getSensor(_options = {}) {
-            return await device.publishMessage('GET', 'Appliance.Control.Diffuser.Sensor', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Control.Diffuser.Sensor', {});
+            return payload;
         },
 
         /**
@@ -149,7 +125,8 @@ function createDiffuserAbility(device) {
             }
             const sensorData = options.sensorData;
             const payload = sensorData;
-            return await device.publishMessage('SET', 'Appliance.Control.Diffuser.Sensor', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Sensor', payload);
+            return out;
         }
     };
 }
@@ -280,6 +257,30 @@ function getDiffuserCapabilities(device, channelIds) {
         spray: hasSpray
     };
 }
+
+registerNamespaceDescriptor('Appliance.Control.Diffuser.Light', {
+    namespace: 'Appliance.Control.Diffuser.Light',
+    payloadKey: 'light',
+    stateMap: '_diffuserLightStateByChannel',
+    StateClass: DiffuserLightState,
+    eventType: 'diffuserLight',
+    snapshot: (s) => ({
+        isOn: s.isOn,
+        brightness: s.luminance,
+        rgb: s.rgbTuple,
+        mode: s.mode
+    }),
+    emitValue: (o, n) => buildStateChanges(o, n, ['rgb'])
+});
+
+registerNamespaceDescriptor('Appliance.Control.Diffuser.Spray', {
+    namespace: 'Appliance.Control.Diffuser.Spray',
+    payloadKey: 'spray',
+    stateMap: '_diffuserSprayStateByChannel',
+    StateClass: DiffuserSprayState,
+    eventType: 'diffuserSpray',
+    snapshot: (s) => ({ mode: s.mode })
+});
 
 module.exports = createDiffuserAbility;
 module.exports._updateDiffuserLightState = updateDiffuserLightState;

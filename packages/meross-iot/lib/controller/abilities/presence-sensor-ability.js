@@ -3,6 +3,8 @@
 const PresenceSensorState = require('../../model/states/presence-sensor-state');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
+const { getMessageTimestamp, shouldApplyUpdate } = require('../../utilities/state-ordering');
+const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
 /**
  * Creates a presence sensor feature object for a device.
@@ -47,12 +49,7 @@ function createPresenceSensorAbility(device) {
                 }]
             };
 
-            const response = await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload);
-
-            if (response?.latest) {
-                updatePresenceState(device, response.latest, 'response');
-                device.lastFullUpdateTimestamp = Date.now();
-            }
+            await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload);
 
             return device._presenceSensorStateByChannel.get(channel);
         },
@@ -154,7 +151,8 @@ function createPresenceSensorAbility(device) {
                     channel
                 }]
             };
-            return await device.publishMessage('GET', 'Appliance.Control.Presence.Config', payload);
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.Presence.Config', payload);
+            return out;
         },
 
         /**
@@ -169,7 +167,8 @@ function createPresenceSensorAbility(device) {
                 throw new Error('configData is required');
             }
             const payload = { config: Array.isArray(options.configData) ? options.configData : [options.configData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Presence.Config', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Presence.Config', payload);
+            return out;
         },
 
         /**
@@ -179,7 +178,8 @@ function createPresenceSensorAbility(device) {
          * @returns {Promise<Object>} Promise that resolves with presence study data
          */
         async getStudy(_options = {}) {
-            return await device.publishMessage('GET', 'Appliance.Control.Presence.Study', {});
+            const { payload } = await device.publishMessage('GET', 'Appliance.Control.Presence.Study', {});
+            return payload;
         },
 
         /**
@@ -194,7 +194,8 @@ function createPresenceSensorAbility(device) {
                 throw new Error('studyData is required');
             }
             const payload = { study: Array.isArray(options.studyData) ? options.studyData : [options.studyData] };
-            return await device.publishMessage('SET', 'Appliance.Control.Presence.Study', payload);
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Presence.Study', payload);
+            return out;
         }
     };
 }
@@ -208,72 +209,133 @@ function createPresenceSensorAbility(device) {
  * @param {Object} device - The device instance
  * @param {Object|Array} latestData - Latest sensor readings (single object or array)
  * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
+ * @param {Object} [header] - When provided (e.g. routed from Meross), enforces per-channel
+ *   ordering from {@link getMessageTimestamp}
  */
-function updatePresenceState(device, latestData, source = 'response') {
+/**
+ * Builds the per-entry `state.update` payload from a raw LatestX entry, merging only
+ * the supported nested blocks (`presence`, `light`) when the device actually reports them.
+ *
+ * @param {number} channel
+ * @param {Object} entry - Raw LatestX entry with `data.presence[]` / `data.light[]`
+ * @returns {Object} Update payload accepted by {@link PresenceSensorState#update}
+ */
+function buildPresenceUpdate(channel, entry) {
+    const update = { channel };
+    const presenceList = entry.data.presence;
+    if (Array.isArray(presenceList) && presenceList.length > 0) {
+        const p = presenceList[0];
+        update.presence = {
+            value: p.value,
+            distance: p.distance,
+            timestamp: p.timestamp,
+            times: p.times
+        };
+    }
+    const lightList = entry.data.light;
+    if (Array.isArray(lightList) && lightList.length > 0) {
+        const l = lightList[0];
+        update.light = {
+            value: l.value,
+            timestamp: l.timestamp
+        };
+    }
+    return update;
+}
+
+/**
+ * Snapshot used for diff emission; kept in one place so the before/after comparison is
+ * symmetric regardless of which code path produced the state.
+ *
+ * @param {Object} state
+ * @returns {Object}
+ */
+function presenceSnapshot(state) {
+    return {
+        isPresent: state.isPresent,
+        distance: state.distanceRaw,
+        light: state.lightLux
+    };
+}
+
+/**
+ * Writes one LatestX entry into the device's presence state map and emits a diffed
+ * `stateChange` when the snapshot actually moved. Separated so the outer loop stays
+ * focused on iteration and ordering.
+ *
+ * @param {Object} device
+ * @param {Object} entry - Raw LatestX entry
+ * @param {string} source - `stateChange` `source` field
+ */
+function applyPresenceEntry(device, entry, source) {
+    const channel = entry.channel !== undefined ? entry.channel : 0;
+    const oldState = device._presenceSensorStateByChannel.get(channel);
+    const oldValue = oldState ? presenceSnapshot(oldState) : undefined;
+
+    let state = oldState;
+    if (!state) {
+        state = new PresenceSensorState({ channel });
+        device._presenceSensorStateByChannel.set(channel, state);
+    }
+
+    state.update(buildPresenceUpdate(channel, entry));
+
+    const newValue = buildStateChanges(oldValue, presenceSnapshot(state));
+    if (Object.keys(newValue).length > 0) {
+        device.emit('stateChange', {
+            type: 'presence',
+            channel,
+            value: newValue,
+            source,
+            timestamp: Date.now()
+        });
+    }
+}
+
+/**
+ * Updates presence state for each entry that passes the per-channel ordering gate.
+ *
+ * @param {Object} device
+ * @param {Object|Array} latestData - LatestX payload (single object or array)
+ * @param {string} [source='response']
+ * @param {Object} [header] - When provided, enforces per-channel ordering via
+ *   {@link getMessageTimestamp}
+ */
+function updatePresenceState(device, latestData, source = 'response', header) {
     if (!device._presenceSensorStateByChannel) {return;}
     if (!latestData) {return;}
 
+    const messageTs = header ? getMessageTimestamp(header) : null;
     const latestArray = Array.isArray(latestData) ? latestData : [latestData];
+    const presenceNs = 'Appliance.Control.Sensor.LatestX';
 
     for (const entry of latestArray) {
         if (!entry || !entry.data) {
             continue;
         }
-
         const channel = entry.channel !== undefined ? entry.channel : 0;
-
-        const oldState = device._presenceSensorStateByChannel.get(channel);
-        const oldValue = oldState ? {
-            isPresent: oldState.isPresent,
-            distance: oldState.distanceRaw,
-            light: oldState.lightLux
-        } : undefined;
-
-        let state = device._presenceSensorStateByChannel.get(channel);
-        if (!state) {
-            state = new PresenceSensorState({ channel });
-            device._presenceSensorStateByChannel.set(channel, state);
+        if (messageTs !== null && !shouldApplyUpdate(device, `${presenceNs}:${channel}`, messageTs)) {
+            continue;
         }
-
-        const stateUpdate = { channel };
-
-        if (entry.data.presence && Array.isArray(entry.data.presence) && entry.data.presence.length > 0) {
-            const presenceData = entry.data.presence[0];
-            stateUpdate.presence = {
-                value: presenceData.value,
-                distance: presenceData.distance,
-                timestamp: presenceData.timestamp,
-                times: presenceData.times
-            };
-        }
-
-        if (entry.data.light && Array.isArray(entry.data.light) && entry.data.light.length > 0) {
-            const lightData = entry.data.light[0];
-            stateUpdate.light = {
-                value: lightData.value,
-                timestamp: lightData.timestamp
-            };
-        }
-
-        state.update(stateUpdate);
-
-        const newValue = buildStateChanges(oldValue, {
-            isPresent: state.isPresent,
-            distance: state.distanceRaw,
-            light: state.lightLux
-        });
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'presence',
-                channel,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
+        applyPresenceEntry(device, entry, source);
     }
 }
+
+/**
+ * `LatestX` payloads are merged into `PresenceSensorState` with nested `data` shapes, so
+ * the generic per-channel `dispatch` is not used; the outer namespace gate in
+ * `dispatch` still coarsely orders whole messages, while {@link updatePresenceState}
+ * applies per-channel `shouldApply` when a header is present.
+ */
+const presenceLatestXDescriptor = {
+    namespace: 'Appliance.Control.Sensor.LatestX',
+    customApply(device, payload, source, header) {
+        const list = payload ? payload.latest : null;
+        updatePresenceState(device, list, source, header);
+    }
+};
+
+registerNamespaceDescriptor('Appliance.Control.Sensor.LatestX', presenceLatestXDescriptor);
 
 /**
  * Gets presence sensor capability information for a device.
