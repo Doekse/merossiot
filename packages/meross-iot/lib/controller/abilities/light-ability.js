@@ -2,6 +2,7 @@
 
 const LightState = require('../../model/states/light-state');
 const { LightMode } = require('../../model/enums');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { rgbToInt } = require('../../utilities/conversion');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
@@ -123,21 +124,12 @@ function createLightAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._lightStateByChannel.get(channel);
-                if (cached) {
-                    return cached;
-                }
-            }
-
-            // Fetch fresh state
-            await device.publishMessage('GET', 'Appliance.Control.Light', {}, null);
-
-            return device._lightStateByChannel.get(channel);
+            return getCachedOrFetch(
+                device,
+                '_lightStateByChannel',
+                channel,
+                () => device.publishMessage('GET', 'Appliance.Control.Light', {}, null)
+            );
         },
 
         /**

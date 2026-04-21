@@ -2,6 +2,7 @@
 
 const DiffuserLightState = require('../../model/states/diffuser-light-state');
 const DiffuserSprayState = require('../../model/states/diffuser-spray-state');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { buildStateChanges } = require('../../utilities/state-changes');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
@@ -67,35 +68,22 @@ function createDiffuserAbility(device) {
         async get(options = {}) {
             const type = options.type || 'light';
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
 
             if (type === 'light') {
-                // Use cache if fresh, otherwise fetch
-                if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                    const cached = device._diffuserLightStateByChannel.get(channel);
-                    if (cached) {
-                        return cached;
-                    }
-                }
-
-                // Fetch fresh state
-                await device.publishMessage('GET', 'Appliance.Control.Diffuser.Light', {});
-
-                return device._diffuserLightStateByChannel.get(channel);
-            } else if (type === 'spray') {
-                // Use cache if fresh, otherwise fetch
-                if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                    const cached = device._diffuserSprayStateByChannel.get(channel);
-                    if (cached) {
-                        return cached;
-                    }
-                }
-
-                // Fetch fresh state
-                await device.publishMessage('GET', 'Appliance.Control.Diffuser.Spray', {});
-
-                return device._diffuserSprayStateByChannel.get(channel);
+                return getCachedOrFetch(
+                    device,
+                    '_diffuserLightStateByChannel',
+                    channel,
+                    () => device.publishMessage('GET', 'Appliance.Control.Diffuser.Light', {})
+                );
+            }
+            if (type === 'spray') {
+                return getCachedOrFetch(
+                    device,
+                    '_diffuserSprayStateByChannel',
+                    channel,
+                    () => device.publishMessage('GET', 'Appliance.Control.Diffuser.Spray', {})
+                );
             }
 
             throw new MerossDeviceError('type must be "light" or "spray"', 'VALIDATION_ERROR', { field: 'type' });

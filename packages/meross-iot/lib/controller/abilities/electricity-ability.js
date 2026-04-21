@@ -2,6 +2,7 @@
 
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
+const { getCachedOrFetch } = require('../../utilities/cache');
 
 /**
  * Creates an electricity feature object for a device.
@@ -35,25 +36,20 @@ function createElectricityAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
+            initializeElectricityCache();
 
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                initializeElectricityCache();
-                const cached = device._channelCachedSamples.get(channel);
-                if (cached) {
-                    return cached;
+            const value = await getCachedOrFetch(
+                device,
+                '_channelCachedSamples',
+                channel,
+                async () => {
+                    const { payload: result } = await device.publishMessage('GET', 'Appliance.Control.Electricity', { channel });
+                    const data = result && result.electricity ? result.electricity : {};
+                    updateElectricityState(device, { channel, ...data }, 'response');
                 }
-            }
+            );
 
-            // Fetch fresh state
-            const { payload: result } = await device.publishMessage('GET', 'Appliance.Control.Electricity', { channel });
-            const data = result && result.electricity ? result.electricity : {};
-
-            updateElectricityState(device, { channel, ...data }, 'response');
-
-            return device._channelCachedSamples.get(channel) || null;
+            return value ?? null;
         },
 
         /**

@@ -1,6 +1,7 @@
 'use strict';
 
 const RollerShutterState = require('../../model/states/roller-shutter-state');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
 const { registerNamespaceDescriptor } = require('../state-dispatcher');
@@ -46,21 +47,12 @@ function createRollerShutterAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._rollerShutterStateByChannel.get(channel);
-                if (cached) {
-                    return cached;
-                }
-            }
-
-            // Fetch fresh state
-            await device.publishMessage('GET', 'Appliance.RollerShutter.State', {});
-
-            return device._rollerShutterStateByChannel.get(channel);
+            return getCachedOrFetch(
+                device,
+                '_rollerShutterStateByChannel',
+                channel,
+                () => device.publishMessage('GET', 'Appliance.RollerShutter.State', {})
+            );
         },
 
         /**

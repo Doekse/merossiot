@@ -2,6 +2,7 @@
 
 const { MerossDeviceError } = require('../../model/exception');
 const ToggleState = require('../../model/states/toggle-state');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { normalizeChannel, validateRequired } = require('../../utilities/options');
 const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
@@ -59,22 +60,12 @@ function createToggleAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._toggleStateByChannel.get(channel);
-                if (cached) {
-                    return cached;
-                }
-            }
-
-            // Fetch fresh state
-            const payload = { 'togglex': { channel } };
-            await device.publishMessage('GET', 'Appliance.Control.ToggleX', payload);
-
-            return device._toggleStateByChannel.get(channel);
+            return getCachedOrFetch(
+                device,
+                '_toggleStateByChannel',
+                channel,
+                () => device.publishMessage('GET', 'Appliance.Control.ToggleX', { togglex: { channel } })
+            );
         },
 
         /**

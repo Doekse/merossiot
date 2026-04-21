@@ -1,6 +1,7 @@
 'use strict';
 
 const TriggerState = require('../../model/states/trigger-state');
+const { readCache } = require('../../utilities/cache');
 const { normalizeChannel } = require('../../utilities/options');
 const triggerUtils = require('../../utilities/trigger');
 const { MerossDeviceError } = require('../../model/exception');
@@ -27,17 +28,11 @@ function createTriggerAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._triggerxStateByChannel.get(channel);
-                if (cached && Array.isArray(cached) && cached.length > 0) {
-                    return {
-                        triggerx: cached.map(t => t.toObject ? t.toObject() : t)
-                    };
-                }
+            const cached = readCache(device, '_triggerxStateByChannel', channel);
+            if (Array.isArray(cached) && cached.length > 0) {
+                return {
+                    triggerx: cached.map(t => t.toObject ? t.toObject() : t)
+                };
             }
 
             // Fetch fresh state

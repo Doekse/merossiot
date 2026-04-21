@@ -2,6 +2,7 @@
 
 const SprayState = require('../../model/states/spray-state');
 const { SprayMode } = require('../../model/enums');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { normalizeChannel } = require('../../utilities/options');
 const { MerossDeviceError } = require('../../model/exception');
 const { registerNamespaceDescriptor } = require('../state-dispatcher');
@@ -49,21 +50,12 @@ function createSprayAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._sprayStateByChannel.get(channel);
-                if (cached) {
-                    return cached;
-                }
-            }
-
-            // Fetch fresh state
-            await device.publishMessage('GET', 'Appliance.Control.Spray', {});
-
-            return device._sprayStateByChannel.get(channel);
+            return getCachedOrFetch(
+                device,
+                '_sprayStateByChannel',
+                channel,
+                () => device.publishMessage('GET', 'Appliance.Control.Spray', {})
+            );
         },
 
         /**

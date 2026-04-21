@@ -1,6 +1,7 @@
 'use strict';
 
 const ThermostatState = require('../../model/states/thermostat-state');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
 const { MerossDeviceError } = require('../../model/exception');
@@ -163,22 +164,15 @@ function createThermostatAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._thermostatStateByChannel.get(channel);
-                if (cached) {
-                    return cached;
-                }
-            }
-
-            // Fetch fresh state
-            const payload = { 'mode': [{ channel }] };
-            await device.publishMessage('GET', 'Appliance.Control.Thermostat.Mode', payload);
-
-            return device._thermostatStateByChannel.get(channel);
+            return getCachedOrFetch(
+                device,
+                '_thermostatStateByChannel',
+                channel,
+                () =>
+                    device.publishMessage('GET', 'Appliance.Control.Thermostat.Mode', {
+                        mode: [{ channel }]
+                    })
+            );
         },
 
         /**

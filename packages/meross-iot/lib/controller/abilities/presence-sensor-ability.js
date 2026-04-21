@@ -1,6 +1,7 @@
 'use strict';
 
 const PresenceSensorState = require('../../model/states/presence-sensor-state');
+const { getCachedOrFetch } = require('../../utilities/cache');
 const { normalizeChannel } = require('../../utilities/options');
 const { buildStateChanges } = require('../../utilities/state-changes');
 const { getMessageTimestamp, shouldApplyUpdate } = require('../../utilities/state-ordering');
@@ -30,28 +31,15 @@ function createPresenceSensorAbility(device) {
         async get(options = {}) {
             const channel = normalizeChannel(options);
             const dataTypes = options.dataTypes || ['presence', 'light'];
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            // Use cache if fresh, otherwise fetch
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                const cached = device._presenceSensorStateByChannel.get(channel);
-                if (cached) {
-                    return cached;
-                }
-            }
-
-            // Fetch fresh state
-            const payload = {
-                latest: [{
-                    channel: 0,
-                    data: dataTypes
-                }]
-            };
-
-            await device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', payload);
-
-            return device._presenceSensorStateByChannel.get(channel);
+            return getCachedOrFetch(
+                device,
+                '_presenceSensorStateByChannel',
+                channel,
+                () =>
+                    device.publishMessage('GET', 'Appliance.Control.Sensor.LatestX', {
+                        latest: [{ channel: 0, data: dataTypes }]
+                    })
+            );
         },
 
         /**

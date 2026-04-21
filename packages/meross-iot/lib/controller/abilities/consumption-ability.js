@@ -1,6 +1,7 @@
 'use strict';
 
 const { normalizeChannel } = require('../../utilities/options');
+const { readCache } = require('../../utilities/cache');
 
 /**
  * Creates a consumption feature object for a device.
@@ -65,15 +66,10 @@ function createConsumptionAbility(device) {
          * @private
          */
         _getConsumptionFromCache(channel) {
-            const CACHE_MAX_AGE = 5000; // 5 seconds
-            const cacheAge = Date.now() - (device.lastFullUpdateTimestamp || 0);
-
-            if (device.lastFullUpdateTimestamp && cacheAge < CACHE_MAX_AGE) {
-                initializeConsumptionCache();
-                const cached = device._channelCachedConsumption.get(channel);
-                if (cached) {
-                    return cached;
-                }
+            initializeConsumptionCache();
+            const cached = readCache(device, '_channelCachedConsumption', channel);
+            if (cached) {
+                return cached;
             }
             return null;
         },
