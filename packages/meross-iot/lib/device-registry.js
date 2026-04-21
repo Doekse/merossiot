@@ -1,7 +1,5 @@
 'use strict';
 
-const { MerossDeviceError } = require('./model/exception');
-
 /**
  * Registry for managing Meross devices and subdevices.
  *
@@ -58,7 +56,7 @@ class DeviceRegistry {
      * @returns {void}
      */
     registerDevice(device) {
-        const internalId = this._getInternalId(device);
+        const internalId = device.internalId;
 
         if (this._devicesByInternalId.has(internalId)) {
             return;
@@ -82,7 +80,7 @@ class DeviceRegistry {
      * @returns {void}
      */
     removeDevice(device) {
-        const internalId = this._getInternalId(device);
+        const internalId = device.internalId;
         const uuid = device.uuid;
 
         this._devicesByInternalId.delete(internalId);
@@ -172,7 +170,7 @@ class DeviceRegistry {
         if (filters.internalIds && Array.isArray(filters.internalIds) && filters.internalIds.length > 0) {
             const idSet = new Set(filters.internalIds);
             devices = devices.filter(device => {
-                return idSet.has(this._getInternalId(device));
+                return idSet.has(device.internalId);
             });
         }
 
@@ -243,45 +241,6 @@ class DeviceRegistry {
 
         const check = capabilityMap[capability.toLowerCase()];
         return check ? check() : false;
-    }
-
-    /**
-     * Gets or generates the internal ID for a device.
-     *
-     * Caches the generated ID on the device to avoid repeated computation. Handles
-     * multiple property access patterns for subdevices to support different device implementations.
-     *
-     * @param {MerossDevice|MerossHubDevice|MerossSubDevice} device - Device instance
-     * @returns {string} Internal ID string
-     * @throws {MerossDeviceError} If required identifiers are missing
-     * @private
-     */
-    _getInternalId(device) {
-        if (device._internalId) {
-            return device._internalId;
-        }
-
-        if (this._isSubdevice(device)) {
-            const hubUuid = device.hub?.uuid || device._hub?.uuid || device.hub?.dev?.uuid || device._hub?.dev?.uuid;
-            const subdeviceId = device.subdeviceId || device._subdeviceId;
-
-            if (!hubUuid || !subdeviceId) {
-                throw new MerossDeviceError('Cannot generate internal ID for subdevice: missing hub UUID or subdevice ID', 'UNKNOWN_DEVICE_TYPE');
-            }
-
-            const internalId = DeviceRegistry.generateInternalId(hubUuid, true, hubUuid, subdeviceId);
-            device._internalId = internalId;
-            return internalId;
-        }
-
-        const uuid = device.uuid;
-        if (!uuid) {
-            throw new MerossDeviceError('Cannot generate internal ID: device missing UUID', 'UNKNOWN_DEVICE_TYPE');
-        }
-
-        const internalId = DeviceRegistry.generateInternalId(uuid);
-        device._internalId = internalId;
-        return internalId;
     }
 
     /**
