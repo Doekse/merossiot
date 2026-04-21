@@ -57,9 +57,107 @@ function createThermostatAbility(device) {
         return Math.round(finalTemp * 10);
     }
 
+    /**
+     * @param {number} channel
+     * @param {boolean|number} windowOpened
+     * @returns {Promise<Object>}
+     */
+    async function setWindowOpened(channel, windowOpened) {
+        const requestPayload = { 'windowOpened': [{ channel, 'status': windowOpened ? 1 : 0 }] };
+        const { payload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.WindowOpened', requestPayload);
+        return payload;
+    }
+
+    /**
+     * Throws early when ModeB is not advertised, avoiding a cryptic protocol-level failure.
+     *
+     * @param {number} channel
+     * @param {Object} options
+     * @returns {Promise<Object>}
+     * @throws {MerossDeviceError} COMMAND_FAILED when ModeB is not supported.
+     */
+    async function setModeB(channel, options) {
+        if (!device.abilities || !device.abilities['Appliance.Control.Thermostat.ModeB']) {
+            throw new MerossDeviceError(
+                'Device does not support Appliance.Control.Thermostat.ModeB namespace',
+                'COMMAND_FAILED',
+                { namespace: 'Appliance.Control.Thermostat.ModeB', channel, options, deviceUuid: device.uuid }
+            );
+        }
+
+        const data = { ...options, channel };
+        if (typeof data.state !== 'number') {
+            data.state = 1;
+        }
+
+        const { payload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.ModeB', { 'modeB': [data] });
+        return payload;
+    }
+
+    /**
+     * Maps user-facing Celsius field names to the device's on-wire keys, converting
+     * each value through alignThermostatTemperature. Mutates `data` in place.
+     *
+     * @param {Object} data
+     * @param {number} channel
+     */
+    function convertTemperatureFields(data, channel) {
+        const mapping = [
+            ['heatTemperature', 'heatTemp'],
+            ['coolTemperature', 'coolTemp'],
+            ['ecoTemperature', 'ecoTemp'],
+            ['manualTemperature', 'manualTemp']
+        ];
+        for (const [source, target] of mapping) {
+            if (data[source] !== undefined) {
+                data[target] = alignThermostatTemperature(data[source], channel);
+                delete data[source];
+            }
+        }
+    }
+
+    /**
+     * Builds the Mode payload, optionally merging the device's current state when
+     * `partialUpdate` is set. A failed GET is swallowed intentionally — a transient
+     * fetch error should not block an otherwise valid SET.
+     *
+     * @param {Function} getCurrent - Bound reference to the ability's `get()`.
+     * @param {number} channel
+     * @param {Object} options
+     * @returns {Promise<Object>}
+     */
+    async function buildModePayload(getCurrent, channel, options) {
+        let data = { ...options };
+
+        if (options.partialUpdate) {
+            try {
+                const current = await getCurrent({ channel });
+                if (current?.mode && Array.isArray(current.mode) && current.mode.length > 0) {
+                    data = { ...current.mode[0], ...data };
+                }
+            } catch (_e) {
+                // Intentional: a failed refresh must not prevent the SET.
+            }
+        }
+
+        data.channel = channel;
+
+        if (data.mode !== undefined && data.mode !== null && typeof data.mode !== 'number') {
+            data.mode = 0;
+        }
+
+        convertTemperatureFields(data, channel);
+        delete data.partialUpdate;
+
+        return data;
+    }
+
     return {
         /**
          * Sets the thermostat mode, mode B, or window opened status.
+         *
+         * Dispatches to one of three specialised helpers based on which option keys
+         * are present, keeping this dispatcher's cyclomatic complexity minimal.
          *
          * @param {Object} options - Thermostat options
          * @param {number} [options.channel=0] - Channel to control (default: 0)
@@ -78,78 +176,17 @@ function createThermostatAbility(device) {
         async set(options = {}) {
             const channel = normalizeChannel(options);
 
-            // Handle window opened
             if (options.windowOpened !== undefined) {
-                const requestPayload = { 'windowOpened': [{ channel, 'status': options.windowOpened ? 1 : 0 }] };
-                const { payload: response } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.WindowOpened', requestPayload);
-                return response;
+                return setWindowOpened(channel, options.windowOpened);
             }
 
-            // Handle mode B
             if (options.state !== undefined) {
-                if (!device.abilities || !device.abilities['Appliance.Control.Thermostat.ModeB']) {
-                    throw new MerossDeviceError(
-                        'Device does not support Appliance.Control.Thermostat.ModeB namespace',
-                        'COMMAND_FAILED',
-                        { namespace: 'Appliance.Control.Thermostat.ModeB', channel, options, deviceUuid: device.uuid }
-                    );
-                }
-
-                const processedModeData = { ...options };
-                processedModeData.channel = channel;
-
-                if (typeof processedModeData.state !== 'number') {
-                    processedModeData.state = 1;
-                }
-
-                const payload = { 'modeB': [processedModeData] };
-                const { payload: modeBPayload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.ModeB', payload);
-                return modeBPayload;
+                return setModeB(channel, options);
             }
 
-            // Handle regular mode
-            let processedModeData = { ...options };
-
-            if (options.partialUpdate) {
-                try {
-                    const currentResponse = await this.get({ channel });
-                    if (currentResponse?.mode && Array.isArray(currentResponse.mode) && currentResponse.mode.length > 0) {
-                        const currentState = currentResponse.mode[0];
-                        processedModeData = { ...currentState, ...processedModeData };
-                    }
-                } catch (e) {
-                    // If fetch fails, continue with provided options only
-                }
-            }
-
-            processedModeData.channel = channel;
-
-            if (processedModeData.mode !== undefined && processedModeData.mode !== null && typeof processedModeData.mode !== 'number') {
-                processedModeData.mode = 0;
-            }
-
-            if (processedModeData.heatTemperature !== undefined) {
-                processedModeData.heatTemp = alignThermostatTemperature(processedModeData.heatTemperature, channel);
-                delete processedModeData.heatTemperature;
-            }
-            if (processedModeData.coolTemperature !== undefined) {
-                processedModeData.coolTemp = alignThermostatTemperature(processedModeData.coolTemperature, channel);
-                delete processedModeData.coolTemperature;
-            }
-            if (processedModeData.ecoTemperature !== undefined) {
-                processedModeData.ecoTemp = alignThermostatTemperature(processedModeData.ecoTemperature, channel);
-                delete processedModeData.ecoTemperature;
-            }
-            if (processedModeData.manualTemperature !== undefined) {
-                processedModeData.manualTemp = alignThermostatTemperature(processedModeData.manualTemperature, channel);
-                delete processedModeData.manualTemperature;
-            }
-
-            delete processedModeData.partialUpdate;
-
-            const payload = { 'mode': [processedModeData] };
-            const { payload: modePayload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Mode', payload);
-            return modePayload;
+            const modeData = await buildModePayload(this.get.bind(this), channel, options);
+            const { payload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.Mode', { 'mode': [modeData] });
+            return payload;
         },
 
         /**
