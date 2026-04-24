@@ -13,6 +13,7 @@ const {
     registerNamespaceDescriptor,
     getNamespaceDescriptors
 } = require('../lib/controller/state-dispatcher');
+const { MerossDevice } = require('../lib/controller/device');
 
 const REGISTRY_PROBE_NS = 'Test.Registry.Probe.Dispatch';
 
@@ -151,5 +152,46 @@ describe('state-dispatcher registry', () => {
         const list = getNamespaceDescriptors(REGISTRY_PROBE_NS);
         assert.ok(list.length >= n + 1);
         assert.ok(list.includes(probe) || list.some((d) => d.gateKey === REGISTRY_PROBE_NS));
+    });
+});
+
+describe('MerossDevice#getState', () => {
+    it('deduplicates shared state maps and skips non-collectable descriptors', () => {
+        const device = Object.create(MerossDevice.prototype);
+        device.onlineStatus = true;
+        device.lastFullUpdateTimestamp = 12345;
+        device.abilities = {
+            'Appliance.Control.Thermostat.Mode': {},
+            'Appliance.Control.Thermostat.ModeB': {},
+            'Appliance.RollerShutter.State': {},
+            'Appliance.RollerShutter.Position': {},
+            'Appliance.RollerShutter.Config': {}
+        };
+        device._thermostatStateByChannel = new Map([
+            [0, { mode: 1, targetTemperatureCelsius: 21, currentTemperatureCelsius: 19, state: 1 }]
+        ]);
+        device._rollerShutterStateByChannel = new Map([
+            [0, { state: 2, position: 64 }]
+        ]);
+        device._rollerShutterConfigByChannel = new Map([
+            [0, { signalDuration: 30000 }]
+        ]);
+        device._channelCachedSamples = new Map();
+        device._channelCachedConsumption = new Map();
+
+        const state = device.getState();
+
+        assert.strictEqual(state.online, true);
+        assert.strictEqual(state.timestamp, 12345);
+        assert.deepStrictEqual(state.thermostat, {
+            0: { mode: 1, targetTemp: 21, currentTemp: 19 }
+        });
+        assert.deepStrictEqual(state.rollerShutter, {
+            0: { state: 2, position: 64 }
+        });
+        assert.deepStrictEqual(
+            Object.keys(state).sort(),
+            ['online', 'rollerShutter', 'thermostat', 'timestamp']
+        );
     });
 });

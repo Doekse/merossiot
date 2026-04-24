@@ -322,7 +322,7 @@ class ManagerSubscription extends EventEmitter {
                 source: event.source || 'poll',
                 timestamp: event.timestamp || Date.now(),
                 device: subscription.device,
-                state: event.value || subscription.device.getUnifiedState(),
+                state: event.value || subscription.device.getState(),
                 changes: {}
             };
             subscription.lastUpdate = update;
@@ -346,7 +346,7 @@ class ManagerSubscription extends EventEmitter {
             source: event.source || 'push',
             timestamp: event.timestamp || Date.now(),
             device: subscription.device,
-            state: subscription.device.getUnifiedState(),
+            state: subscription.device.getState(),
             changes
         };
 
@@ -466,7 +466,7 @@ class ManagerSubscription extends EventEmitter {
             source: 'cache',
             timestamp: Date.now(),
             device,
-            state: device.getUnifiedState()
+            state: device.getState()
         };
 
         subscription.lastUpdate = update;

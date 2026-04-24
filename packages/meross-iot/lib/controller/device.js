@@ -630,7 +630,7 @@ class MerossDevice extends EventEmitter {
             this.emit('stateChange', {
                 type: 'refresh',
                 timestamp: this.lastFullUpdateTimestamp || Date.now(),
-                value: this.getUnifiedState()
+                value: this.getState()
             });
         } else {
             throw new MerossDeviceError('Device does not support refreshState()', 'UNKNOWN_DEVICE_TYPE', { deviceType: this.deviceType });
@@ -638,239 +638,93 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
-     * Gets a unified snapshot of all current device state.
+     * Gets a snapshot of all current device state.
      *
-     * Aggregates all cached feature states into a single object for subscription managers
-     * and state distribution systems.
+     * Reuses dispatcher descriptors so subscription snapshots and emitted state-change
+     * payloads stay aligned as new namespaces are added.
      *
-     * @returns {Object} Unified state object with all available features
+     * @returns {Object} State object with all available features
      */
-    getUnifiedState() {
+    getState() {
         const state = {
             online: this.onlineStatus,
             timestamp: this.lastFullUpdateTimestamp || Date.now()
         };
 
-        this._collectFeatureStates(state);
+        const seen = new Set();
+        for (const namespace of Object.keys(this.abilities || {})) {
+            const descriptors = getNamespaceDescriptors(namespace);
+            for (const descriptor of descriptors) {
+                if (!descriptor.stateMap || !descriptor.snapshot || !descriptor.eventType) {
+                    continue;
+                }
+
+                if (seen.has(descriptor.stateMap)) {
+                    continue;
+                }
+                seen.add(descriptor.stateMap);
+
+                const stateMap = this[descriptor.stateMap];
+                if (!stateMap || stateMap.size === 0) {
+                    continue;
+                }
+
+                const perChannel = {};
+                for (const [channel, channelState] of stateMap) {
+                    perChannel[channel] = descriptor.snapshot(channelState);
+                }
+
+                if (Object.keys(perChannel).length > 0) {
+                    state[descriptor.eventType] = perChannel;
+                }
+            }
+        }
+
+        this._collectElectricityState(state);
+        this._collectConsumptionState(state);
 
         return state;
     }
 
     /**
-     * Collects all feature states into the unified state object.
+     * Collects electricity samples from the dedicated cache.
      *
-     * Uses a configuration-driven approach to iterate over feature getters, reducing
-     * code duplication when adding new features.
-     *
-     * @private
-     * @param {Object} state - State object to populate
-     */
-    _collectFeatureStates(state) {
-        const channels = this.channels || [{ index: 0 }];
-
-        // Toggle uses Map-based storage, handled separately
-        this._collectToggleState(state);
-
-        // Collect state from feature objects (toggle, light) or state maps (others)
-        if (this.light) {
-            this._collectLightState(state, channels);
-        }
-
-        // Collect state from state maps for features not yet refactored
-        const channelFeatures = [
-            { key: 'electricity', map: '_channelCachedSamples' },
-            { key: 'consumption', map: '_channelCachedConsumption' },
-            { key: 'thermostat', map: '_thermostatStateByChannel' },
-            { key: 'rollerShutter', map: '_rollerShutterStateByChannel' },
-            { key: 'garageDoor', map: '_garageDoorStateByChannel' },
-            { key: 'spray', map: '_sprayStateByChannel' }
-        ];
-
-        for (const feature of channelFeatures) {
-            this._collectChannelFeatureFromMap(state, feature.key, feature.map, channels);
-        }
-
-        // Features requiring custom transforms to map internal state to unified format
-        this._collectPresenceSensorState(state, channels);
-        this._collectDiffuserLightState(state, channels);
-        this._collectDiffuserSprayState(state, channels);
-    }
-
-    /**
-     * Collects toggle state.
-     *
-     * Toggle state uses Map-based storage (_toggleStateByChannel) rather than
-     * per-channel getters, so it's handled separately.
+     * Electricity remains outside descriptor wiring, so this helper keeps its
+     * existing externally visible shape until that cache is refactored.
      *
      * @private
      * @param {Object} state - State object to populate
      */
-    _collectToggleState(state) {
-        if (!this._toggleStateByChannel || this._toggleStateByChannel.size === 0) {
-            return;
-        }
-
-        state.toggle = {};
-        this._toggleStateByChannel.forEach((toggleState, channel) => {
-            state.toggle[channel] = toggleState.isOn;
-        });
-    }
-
-    /**
-     * Collects light state from feature object.
-     *
-     * @private
-     * @param {Object} state - State object to populate
-     * @param {Array} channels - Array of channel objects
-     */
-    _collectLightState(state, channels) {
-        const featureState = {};
-        for (const ch of channels) {
-            const cached = this._lightStateByChannel.get(ch.index);
-            if (cached) {
-                featureState[ch.index] = {
-                    isOn: cached.isOn,
-                    rgb: cached.rgbInt,
-                    rgbTuple: cached.rgbTuple,
-                    luminance: cached.luminance,
-                    temperature: cached.temperature,
-                    capacity: cached.capacity
-                };
-            }
-        }
-
-        if (Object.keys(featureState).length > 0) {
-            state.light = featureState;
-        }
-    }
-
-    /**
-     * Collects a channel-based feature state from state map.
-     *
-     * @private
-     * @param {Object} state - State object to populate
-     * @param {string} key - Feature key in state object
-     * @param {string} mapName - Name of state map property
-     * @param {Array} channels - Array of channel objects
-     */
-    _collectChannelFeatureFromMap(state, key, mapName, channels) {
-        const stateMap = this[mapName];
+    _collectElectricityState(state) {
+        const stateMap = this._channelCachedSamples;
         if (!stateMap || stateMap.size === 0) {
             return;
         }
 
-        const featureState = {};
-        for (const ch of channels) {
-            const cached = stateMap.get(ch.index);
-            if (cached) {
-                featureState[ch.index] = cached;
-            }
-        }
-
-        if (Object.keys(featureState).length > 0) {
-            state[key] = featureState;
+        state.electricity = {};
+        for (const [channel, cached] of stateMap) {
+            state.electricity[channel] = cached;
         }
     }
 
     /**
-     * Collects presence sensor state with custom transform.
+     * Collects consumption values from the dedicated cache.
      *
-     * Presence sensors expose additional fields (distance, light, timestamps) that
-     * require custom mapping to the unified state format.
-     *
-     * @private
-     * @param {Object} state - State object to populate
-     * @param {Array} channels - Array of channel objects
-     */
-    _collectPresenceSensorState(state, channels) {
-        if (!this._presenceSensorStateByChannel || this._presenceSensorStateByChannel.size === 0) {
-            return;
-        }
-
-        const featureState = {};
-        for (const ch of channels) {
-            const cached = this._presenceSensorStateByChannel.get(ch.index);
-            if (cached) {
-                featureState[ch.index] = {
-                    isPresent: cached.isPresent,
-                    distance: cached.distanceRaw,
-                    distanceMeters: cached.distanceMeters,
-                    light: cached.lightLux,
-                    presenceValue: cached.presenceValue,
-                    presenceState: cached.presenceState,
-                    presenceTimestamp: cached.presenceTimestamp,
-                    lightTimestamp: cached.lightTimestamp,
-                    presenceTimes: cached.presenceTimes
-                };
-            }
-        }
-
-        if (Object.keys(featureState).length > 0) {
-            state.presence = featureState;
-        }
-    }
-
-    /**
-     * Collects diffuser light state with custom transform.
-     *
-     * Diffuser light state includes RGB tuples and luminance values that need
-     * custom formatting for the unified state format.
+     * Consumption also bypasses descriptor routing today, so this helper preserves
+     * compatibility with existing consumers while descriptor-backed features migrate.
      *
      * @private
      * @param {Object} state - State object to populate
-     * @param {Array} channels - Array of channel objects
      */
-    _collectDiffuserLightState(state, channels) {
-        if (!this._diffuserLightStateByChannel || this._diffuserLightStateByChannel.size === 0) {
+    _collectConsumptionState(state) {
+        const stateMap = this._channelCachedConsumption;
+        if (!stateMap || stateMap.size === 0) {
             return;
         }
 
-        const featureState = {};
-        for (const ch of channels) {
-            const cached = this._diffuserLightStateByChannel.get(ch.index);
-            if (cached) {
-                featureState[ch.index] = {
-                    isOn: cached.isOn,
-                    mode: cached.mode,
-                    rgb: cached.rgbInt,
-                    rgbTuple: cached.rgbTuple,
-                    luminance: cached.luminance
-                };
-            }
-        }
-
-        if (Object.keys(featureState).length > 0) {
-            state.diffuserLight = featureState;
-        }
-    }
-
-    /**
-     * Collects diffuser spray state with custom transform.
-     *
-     * Diffuser spray state requires custom mapping to extract mode information
-     * for the unified state format.
-     *
-     * @private
-     * @param {Object} state - State object to populate
-     * @param {Array} channels - Array of channel objects
-     */
-    _collectDiffuserSprayState(state, channels) {
-        if (!this._diffuserSprayStateByChannel || this._diffuserSprayStateByChannel.size === 0) {
-            return;
-        }
-
-        const featureState = {};
-        for (const ch of channels) {
-            const cached = this._diffuserSprayStateByChannel.get(ch.index);
-            if (cached) {
-                featureState[ch.index] = {
-                    mode: cached.mode
-                };
-            }
-        }
-
-        if (Object.keys(featureState).length > 0) {
-            state.diffuserSpray = featureState;
+        state.consumption = {};
+        for (const [channel, cached] of stateMap) {
+            state.consumption[channel] = cached;
         }
     }
 

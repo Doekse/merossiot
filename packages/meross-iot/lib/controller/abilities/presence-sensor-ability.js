@@ -317,6 +317,9 @@ function updatePresenceState(device, latestData, source = 'response', header) {
  */
 const presenceLatestXDescriptor = {
     namespace: 'Appliance.Control.Sensor.LatestX',
+    stateMap: '_presenceSensorStateByChannel',
+    eventType: 'presence',
+    snapshot: presenceSnapshot,
     customApply(device, payload, source, header) {
         const list = payload ? payload.latest : null;
         updatePresenceState(device, list, source, header);
