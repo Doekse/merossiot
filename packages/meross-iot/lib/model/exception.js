@@ -196,7 +196,7 @@ function mapErrorCodeToError(errorCode, context = {}) {
     }
 
     return new MerossError(
-        message || `Meross error code ${errorCode}`,
+        message || `${errorCode} (${getErrorMessage(errorCode)})`,
         errorCode
     );
 }

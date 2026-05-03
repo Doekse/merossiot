@@ -11,9 +11,8 @@ const {
     DEV_LIST,
     SUBDEV_LIST
 } = require('./model/constants');
-const { getErrorMessage } = require('./model/http/error-codes');
 const { HttpStatsCounter } = require('./utilities/stats');
-const { MerossError, MerossAuthError, MerossApiError, MerossNetworkError } = require('./model/exception');
+const { MerossError, MerossAuthError, MerossApiError, MerossNetworkError, mapErrorCodeToError } = require('./model/exception');
 
 /**
  * Generates a random alphanumeric string (nonce) for API request signing.
@@ -353,56 +352,6 @@ class MerossHttpClient {
     }
 
     /**
-     * Maps API status codes to appropriate error classes and throws them
-     *
-     * Consolidates the sequential if statements into a cleaner structure using
-     * a switch statement for known error codes. Throws appropriate error instances.
-     *
-     * @param {number} apiStatus - API status code from response
-     * @param {Object} body - Response body containing error information
-     * @throws {MerossAuthError} If MFA is required but code not provided (apiStatus 1033)
-     * @throws {MerossAuthError} If MFA code is incorrect (apiStatus 1032)
-     * @throws {MerossAuthError} If authentication token has expired (apiStatus 1019, 1022, 1200)
-     * @throws {MerossAuthError} If too many tokens are active (apiStatus 1301)
-     * @throws {MerossAuthError} If authentication fails (apiStatus 1000-1008)
-     * @throws {MerossApiError} If API rate limit is reached (apiStatus 1042)
-     * @throws {MerossApiError} If resource access is denied (apiStatus 1043)
-     * @throws {MerossError} For other API error status codes
-     * @private
-     */
-    _throwApiStatusError(apiStatus, body) {
-        const message = body.info || getErrorMessage(apiStatus);
-
-        switch (apiStatus) {
-        case 1033:
-            throw new MerossAuthError(message, 'MFA_REQUIRED');
-        case 1032:
-            throw new MerossAuthError(message, 'MFA_WRONG');
-        case 1019:
-        case 1022:
-        case 1200:
-            throw new MerossAuthError(message, 'TOKEN_EXPIRED', { errorCode: apiStatus });
-        case 1301:
-            throw new MerossAuthError(message, 'TOO_MANY_TOKENS');
-        case 1042:
-            throw new MerossApiError(message, 'API_LIMIT_REACHED');
-        case 1043:
-            throw new MerossApiError(message, 'RESOURCE_ACCESS_DENIED');
-        }
-
-        // Authentication failures (status codes 1000-1008) indicate invalid credentials
-        // or expired sessions, which should be handled differently from other errors
-        if (apiStatus >= 1000 && apiStatus <= 1008) {
-            throw new MerossAuthError(message, 'AUTHENTICATION', { errorCode: apiStatus });
-        }
-
-        throw new MerossError(
-            `${apiStatus} (${getErrorMessage(apiStatus)})${body.info ? ` - ${body.info}` : ''}`,
-            apiStatus
-        );
-    }
-
-    /**
      * Performs an authenticated POST request to the Meross HTTP API
      *
      * Centralizes request signing, error handling, and domain management to ensure all API calls
@@ -414,15 +363,8 @@ class MerossHttpClient {
      * @param {Object} paramsData - Request parameters object to be encoded and sent
      * @param {number} [retryCount=0] - Internal retry counter (used for domain redirect retries)
      * @returns {Promise<Object>} Promise that resolves with the API response data
-     * @throws {MerossApiError} If domain redirect occurs and max retries exceeded or auto-retry disabled
-     * @throws {MerossAuthError} If MFA is required but code not provided (apiStatus 1033)
-     * @throws {MerossAuthError} If MFA code is incorrect (apiStatus 1032)
-     * @throws {MerossAuthError} If authentication token has expired (apiStatus 1019, 1022, 1200)
-     * @throws {MerossAuthError} If too many tokens are active (apiStatus 1301)
-     * @throws {MerossAuthError} If authentication fails (apiStatus 1000-1008)
-     * @throws {MerossApiError} If API rate limit is reached (apiStatus 1042)
-     * @throws {MerossApiError} If resource access is denied (apiStatus 1043)
-     * @throws {MerossApiError} If HTTP request fails (network errors, timeouts)
+     * @throws {MerossApiError} If domain redirect handling fails, the HTTP layer fails, or the API returns a non-authentication API error
+     * @throws {MerossAuthError} If the API returns an authentication-related error
      * @throws {MerossError} For other API error status codes
      * @private
      */
@@ -453,7 +395,7 @@ class MerossHttpClient {
 
             // Map API status codes to specific error classes for better error handling
             // upstream, allowing callers to handle different error types appropriately
-            this._throwApiStatusError(body.apiStatus, body);
+            throw mapErrorCodeToError(body.apiStatus, { info: body.info });
         } catch (error) {
             // Track error statistics by extracting HTTP and API status codes from various error types
             const { httpCode, apiCode } = this._extractErrorCodes(error);
