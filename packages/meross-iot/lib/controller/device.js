@@ -1404,47 +1404,54 @@ class MerossDevice extends EventEmitter {
      * @throws {MerossDeviceError} If device has no data connection (DEVICE_UNCONNECTED) or message times out (COMMAND_TIMEOUT)
      */
     async publishMessage(method, namespace, payload, transportMode = null) {
+        if (!this.deviceConnected) {
+            throw new MerossDeviceError('Device is not connected', 'DEVICE_UNCONNECTED', { deviceUuid: this.uuid });
+        }
+
         const data = this.cloudInst.mqtt.encode(method, namespace, payload, this.uuid);
         const { messageId } = data.header;
+        const timeoutDuration = this.cloudInst.timeout;
 
-        return new Promise(async (resolve, reject) => {
-            try {
-                if (!this.deviceConnected) {
-                    return reject(new MerossDeviceError('Device is not connected', 'DEVICE_UNCONNECTED', { deviceUuid: this.uuid }));
-                }
-
-                const res = await this.cloudInst.transport.request(this, this.lanIp, data, transportMode);
-                if (!res) {
-                    return reject(new MerossDeviceError('Device has no data connection available', 'DEVICE_UNCONNECTED', { deviceUuid: this.uuid }));
-                }
-
-                const timeoutDuration = this.cloudInst.timeout;
-                this.waitingMessageIds[messageId] = {
-                    resolve,
-                    reject,
-                    timeout: setTimeout(() => {
-                        if (this.waitingMessageIds[messageId]) {
-                            const commandInfo = {
-                                method,
-                                namespace,
-                                messageId
-                            };
-                            this.waitingMessageIds[messageId].reject(
-                                new MerossDeviceError(
-                                    `Command timed out after ${timeoutDuration}ms`,
-                                    'COMMAND_TIMEOUT',
-                                    { deviceUuid: this.uuid, timeout: timeoutDuration, command: commandInfo }
-                                )
-                            );
-                            delete this.waitingMessageIds[messageId];
-                        }
-                    }, timeoutDuration)
-                };
-
-            } catch (error) {
-                reject(error);
-            }
+        // Register before sending so a fast response cannot arrive before the entry exists
+        const responsePromise = new Promise((resolve, reject) => {
+            this.waitingMessageIds[messageId] = {
+                resolve,
+                reject,
+                timeout: setTimeout(() => {
+                    if (this.waitingMessageIds[messageId]) {
+                        this.waitingMessageIds[messageId].reject(
+                            new MerossDeviceError(
+                                `Command timed out after ${timeoutDuration}ms`,
+                                'COMMAND_TIMEOUT',
+                                { deviceUuid: this.uuid, timeout: timeoutDuration, command: { method, namespace, messageId } }
+                            )
+                        );
+                        delete this.waitingMessageIds[messageId];
+                    }
+                }, timeoutDuration)
+            };
         });
+
+        let res;
+        try {
+            res = await this.cloudInst.transport.request(this, this.lanIp, data, transportMode);
+        } catch (error) {
+            if (this.waitingMessageIds[messageId]) {
+                clearTimeout(this.waitingMessageIds[messageId].timeout);
+                delete this.waitingMessageIds[messageId];
+            }
+            throw error;
+        }
+
+        if (!res) {
+            if (this.waitingMessageIds[messageId]) {
+                clearTimeout(this.waitingMessageIds[messageId].timeout);
+                delete this.waitingMessageIds[messageId];
+            }
+            throw new MerossDeviceError('Device has no data connection available', 'DEVICE_UNCONNECTED', { deviceUuid: this.uuid });
+        }
+
+        return responsePromise;
     }
 
     /**
