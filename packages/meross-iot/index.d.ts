@@ -348,6 +348,29 @@ declare module 'meross-iot' {
         destroy(): void;
     }
 
+    /** Per-device error budget used to throttle failing devices. */
+    export interface ManagerErrorBudget {
+        getBudget(deviceUuid: string): number;
+        resetBudget(deviceUuid: string): void;
+        isOutOfBudget(deviceUuid: string): boolean;
+    }
+
+    /** HTTP/MQTT diagnostics counters; enable only when needed to limit overhead. */
+    export interface ManagerStatistics {
+        enable(maxSamples?: number): void;
+        disable(): void;
+        isEnabled(): boolean;
+        getMqttStats(timeWindowMs?: number): any | null;
+        getHttpStats(timeWindowMs?: number): any | null;
+        getDelayedMqttStats(timeWindowMs?: number): any | null;
+        getDroppedMqttStats(timeWindowMs?: number): any | null;
+    }
+
+    /** Public transport preferences on {@link ManagerMeross}. */
+    export interface ManagerTransport {
+        defaultMode: number;
+    }
+
     export class ManagerMeross extends EventEmitter {
         static authenticate(options: {
             email?: string;
@@ -378,11 +401,12 @@ declare module 'meross-iot' {
 
         readonly devices: ManagerDevices;
         readonly subscription: ManagerSubscription;
-        readonly transport: { defaultMode: number };
+        readonly transport: ManagerTransport;
+        readonly statistics: ManagerStatistics;
+        readonly errorBudget: ManagerErrorBudget;
         readonly options: { logger?: Logger | null; [key: string]: any };
         readonly authenticated: boolean;
         timeout: number;
-        transportMode: number;
         logger: Logger | null;
 
         connect(): Promise<number>;
@@ -390,19 +414,6 @@ declare module 'meross-iot' {
         logout(): Promise<any>;
         disconnectAll(force?: boolean): void;
         getTokenData(): TokenData | null;
-        enableStats(maxSamples?: number): void;
-        disableStats(): void;
-        getDebugInfo(): {
-            getErrorBudget(deviceUuid: string): number;
-            resetErrorBudget(deviceUuid: string): void;
-            getMqttStats(timeWindowMs?: number): any;
-            getHttpStats(timeWindowMs?: number): any;
-            getDelayedMqttStats(timeWindowMs?: number): any;
-            getDroppedMqttStats(timeWindowMs?: number): any;
-            enableStats(maxStatsSamples?: number): void;
-            disableStats(): void;
-            isStatsEnabled(): boolean;
-        };
     }
 
     export default ManagerMeross;

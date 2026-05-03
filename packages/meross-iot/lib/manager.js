@@ -8,7 +8,6 @@ const {
     generateClientAndAppId
 } = require('./utilities/mqtt');
 const ErrorBudgetManager = require('./error-budget');
-const { MqttStatsCounter, HttpStatsCounter } = require('./utilities/stats');
 const RequestQueue = require('./utilities/request-queue');
 const DeviceRegistry = require('./device-registry');
 const { MerossAuthError, MerossDeviceError } = require('./model/exception');
@@ -131,12 +130,16 @@ class ManagerMeross extends EventEmitter {
 
         this._validateOptions(options);
         this._initializeBasicProperties(options);
-        this._initializeTransportMode(options);
+        this._defaultTransportMode = options.transportMode !== undefined
+            ? options.transportMode
+            : TransportMode.MQTT_ONLY;
         this._initializeErrorBudget(options);
         this._initializeRequestQueue(options);
         this._initializeMqttStructures();
-        this._initializeStatistics(options);
         this._initializeHttpClient(options);
+        if (options.enableStats) {
+            this.statistics.enable(options.maxStatsSamples || 1000);
+        }
         this._initializeManagers();
     }
 
@@ -176,23 +179,6 @@ class ManagerMeross extends EventEmitter {
         this.issuedOn = null;
         this.autoRetryOnBadDomain = options.autoRetryOnBadDomain !== undefined ? !!options.autoRetryOnBadDomain : true;
         this._timeout = options.timeout || 10000;
-    }
-
-    /**
-     * Initializes transport mode configuration.
-     *
-     * Defaults to MQTT_ONLY if not specified to maintain backward compatibility
-     * with existing code that relies on cloud MQTT communication.
-     *
-     * @private
-     * @param {Object} options - Configuration options
-     */
-    _initializeTransportMode(options) {
-        if (options.transportMode !== undefined) {
-            this._defaultTransportMode = options.transportMode;
-        } else {
-            this._defaultTransportMode = TransportMode.MQTT_ONLY;
-        }
     }
 
     /**
@@ -244,20 +230,6 @@ class ManagerMeross extends EventEmitter {
         this._appId = null;
         this.clientResponseTopic = null;
         this._pendingMessagesFutures = new Map();
-    }
-
-    /**
-     * Initializes statistics tracking.
-     *
-     * Creates statistics counter only when enabled to avoid overhead when
-     * statistics are not needed.
-     *
-     * @private
-     * @param {Object} options - Configuration options
-     */
-    _initializeStatistics(options) {
-        const enableStats = options.enableStats === true;
-        this._mqttStatsCounter = enableStats ? new MqttStatsCounter(options.maxStatsSamples || 1000) : null;
     }
 
     /**
@@ -381,27 +353,15 @@ class ManagerMeross extends EventEmitter {
     }
 
     /**
-     * Gets the default transport mode used for device requests.
+     * Exposes per-device LAN HTTP error budgets for inspection and manual reset.
      *
-     * Keeping transport mode mutable allows callers to switch routing strategies
-     * at runtime without reconnecting.
+     * Callers that previously used {@link ManagerMeross#getDebugInfo} for budget
+     * helpers should use this object instead.
      *
-     * @returns {number} Current default transport mode
+     * @returns {ErrorBudgetManager} Error budget manager
      */
-    get transportMode() {
-        return this._defaultTransportMode;
-    }
-
-    /**
-     * Sets the default transport mode used for device requests.
-     *
-     * Applying transport mode changes immediately helps operational tooling
-     * adapt to network conditions during a running session.
-     *
-     * @param {number} mode - Transport mode value from TransportMode enum
-     */
-    set transportMode(mode) {
-        this._defaultTransportMode = mode;
+    get errorBudget() {
+        return this._errorBudgetManager;
     }
 
     /**
@@ -468,59 +428,6 @@ class ManagerMeross extends EventEmitter {
         if (this._subscriptionManager) {
             this._subscriptionManager.logger = this.options.logger || (() => {});
         }
-    }
-
-    /**
-     * Enables MQTT and HTTP request statistics collection.
-     *
-     * Runtime toggling avoids the overhead of collecting stats unless callers
-     * explicitly need diagnostics.
-     *
-     * @param {number} [maxSamples=1000] - Maximum retained samples per counter
-     */
-    enableStats(maxSamples = 1000) {
-        if (!this._mqttStatsCounter) {
-            this._mqttStatsCounter = new MqttStatsCounter(maxSamples);
-        }
-        if (this._httpClient && !this._httpClient._httpStatsCounter) {
-            this._httpClient._httpStatsCounter = new HttpStatsCounter(maxSamples);
-        }
-    }
-
-    /**
-     * Disables MQTT and HTTP request statistics collection.
-     *
-     * Clearing counters releases memory and stops accumulation when stats are
-     * no longer needed.
-     */
-    disableStats() {
-        this._mqttStatsCounter = null;
-        if (this._httpClient) {
-            this._httpClient._httpStatsCounter = null;
-        }
-    }
-
-    /**
-     * Returns diagnostics helpers for runtime debugging.
-     *
-     * Centralizing these methods on the manager removes the need for a separate
-     * debug utility export while keeping low-level diagnostics available to CLI
-     * and advanced consumers.
-     *
-     * @returns {Object} Diagnostics helpers
-     */
-    getDebugInfo() {
-        return {
-            getErrorBudget: (deviceUuid) => this._errorBudgetManager.getBudget(deviceUuid),
-            resetErrorBudget: (deviceUuid) => this._errorBudgetManager.resetBudget(deviceUuid),
-            getMqttStats: (timeWindowMs = 60000) => this.statistics.getMqttStats(timeWindowMs),
-            getHttpStats: (timeWindowMs = 60000) => this.statistics.getHttpStats(timeWindowMs),
-            getDelayedMqttStats: (timeWindowMs = 60000) => this.statistics.getDelayedMqttStats(timeWindowMs),
-            getDroppedMqttStats: (timeWindowMs = 60000) => this.statistics.getDroppedMqttStats(timeWindowMs),
-            enableStats: (maxStatsSamples = 1000) => this.enableStats(maxStatsSamples),
-            disableStats: () => this.disableStats(),
-            isStatsEnabled: () => this.statistics.isEnabled()
-        };
     }
 
     /**

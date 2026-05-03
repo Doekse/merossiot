@@ -22,10 +22,10 @@ function applyMerossRuntimeSettings(manager, settings) {
         manager.timeout = settings.timeout;
     }
     if (settings.transportMode !== null && settings.transportMode !== undefined) {
-        manager.transportMode = settings.transportMode;
+        manager.transport.defaultMode = settings.transportMode;
     }
     if (settings.enableStats) {
-        manager.enableStats();
+        manager.statistics.enable();
     }
 }
 

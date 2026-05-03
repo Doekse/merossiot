@@ -20,6 +20,32 @@ class ManagerStatistics {
     }
 
     /**
+     * Turns on HTTP and MQTT statistics when diagnostics are needed without paying
+     * sampling cost for the whole process lifetime.
+     *
+     * @param {number} [maxSamples=1000] - Maximum retained samples per counter
+     */
+    enable(maxSamples = 1000) {
+        const { MqttStatsCounter, HttpStatsCounter } = require('../utilities/stats');
+        if (!this.manager._mqttStatsCounter) {
+            this.manager._mqttStatsCounter = new MqttStatsCounter(maxSamples);
+        }
+        if (this.manager._httpClient && !this.manager._httpClient._httpStatsCounter) {
+            this.manager._httpClient._httpStatsCounter = new HttpStatsCounter(maxSamples);
+        }
+    }
+
+    /**
+     * Stops collection and drops counters so memory is not held after diagnostics.
+     */
+    disable() {
+        this.manager._mqttStatsCounter = null;
+        if (this.manager._httpClient) {
+            this.manager._httpClient._httpStatsCounter = null;
+        }
+    }
+
+    /**
      * Notifies the statistics system of an HTTP request.
      *
      * Tracks HTTP request/response statistics if statistics are enabled.
@@ -147,11 +173,16 @@ class ManagerStatistics {
     /**
      * Checks if statistics tracking is enabled.
      *
+     * Either channel alone counts as enabled so transient init order (MQTT vs HTTP)
+     * does not hide an active counter from callers.
+     *
      * @returns {boolean} True if statistics are enabled, false otherwise
      */
     isEnabled() {
-        return (this.manager._mqttStatsCounter !== null) &&
-               (this.manager._httpClient && this.manager._httpClient._httpStatsCounter !== null);
+        return !!(
+            this.manager._mqttStatsCounter ||
+            (this.manager._httpClient && this.manager._httpClient._httpStatsCounter)
+        );
     }
 }
 

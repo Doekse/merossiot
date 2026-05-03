@@ -3,10 +3,10 @@
 const chalk = require('chalk');
 
 function showStats(manager) {
-    const debug = manager.getDebugInfo();
-    const statsEnabled = debug.isStatsEnabled();
-    const mqttStats = debug.getMqttStats();
-    const httpStats = debug.getHttpStats();
+    const stats = manager.statistics;
+    const statsEnabled = stats.isEnabled();
+    const mqttStats = stats.getMqttStats();
+    const httpStats = stats.getHttpStats();
 
     console.log(`\n${chalk.bold.underline('Statistics')}\n`);
 
@@ -26,8 +26,8 @@ function showStats(manager) {
     }
 
     if (mqttStats) {
-        const delayedStats = debug.getDelayedMqttStats();
-        const droppedStats = debug.getDroppedMqttStats();
+        const delayedStats = stats.getDelayedMqttStats();
+        const droppedStats = stats.getDroppedMqttStats();
 
         const sent = mqttStats.globalStats.totalCalls;
         const delayed = delayedStats ? delayedStats.globalStats.totalCalls : 0;

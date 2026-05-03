@@ -8,7 +8,7 @@
  * Transport Modes Example
  *
  * Demonstrates the different transport modes available for communicating
- * with devices. Set {@link ManagerMeross#transportMode} at any time after connect:
+ * with devices. Set {@link ManagerMeross#transport}'s `defaultMode` at any time after connect:
  * - MQTT_ONLY: Always use cloud MQTT
  * - LAN_HTTP_FIRST: Try local HTTP first, fallback to MQTT
  * - LAN_HTTP_FIRST_ONLY_GET: Try local HTTP for GET requests only, use MQTT for SET
@@ -26,15 +26,15 @@ const Meross = require('../index.js');
         });
 
         // Example 1: MQTT Only (default)
-        // meross.transportMode = Meross.TransportMode.MQTT_ONLY;
+        // meross.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
 
         // Example 2: LAN HTTP First
-        // meross.transportMode = Meross.TransportMode.LAN_HTTP_FIRST;
+        // meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST;
 
         // Example 3: LAN HTTP First (GET only)
-        // meross.transportMode = Meross.TransportMode.LAN_HTTP_FIRST_ONLY_GET;
+        // meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST_ONLY_GET;
 
-        meross.transportMode = Meross.TransportMode.MQTT_ONLY;
+        meross.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
         meross.logger = (msg) => console.log(`[MQTT Only] ${msg}`);
 
         const deviceCount = meross.devices.list().length;

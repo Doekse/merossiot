@@ -18,14 +18,14 @@ const { onEachDevice } = require('./on-each-device.js');
             password: 'password1',
             logger: (m) => console.log(`[A1] ${m}`)
         });
-        account1.transportMode = Meross.TransportMode.MQTT_ONLY;
+        account1.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
 
         const account2 = await Meross.connect({
             email: 'account2@example.com',
             password: 'password2',
             logger: (m) => console.log(`[A2] ${m}`)
         });
-        account2.transportMode = Meross.TransportMode.MQTT_ONLY;
+        account2.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
 
         onEachDevice(account1, (d) => console.log(`A1 device: ${d.name}`));
         onEachDevice(account2, (d) => console.log(`A2 device: ${d.name}`));

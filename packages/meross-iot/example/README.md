@@ -46,10 +46,10 @@ onEachDevice(meross, (device) => {
 | **event-handling.js** | Manager `deviceUpdate` and device `stateChange` |
 | **token-reuse.js** | Save/load `getTokenData()` to skip password login |
 | **device-discovery.js** | `discover` / `discoverSubdevices` filters, `initializeDevice`, `initialize({ uuids })` |
-| **statistics.js** | `enableStats()` + `createDebugUtils` |
+| **statistics.js** | `statistics.enable()` + `statistics.getMqttStats` / `getHttpStats` |
 | **error-handling.js** | `connect()` failures, `describeMerossError` helper |
 | **hub-devices.js** | Hubs, `getSubdevices()`, subdevice toggle |
-| **transport-modes.js** | `meross.transportMode` (MQTT vs LAN-first) |
+| **transport-modes.js** | `meross.transport.defaultMode` (MQTT vs LAN-first) |
 | **multiple-accounts.js** | Two `Meross.connect()` calls → two managers |
 | **timer-usage.js** | `setTimerX`, list/delete timers |
 | **subscription-manager.js** | `meross.subscription`, polling, `deviceListUpdate` |

@@ -137,8 +137,7 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
             const params = await collectControlParameters(methodName, method, device);
 
             // Ensure stats are enabled (they should be, but verify)
-            const debug = manager.getDebugInfo();
-            if (!debug.isStatsEnabled()) {
+            if (!manager.statistics.isEnabled()) {
                 console.log(chalk.yellow('\nNote: Statistics tracking is disabled. Enable it in Settings to track control commands.'));
             }
 
@@ -147,8 +146,7 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
             const usesLanHttp = transportMode === TransportMode.LAN_HTTP_FIRST ||
                                 transportMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET;
             if (usesLanHttp) {
-                const debug = manager.getDebugInfo();
-                const budget = debug.getErrorBudget(uuid);
+                const budget = manager.errorBudget.getBudget(uuid);
                 if (budget < 1) {
                     console.log(chalk.yellow(`\n⚠ Device is out of error budget (${budget} remaining). HTTP requests will be blocked and fallback to MQTT will be used.`));
                     console.log(chalk.dim('   You can reset the error budget in Settings > Error Budget Management.\n'));

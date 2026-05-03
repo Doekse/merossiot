@@ -5,7 +5,7 @@
 'use strict';
 
 /**
- * HTTP / MQTT statistics (`enableStats` + debug utils)
+ * HTTP / MQTT statistics via {@link ManagerStatistics}.
  */
 
 const Meross = require('../index.js');
@@ -19,9 +19,8 @@ const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
             password: 'yourpassword',
             logger: console.log
         });
-        meross.enableStats(1000);
+        meross.statistics.enable(1000);
 
-        const debug = meross.getDebugInfo();
         const n = meross.devices.list().length;
         console.log(`\n✓ ${n} device(s). Generating a little traffic…`);
 
@@ -41,14 +40,14 @@ const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
 
         console.log('\n=== Statistics (last 60s) ===\n');
 
-        const httpStats = debug.getHttpStats(60000);
+        const httpStats = meross.statistics.getHttpStats(60000);
         if (httpStats) {
             console.log(`HTTP calls: ${httpStats.globalStats.totalCalls}`);
         } else {
             console.log('HTTP stats: (none)');
         }
 
-        const mqttStats = debug.getMqttStats(60000);
+        const mqttStats = meross.statistics.getMqttStats(60000);
         console.log(`MQTT calls: ${mqttStats.globalStats.totalCalls}`);
 
         process.on('SIGINT', async () => {

@@ -485,14 +485,13 @@ async function _handleStatsCommand(manager, rl) {
         ]
     }]);
 
-    const debug = manager.getDebugInfo();
     if (action === 'get') {
         showStats(manager);
     } else if (action === 'on') {
-        debug.enableStats();
+        manager.statistics.enable();
         console.log('\nStatistics tracking enabled');
     } else {
-        debug.disableStats();
+        manager.statistics.disable();
         console.log('\nStatistics tracking disabled');
     }
     await question(rl, '\nPress Enter to return to menu...');
@@ -602,11 +601,11 @@ async function _handleSettingsCommand(manager, rl, currentUserRef, currentCreden
     };
     const setEnableStats = (enabled) => {
         enableStatsRef.current = enabled;
-        const debug = managerRef.current.getDebugInfo();
+        const m = managerRef.current;
         if (enabled) {
-            debug.enableStats();
+            m.statistics.enable();
         } else {
-            debug.disableStats();
+            m.statistics.disable();
         }
     };
     const setVerbose = (enabled) => {

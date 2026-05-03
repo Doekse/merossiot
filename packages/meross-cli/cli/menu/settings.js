@@ -29,8 +29,9 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
         renderSimpleHeader(currentUser, deviceCount);
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
-        const debug = currentManager ? currentManager.getDebugInfo() : null;
-        const currentStatsEnabled = debug ? debug.isStatsEnabled() : enableStats;
+        const currentStatsEnabled = currentManager
+            ? currentManager.statistics.isEnabled()
+            : enableStats;
         const currentTransportMode = currentManager
             ? getTransportModeName(currentManager.transport.defaultMode)
             : getTransportModeName(TransportMode.MQTT_ONLY);
@@ -139,8 +140,7 @@ async function showStatisticsSettings(rl, currentManager, currentUser, enableSta
     renderSimpleHeader(currentUser, deviceCount);
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
-    const debug = currentManager.getDebugInfo();
-    const statsEnabled = debug.isStatsEnabled();
+    const statsEnabled = currentManager.statistics.isEnabled();
 
     process.stdout.write(chalk.bold('=== Statistics Settings ===\n\n'));
     const { action } = await inquirer.prompt([{
@@ -569,7 +569,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
         return;
     }
 
-    const debug = currentManager.getDebugInfo();
+    const errorBudget = currentManager.errorBudget;
 
     while (true) {
         // Clear screen and render simple header
@@ -581,8 +581,8 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
         process.stdout.write(chalk.bold('=== Error Budget Management ===\n\n'));
 
         // Get error budget configuration
-        const maxErrors = currentManager._errorBudgetManager?._maxErrors || 1;
-        const timeWindowMs = currentManager._errorBudgetManager?._window || 60000;
+        const maxErrors = errorBudget?._maxErrors || 1;
+        const timeWindowMs = errorBudget?._window || 60000;
         const timeWindowSec = Math.floor(timeWindowMs / 1000);
 
         console.log(chalk.dim(`Configuration: Max ${maxErrors} error(s) per ${timeWindowSec} seconds\n`));
@@ -627,7 +627,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 devices.forEach(device => {
                     const uuid = device.uuid;
                     const name = device.name || 'Unknown';
-                    const budget = debug.getErrorBudget(uuid);
+                    const budget = errorBudget.getBudget(uuid);
                     const isOutOfBudget = budget < 1;
                     const status = isOutOfBudget
                         ? chalk.red(`Out of budget (${budget} remaining)`)
@@ -656,7 +656,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
             const deviceChoices = devices.map(device => {
                 const uuid = device.uuid;
                 const name = device.name || 'Unknown';
-                const budget = debug.getErrorBudget(uuid);
+                const budget = errorBudget.getBudget(uuid);
                 const isOutOfBudget = budget < 1;
                 const status = isOutOfBudget ? chalk.red('(Out of budget)') : chalk.green('(OK)');
                 return {
@@ -672,7 +672,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 choices: deviceChoices
             }]);
 
-            const budget = debug.getErrorBudget(deviceUuid);
+            const budget = errorBudget.getBudget(deviceUuid);
             const isOutOfBudget = budget < 1;
             const device = devices.find(d => {
                 const dev = d.dev || {};
@@ -707,7 +707,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
             const deviceChoices = devices.map(device => {
                 const uuid = device.uuid;
                 const name = device.name || 'Unknown';
-                const budget = debug.getErrorBudget(uuid);
+                const budget = errorBudget.getBudget(uuid);
                 const isOutOfBudget = budget < 1;
                 const status = isOutOfBudget ? chalk.red('(Out of budget)') : chalk.green('(OK)');
                 return {
@@ -738,7 +738,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
             }]);
 
             if (confirm) {
-                debug.resetErrorBudget(deviceUuid);
+                errorBudget.resetBudget(deviceUuid);
                 console.log(chalk.green(`\n✓ Error budget reset for "${name}"\n`));
             }
 
@@ -761,7 +761,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 devices.forEach(device => {
                     const uuid = device.uuid;
                     if (uuid) {
-                        debug.resetErrorBudget(uuid);
+                        errorBudget.resetBudget(uuid);
                         resetCount++;
                     }
                 });
