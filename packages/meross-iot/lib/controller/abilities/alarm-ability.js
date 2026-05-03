@@ -206,5 +206,4 @@ registerNamespaceDescriptor('Appliance.Control.Alarm', {
 });
 
 module.exports = createAlarmAbility;
-module.exports._updateAlarmEvents = updateAlarmEvents;
 module.exports.getCapabilities = getAlarmCapabilities;

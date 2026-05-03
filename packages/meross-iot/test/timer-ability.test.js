@@ -8,9 +8,10 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createTimerAbility = require('../lib/controller/abilities/timer-ability');
-const { _updateTimerXState: updateTimerXState } = require('../lib/controller/abilities/timer-ability');
 const { MerossDeviceError } = require('..');
-const { createDeviceEmitter, createPublishRecorder } = require('./helpers/mock-ability-device');
+const { createDeviceEmitter, createDispatchStateShim, createPublishRecorder } = require('./helpers/mock-ability-device');
+
+const pushTimerX = createDispatchStateShim('Appliance.Control.TimerX', 'timerx');
 
 describe('timer ability (mocked device)', () => {
     it('get by timerId sends GET Appliance.Control.TimerX with id payload', async () => {
@@ -66,7 +67,7 @@ describe('timer ability (mocked device)', () => {
             _timerxStateByChannel: new Map()
         };
 
-        updateTimerXState(device, { id: 'p1', channel: 0, enable: 1, type: 0, time: 0, week: 0 }, 'push');
+        pushTimerX(device, { id: 'p1', channel: 0, enable: 1, type: 0, time: 0, week: 0 }, 'push');
 
         assert.strictEqual(device._timerxStateByChannel.get(0).length, 1);
         assert.strictEqual(device._timerxStateByChannel.get(0)[0].id, 'p1');

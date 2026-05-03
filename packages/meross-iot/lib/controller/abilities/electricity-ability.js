@@ -144,5 +144,4 @@ function getElectricityCapabilities(device, channelIds) {
 }
 
 module.exports = createElectricityAbility;
-module.exports._updateElectricityState = updateElectricityState;
 module.exports.getCapabilities = getElectricityCapabilities;

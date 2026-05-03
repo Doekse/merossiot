@@ -233,5 +233,4 @@ module.exports = createRollerShutterAbility;
  * Private exports for unit tests. Do not rename or change shape without updating
  * `test/roller-shutter-ability.test.js`.
  */
-module.exports._updateRollerShutterConfig = updateRollerShutterConfig;
 module.exports.getCapabilities = getRollerShutterCapabilities;

@@ -180,52 +180,6 @@ function createGarageAbility(device) {
 }
 
 /**
- * Updates the cached garage door state from state data.
- *
- * Called automatically when garage door push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of state data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} stateData - State data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateGarageDoorState(device, stateData, source = 'response') {
-    if (!device._garageDoorStateByChannel) {return;}
-    if (!stateData) {return;}
-
-    const stateArray = Array.isArray(stateData) ? stateData : [stateData];
-
-    for (const stateItem of stateArray) {
-        const channelIndex = stateItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._garageDoorStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            isOpen: oldState.isOpen
-        } : undefined;
-
-        let state = device._garageDoorStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new GarageDoorState(stateItem);
-            device._garageDoorStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(stateItem);
-        }
-
-        const newValue = { isOpen: state.isOpen };
-        if (oldValue === undefined || oldValue.isOpen !== state.isOpen) {
-            device.emit('stateChange', {
-                type: 'garageDoor',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Updates the cached garage door configuration from config data.
  *
  * Called automatically when garage door configuration responses are received.
@@ -293,6 +247,4 @@ registerNamespaceDescriptor('Appliance.GarageDoor.MultipleConfig', {
 });
 
 module.exports = createGarageAbility;
-module.exports._updateGarageDoorState = updateGarageDoorState;
-module.exports._updateGarageDoorConfig = updateGarageDoorConfig;
 module.exports.getCapabilities = getGarageCapabilities;

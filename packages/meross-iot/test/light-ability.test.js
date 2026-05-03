@@ -10,9 +10,10 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createLightAbility = require('../lib/controller/abilities/light-ability');
-const { _updateLightState: updateLightState } = require('../lib/controller/abilities/light-ability');
 const { LightMode } = require('../lib/model/enums');
-const { createDeviceEmitter, createPublishRecorder } = require('./helpers/mock-ability-device');
+const { createDeviceEmitter, createPublishRecorder, createDispatchStateShim } = require('./helpers/mock-ability-device');
+
+const pushLightState = createDispatchStateShim('Appliance.Control.Light', 'light');
 
 describe('light ability (mocked device)', () => {
     it('set sends SET Appliance.Control.Light with RGB payload when capacity includes MODE_RGB', async () => {
@@ -93,7 +94,7 @@ describe('light ability (mocked device)', () => {
             emit: emitter.emit.bind(emitter)
         };
 
-        updateLightState(device, { channel: 0, onoff: 1, rgb: 0xff0000 }, 'push');
+        pushLightState(device, { channel: 0, onoff: 1, rgb: 0xff0000 }, 'push');
 
         assert.strictEqual(device._lightStateByChannel.get(0).isOn, true);
         assert.strictEqual(events.length, 1);

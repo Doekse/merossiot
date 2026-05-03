@@ -291,61 +291,6 @@ function createLightAbility(device) {
 }
 
 /**
- * Updates the cached light state from light data.
- *
- * Called automatically when light push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of light data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} lightData - Light data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateLightState(device, lightData, source = 'response') {
-    if (!device._lightStateByChannel) {return;}
-    if (!lightData) {return;}
-
-    const lightArray = Array.isArray(lightData) ? lightData : [lightData];
-
-    for (const lightItem of lightArray) {
-        const channelIndex = lightItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._lightStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            isOn: oldState.isOn,
-            brightness: oldState.luminance,
-            rgb: oldState.rgbTuple,
-            temperature: oldState.temperature
-        } : undefined;
-
-        let state = device._lightStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new LightState(lightItem);
-            device._lightStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(lightItem);
-        }
-
-        const newValue = buildStateChanges(oldValue, {
-            isOn: state.isOn,
-            brightness: state.luminance,
-            rgb: state.rgbTuple,
-            temperature: state.temperature
-        }, ['rgb']);
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'light',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Gets light capability information for a device.
  *
  * @param {Object} device - The device instance
@@ -383,9 +328,4 @@ registerNamespaceDescriptor('Appliance.Control.Light', {
 });
 
 module.exports = createLightAbility;
-/**
- * Private export for unit tests. Do not rename or change shape without updating
- * `test/light-ability.test.js`.
- */
-module.exports._updateLightState = updateLightState;
 module.exports.getCapabilities = getLightCapabilities;

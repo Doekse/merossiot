@@ -8,7 +8,6 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createThermostatAbility = require('../lib/controller/abilities/thermostat-ability');
-const { _updateThermostatMode: updateThermostatMode } = require('../lib/controller/abilities/thermostat-ability');
 const { MerossDeviceError } = require('..');
 const { createDeviceEmitter, createPublishRecorder } = require('./helpers/mock-ability-device');
 const { dispatch, getNamespaceDescriptors } = require('../lib/controller/state-dispatcher');
@@ -143,10 +142,11 @@ describe('thermostat ability (mocked device)', () => {
             emit: emitter.emit.bind(emitter)
         };
 
-        updateThermostatMode(
+        routeThermostatMode(
             device,
-            [{ channel: 0, mode: 0, currentTemp: 205, targetTemp: 210 }],
-            'push'
+            { mode: [{ channel: 0, mode: 0, currentTemp: 205, targetTemp: 210 }] },
+            'push',
+            undefined
         );
 
         const cached = device._thermostatStateByChannel.get(0);

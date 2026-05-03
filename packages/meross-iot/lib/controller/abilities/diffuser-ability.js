@@ -120,110 +120,6 @@ function createDiffuserAbility(device) {
 }
 
 /**
- * Updates the cached diffuser light state from light data.
- *
- * Called automatically when diffuser light push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of light data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} lightData - Light data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateDiffuserLightState(device, lightData, source = 'response') {
-    if (!device._diffuserLightStateByChannel) {return;}
-    if (!lightData) {return;}
-
-    const lightArray = Array.isArray(lightData) ? lightData : [lightData];
-
-    for (const lightItem of lightArray) {
-        const channelIndex = lightItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._diffuserLightStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            isOn: oldState.isOn,
-            brightness: oldState.luminance,
-            rgb: oldState.rgbTuple,
-            mode: oldState.mode
-        } : undefined;
-
-        let state = device._diffuserLightStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new DiffuserLightState(lightItem);
-            device._diffuserLightStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(lightItem);
-        }
-
-        const newValue = buildStateChanges(oldValue, {
-            isOn: state.isOn,
-            brightness: state.luminance,
-            rgb: state.rgbTuple,
-            mode: state.mode
-        }, ['rgb']);
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'diffuserLight',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
- * Updates the cached diffuser spray state from spray data.
- *
- * Called automatically when diffuser spray push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of spray data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} sprayData - Spray data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateDiffuserSprayState(device, sprayData, source = 'response') {
-    if (!device._diffuserSprayStateByChannel) {return;}
-    if (!sprayData) {return;}
-
-    const sprayArray = Array.isArray(sprayData) ? sprayData : [sprayData];
-
-    for (const sprayItem of sprayArray) {
-        const channelIndex = sprayItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._diffuserSprayStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            mode: oldState.mode
-        } : undefined;
-
-        let state = device._diffuserSprayStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new DiffuserSprayState(sprayItem);
-            device._diffuserSprayStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(sprayItem);
-        }
-
-        const newValue = buildStateChanges(oldValue, {
-            mode: state.mode
-        });
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'diffuserSpray',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Gets diffuser capability information for a device.
  *
  * @param {Object} device - The device instance
@@ -271,6 +167,4 @@ registerNamespaceDescriptor('Appliance.Control.Diffuser.Spray', {
 });
 
 module.exports = createDiffuserAbility;
-module.exports._updateDiffuserLightState = updateDiffuserLightState;
-module.exports._updateDiffuserSprayState = updateDiffuserSprayState;
 module.exports.getCapabilities = getDiffuserCapabilities;

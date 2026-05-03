@@ -8,9 +8,10 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createTriggerAbility = require('../lib/controller/abilities/trigger-ability');
-const { _updateTriggerXState: updateTriggerXState } = require('../lib/controller/abilities/trigger-ability');
 const { MerossDeviceError } = require('..');
-const { createDeviceEmitter, createPublishRecorder } = require('./helpers/mock-ability-device');
+const { createDeviceEmitter, createDispatchStateShim, createPublishRecorder } = require('./helpers/mock-ability-device');
+
+const pushTriggerX = createDispatchStateShim('Appliance.Control.TriggerX', 'triggerx');
 
 describe('trigger ability (mocked device)', () => {
     it('get sends GET TriggerX with channel in payload when cache miss', async () => {
@@ -64,7 +65,7 @@ describe('trigger ability (mocked device)', () => {
             _triggerxStateByChannel: new Map()
         };
 
-        updateTriggerXState(device, { id: 'p1', channel: 0, enable: 1, type: 0 }, 'push');
+        pushTriggerX(device, { id: 'p1', channel: 0, enable: 1, type: 0 }, 'push');
 
         assert.strictEqual(device._triggerxStateByChannel.get(0).length, 1);
         assert.strictEqual(device._triggerxStateByChannel.get(0)[0].id, 'p1');

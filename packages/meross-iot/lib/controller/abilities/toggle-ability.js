@@ -87,50 +87,6 @@ function createToggleAbility(device) {
 }
 
 /**
- * Updates the cached toggle state from toggle data.
- *
- * Called automatically when ToggleX push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of toggle data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} toggleData - Toggle data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateToggleState(device, toggleData, source = 'response') {
-    if (!device._toggleStateByChannel) {return;}
-    if (!toggleData) {return;}
-
-    const toggleArray = Array.isArray(toggleData) ? toggleData : [toggleData];
-
-    for (const toggleItem of toggleArray) {
-        const channelIndex = toggleItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._toggleStateByChannel.get(channelIndex);
-        const oldValue = oldState ? oldState.isOn : undefined;
-
-        let state = device._toggleStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new ToggleState(toggleItem);
-            device._toggleStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(toggleItem);
-        }
-
-        const newValue = state.isOn;
-        if (oldValue !== newValue) {
-            device.emit('stateChange', {
-                type: 'toggle',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Gets toggle capability information for a device.
  *
  * @param {Object} device - The device instance
@@ -170,10 +126,5 @@ registerNamespaceDescriptor('Appliance.Control.Toggle', {
 });
 
 module.exports = createToggleAbility;
-/**
- * Private export for unit tests: the mock-device helper wires this onto synthetic devices.
- * Do not rename or change shape without updating `test/helpers/mock-ability-device.js`.
- */
-module.exports._updateToggleState = updateToggleState;
 module.exports.getCapabilities = getToggleCapabilities;
 

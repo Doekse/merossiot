@@ -8,9 +8,10 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createPresenceSensorAbility = require('../lib/controller/abilities/presence-sensor-ability');
-const { _updatePresenceState: updatePresenceState } = require('../lib/controller/abilities/presence-sensor-ability');
 const { PresenceState } = require('../lib/model/enums');
-const { createDeviceEmitter, createPublishRecorder } = require('./helpers/mock-ability-device');
+const { createDeviceEmitter, createDispatchStateShim, createPublishRecorder } = require('./helpers/mock-ability-device');
+
+const pushLatestX = createDispatchStateShim('Appliance.Control.Sensor.LatestX', 'latest');
 
 describe('presence sensor ability (mocked device)', () => {
     it('get sends GET Appliance.Control.Sensor.LatestX', async () => {
@@ -68,7 +69,7 @@ describe('presence sensor ability (mocked device)', () => {
             emit: emitter.emit.bind(emitter)
         };
 
-        updatePresenceState(
+        pushLatestX(
             device,
             {
                 channel: 0,

@@ -3,7 +3,6 @@
 const ThermostatState = require('../../model/states/thermostat-state');
 const { getCachedOrFetch } = require('../../utilities/cache');
 const { normalizeChannel } = require('../../utilities/options');
-const { buildStateChanges } = require('../../utilities/state-changes');
 const { MerossDeviceError } = require('../../model/exception');
 const { registerNamespaceDescriptor } = require('../state-dispatcher');
 
@@ -624,110 +623,6 @@ function createThermostatAbility(device) {
 }
 
 /**
- * Updates the cached thermostat mode state from mode data.
- *
- * Called automatically when thermostat mode push notifications are received or System.All
- * digest is processed. Handles arrays of mode data for multiple channels.
- *
- * @param {Object} device - The device instance
- * @param {Array} modeData - Array of mode data objects
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateThermostatMode(device, modeData, source = 'response') {
-    if (!device._thermostatStateByChannel) {return;}
-    if (!modeData || !Array.isArray(modeData)) {return;}
-
-    for (const channelData of modeData) {
-        const channelIndex = channelData.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._thermostatStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            mode: oldState.mode,
-            targetTemp: oldState.targetTemperatureCelsius,
-            currentTemp: oldState.currentTemperatureCelsius
-        } : undefined;
-
-        let state = device._thermostatStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new ThermostatState(channelData);
-            device._thermostatStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(channelData);
-        }
-
-        const newValue = buildStateChanges(oldValue, {
-            mode: state.mode,
-            targetTemp: state.targetTemperatureCelsius,
-            currentTemp: state.currentTemperatureCelsius
-        });
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'thermostat',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
- * Updates the cached thermostat mode B state from mode B data.
- *
- * Called automatically when thermostat mode B push notifications are received or commands complete.
- * Handles arrays of mode B data for multiple channels.
- *
- * @param {Object} device - The device instance
- * @param {Array} modeData - Array of mode B data objects
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateThermostatModeB(device, modeData, source = 'response') {
-    if (!device._thermostatStateByChannel) {return;}
-    if (!modeData || !Array.isArray(modeData)) {return;}
-
-    for (const channelData of modeData) {
-        const channelIndex = channelData.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._thermostatStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            mode: oldState.mode,
-            state: oldState.state,
-            targetTemp: oldState.targetTemperatureCelsius,
-            currentTemp: oldState.currentTemperatureCelsius
-        } : undefined;
-
-        let state = device._thermostatStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new ThermostatState(channelData);
-            device._thermostatStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(channelData);
-        }
-
-        const newValue = buildStateChanges(oldValue, {
-            mode: state.mode,
-            state: state.state,
-            targetTemp: state.targetTemperatureCelsius,
-            currentTemp: state.currentTemperatureCelsius
-        });
-
-        if (Object.keys(newValue).length > 0) {
-            device.emit('stateChange', {
-                type: 'thermostat',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Gets thermostat capability information for a device.
  *
  * @param {Object} device - The device instance
@@ -786,10 +681,4 @@ registerNamespaceDescriptor('Appliance.Control.Thermostat.ModeB', {
 });
 
 module.exports = createThermostatAbility;
-/**
- * Private exports for unit tests. Do not rename or change shape without updating
- * `test/thermostat-ability.test.js`.
- */
-module.exports._updateThermostatMode = updateThermostatMode;
-module.exports._updateThermostatModeB = updateThermostatModeB;
 module.exports.getCapabilities = getThermostatCapabilities;

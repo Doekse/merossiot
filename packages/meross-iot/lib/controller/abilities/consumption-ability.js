@@ -272,5 +272,4 @@ function getConsumptionCapabilities(device, channelIds) {
 }
 
 module.exports = createConsumptionAbility;
-module.exports._updateConsumptionState = updateConsumptionState;
 module.exports.getCapabilities = getConsumptionCapabilities;

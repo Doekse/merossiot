@@ -94,52 +94,6 @@ function createSprayAbility(device) {
 }
 
 /**
- * Updates the cached spray state from spray data.
- *
- * Called automatically when spray push notifications are received or System.All
- * digest is processed. Handles both single objects and arrays of spray data.
- *
- * @param {Object} device - The device instance
- * @param {Object|Array} sprayData - Spray data (single object or array)
- * @param {string} [source='response'] - Source of the update ('push' | 'poll' | 'response')
- */
-function updateSprayState(device, sprayData, source = 'response') {
-    if (!device._sprayStateByChannel) {return;}
-    if (!sprayData) {return;}
-
-    const sprayArray = Array.isArray(sprayData) ? sprayData : [sprayData];
-
-    for (const sprayItem of sprayArray) {
-        const channelIndex = sprayItem.channel;
-        if (channelIndex === undefined || channelIndex === null) {continue;}
-
-        const oldState = device._sprayStateByChannel.get(channelIndex);
-        const oldValue = oldState ? {
-            mode: oldState.mode
-        } : undefined;
-
-        let state = device._sprayStateByChannel.get(channelIndex);
-        if (!state) {
-            state = new SprayState(sprayItem);
-            device._sprayStateByChannel.set(channelIndex, state);
-        } else {
-            state.update(sprayItem);
-        }
-
-        const newValue = { mode: state.mode };
-        if (oldValue === undefined || oldValue.mode !== state.mode) {
-            device.emit('stateChange', {
-                type: 'spray',
-                channel: channelIndex,
-                value: newValue,
-                source,
-                timestamp: Date.now()
-            });
-        }
-    }
-}
-
-/**
  * Gets spray capability information for a device.
  *
  * @param {Object} device - The device instance
@@ -165,5 +119,4 @@ registerNamespaceDescriptor('Appliance.Control.Spray', {
 });
 
 module.exports = createSprayAbility;
-module.exports._updateSprayState = updateSprayState;
 module.exports.getCapabilities = getSprayCapabilities;

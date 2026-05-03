@@ -93,32 +93,8 @@ function createDispatchStateShim(namespace, payloadKey) {
     };
 }
 
-/**
- * Binds `_updateToggleState` on the device so it routes through {@link dispatch} like
- * SETACK/GETACK; shape matches production (`(toggleData, source)`), using ToggleX when
- * `device.abilities` includes it, otherwise `Appliance.Control.Toggle`.
- *
- * @param {Object} device - Minimal device object (mutated)
- * @returns {void}
- */
-function wireToggleStateUpdater(device) {
-    if (!device._toggleStateByChannel) {
-        device._toggleStateByChannel = new Map();
-    }
-    device._updateToggleState = (toggleData, source = 'response') => {
-        if (!toggleData) {
-            return;
-        }
-        const hasToggleX = device.abilities && device.abilities['Appliance.Control.ToggleX'];
-        const namespace = hasToggleX ? 'Appliance.Control.ToggleX' : 'Appliance.Control.Toggle';
-        const payloadKey = hasToggleX ? 'togglex' : 'toggle';
-        createDispatchStateShim(namespace, payloadKey)(device, toggleData, source);
-    };
-}
-
 module.exports = {
     createDeviceEmitter,
     createDispatchStateShim,
-    createPublishRecorder,
-    wireToggleStateUpdater
+    createPublishRecorder
 };

@@ -12,8 +12,11 @@ const { MerossDeviceError } = require('..');
 const {
     createDeviceEmitter,
     createPublishRecorder,
-    wireToggleStateUpdater
+    createDispatchStateShim
 } = require('./helpers/mock-ability-device');
+
+const pushToggleX = createDispatchStateShim('Appliance.Control.ToggleX', 'togglex');
+const pushToggle = createDispatchStateShim('Appliance.Control.Toggle', 'toggle');
 
 /**
  * @param {Object} partial
@@ -26,6 +29,7 @@ function baseDevice(partial, publishRecorderOptions) {
         deviceType: 'mock.mss110',
         lastFullUpdateTimestamp: null,
         abilities: {},
+        _toggleStateByChannel: new Map(),
         ...partial,
         emit: emitter.emit.bind(emitter),
         on: emitter.on.bind(emitter)
@@ -35,7 +39,6 @@ function baseDevice(partial, publishRecorderOptions) {
         getDevice: () => device
     });
     device.publishMessage = publishMessage;
-    wireToggleStateUpdater(device);
     return { device, calls, publishMessage };
 }
 
@@ -109,7 +112,7 @@ describe('toggle ability (mocked device)', () => {
             abilities: { 'Appliance.Control.ToggleX': {} }
         });
         device.lastFullUpdateTimestamp = Date.now();
-        device._updateToggleState({ channel: 0, onoff: 1 }, 'response');
+        pushToggleX(device, { channel: 0, onoff: 1 }, 'response');
         const toggle = createToggleAbility(device);
 
         const state = await toggle.get({ channel: 0 });
@@ -148,7 +151,7 @@ describe('toggle ability (mocked device)', () => {
         const { device } = baseDevice({
             abilities: { 'Appliance.Control.ToggleX': {} }
         });
-        device._updateToggleState({ channel: 1, onoff: 0 }, 'response');
+        pushToggleX(device, { channel: 1, onoff: 0 }, 'response');
         const toggle = createToggleAbility(device);
 
         assert.strictEqual(toggle.isOn({ channel: 1 }), false);
@@ -162,7 +165,7 @@ describe('toggle ability (mocked device)', () => {
         const events = [];
         device.on('stateChange', (e) => events.push(e));
 
-        device._updateToggleState({ channel: 0, onoff: 1 }, 'push');
+        pushToggleX(device, { channel: 0, onoff: 1 }, 'push');
 
         assert.strictEqual(device._toggleStateByChannel.get(0).isOn, true);
         assert.strictEqual(events.length, 1);
