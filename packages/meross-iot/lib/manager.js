@@ -625,18 +625,7 @@ class ManagerMeross extends EventEmitter {
             });
         }
 
-        if (this._managers.mqtt) {
-            this._managers.mqtt.disconnectAll(force);
-        } else {
-            for (const domain of Object.keys(this.mqttConnections)) {
-                if (this.mqttConnections[domain] && this.mqttConnections[domain].client) {
-                    this.mqttConnections[domain].client.removeAllListeners();
-                    this.mqttConnections[domain].client.end(force);
-                }
-            }
-            this.mqttConnections = {};
-            this._mqttConnectionPromises.clear();
-        }
+        this.mqtt.disconnectAll(force);
     }
 
     /**
