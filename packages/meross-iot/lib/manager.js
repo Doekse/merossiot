@@ -129,18 +129,7 @@ class ManagerMeross extends EventEmitter {
         super();
 
         this._validateOptions(options);
-        this._initializeBasicProperties(options);
-        this._defaultTransportMode = options.transportMode !== undefined
-            ? options.transportMode
-            : TransportMode.MQTT_ONLY;
-        this._initializeErrorBudget(options);
-        this._initializeRequestQueue(options);
-        this._initializeMqttStructures();
-        this._initializeHttpClient(options);
-        if (options.enableStats) {
-            this.statistics.enable(options.maxStatsSamples || 1000);
-        }
-        this._initializeManagers();
+        this._initializeFromOptions(options);
     }
 
     /**
@@ -163,95 +152,73 @@ class ManagerMeross extends EventEmitter {
     }
 
     /**
-     * Initializes basic instance properties.
-     *
-     * Sets default values for authentication state, domains, and configuration flags.
-     * Uses MEROSS_MQTT_DOMAIN as default to ensure connectivity even if domain is not
-     * provided by the HTTP client.
+     * Applies all constructor-time field wiring in one place so ordering stays obvious
+     * when new options are added (e.g. HTTP hook and `_managers` before optional stats).
      *
      * @private
-     * @param {Object} options - Configuration options
+     * @param {Object} options - Same object passed to the constructor (after validation)
      */
-    _initializeBasicProperties(options) {
+    _initializeFromOptions(options) {
         this.options = options || {};
         this.authenticated = false;
         this.mqttDomain = MEROSS_MQTT_DOMAIN;
         this.issuedOn = null;
         this.autoRetryOnBadDomain = options.autoRetryOnBadDomain !== undefined ? !!options.autoRetryOnBadDomain : true;
         this._timeout = options.timeout || 10000;
-    }
 
-    /**
-     * Initializes error budget manager.
-     *
-     * Tracks LAN HTTP failures per device to automatically fall back to MQTT
-     * when local communication becomes unreliable, preventing repeated failed
-     * requests.
-     *
-     * @private
-     * @param {Object} options - Configuration options
-     */
-    _initializeErrorBudget(options) {
+        this._defaultTransportMode = options.transportMode !== undefined
+            ? options.transportMode
+            : TransportMode.MQTT_ONLY;
+
         const maxErrors = options.maxErrors !== undefined ? options.maxErrors : 1;
         const timeWindowMs = options.errorBudgetTimeWindow !== undefined ? options.errorBudgetTimeWindow : 60000;
         this._errorBudgetManager = new ErrorBudgetManager(maxErrors, timeWindowMs);
-    }
 
-    /**
-     * Initializes request queue for throttling.
-     *
-     * Batches and delays requests to prevent overwhelming devices with rapid
-     * command sequences, which can cause timeouts or device instability.
-     *
-     * @private
-     * @param {Object} options - Configuration options
-     */
-    _initializeRequestQueue(options) {
         const enableRequestThrottling = options.enableRequestThrottling !== undefined ? options.enableRequestThrottling : true;
         this._requestQueue = enableRequestThrottling ? new RequestQueue({
             batchSize: options.requestBatchSize || 1,
             batchDelay: options.requestBatchDelay || 200,
             logger: options.logger
         }) : null;
-    }
 
-    /**
-     * Initializes MQTT-related data structures.
-     *
-     * Creates maps and objects to track connections, pending messages, and device
-     * registrations before any MQTT operations begin.
-     *
-     * @private
-     */
-    _initializeMqttStructures() {
         this.mqttConnections = {};
         this._mqttConnectionPromises = new Map();
         this._deviceRegistry = new DeviceRegistry();
         this._appId = null;
         this.clientResponseTopic = null;
         this._pendingMessagesFutures = new Map();
+
+        this._initializeHttpClient(options);
+
+        this._managers = {
+            devices: null,
+            mqtt: null,
+            http: null,
+            transport: null,
+            statistics: null
+        };
+
+        if (options.enableStats) {
+            this.statistics.enable(options.maxStatsSamples || 1000);
+        }
     }
 
     /**
-     * Initializes HTTP client and wires HTTP statistics notification.
-     *
-     * Registers a request hook on the client so authenticated POSTs can feed
-     * manager statistics without the client holding a back-reference to the manager.
-     * Stores subscription options for lazy initialization of the subscription manager.
+     * Keeps HTTP→statistics forwarding on a client hook so MerossHttpClient needs no manager
+     * back-reference; token presence still drives MQTT domain and response-topic setup here.
+     * Extracted from {@link _initializeFromOptions} only to satisfy eslint complexity on that method.
      *
      * @private
-     * @param {Object} options - Configuration options
+     * @param {Object} options - Constructor options (httpClient is always present after validation)
      */
     _initializeHttpClient(options) {
         this._httpClient = options.httpClient;
-        if (this._httpClient) {
-            this._httpClient._onHttpRequest = (url, method, httpCode, apiCode) => {
-                if (this._mqttStatsCounter || this._httpClient._httpStatsCounter) {
-                    this.statistics.notifyHttpRequest(url, method, httpCode, apiCode);
-                }
-            };
-        }
-        if (this._httpClient && this._httpClient.token) {
+        this._httpClient._onHttpRequest = (url, method, httpCode, apiCode) => {
+            if (this._mqttStatsCounter || this._httpClient._httpStatsCounter) {
+                this.statistics.notifyHttpRequest(url, method, httpCode, apiCode);
+            }
+        };
+        if (this._httpClient.token) {
             this.mqttDomain = this._httpClient.mqttDomain || this.mqttDomain;
             this.authenticated = true;
 
@@ -260,24 +227,6 @@ class ManagerMeross extends EventEmitter {
             this.clientResponseTopic = buildClientResponseTopic(this.userId, this._appId);
         }
         this._subscriptionOptions = options.subscription || {};
-    }
-
-    /**
-     * Initializes managers object for lazy initialization.
-     *
-     * Pre-allocates manager slots to enable lazy loading, reducing startup time
-     * and memory usage when only specific managers are needed.
-     *
-     * @private
-     */
-    _initializeManagers() {
-        this._managers = {
-            devices: null,
-            mqtt: null,
-            http: null,
-            transport: null,
-            statistics: null
-        };
     }
 
     /**
