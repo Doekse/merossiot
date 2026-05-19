@@ -417,6 +417,9 @@ declare module 'meross-iot' {
     }
 
     export class Meross extends EventEmitter {
+        /** Same enum as the named {@link TransportMode} export (attached for `Meross.TransportMode` usage). */
+        static TransportMode: typeof TransportMode;
+
         static authenticate(options: {
             email?: string;
             password?: string;

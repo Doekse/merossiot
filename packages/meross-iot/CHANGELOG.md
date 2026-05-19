@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-05-19
+
+### Added
+- `Meross.authenticate()` — authenticate and return a manager without connecting to the cloud or initializing devices
+- `Meross.connect()` — static entry point that authenticates and connects in one step
+- Multi-channel helpers on toggle, timer, and trigger abilities: `getAll()` aggregates state across all device channels; timer and trigger also expose `count()`
+- `getDeviceChannelIds()` utility for consistent channel enumeration from capabilities or device metadata
+- Namespace dispatcher with header-timestamp ordering gate for SETACK, GETACK, and PUSH state updates
+- Shared cache helpers (`readCache`, `getCachedOrFetch`) used by ability `get()` methods
+- Unit test suite (198 tests) covering abilities, dispatcher, push notifications, authentication, and public module surface
+- `manager.mqtt.connections` — exposes active MQTT connection map for diagnostics
+
+### Changed
+- **BREAKING**: Renamed `ManagerMeross` to `Meross` (default export)
+  - `const Meross = require('meross-iot')` replaces `const ManagerMeross = require('meross-iot')`
+  - Direct construction requires an authenticated HTTP client; use `Meross.authenticate()` or `Meross.connect()` as entry points
+- **BREAKING**: Removed public `MerossHttpClient` export
+  - Use `Meross.authenticate()` for credential exchange and token reuse via `meross.getTokenData()`
+- **BREAKING**: Consolidated error classes into a smaller hierarchy with string `code` discriminators
+  - Exported: `MerossError`, `MerossAuthError`, `MerossDeviceError`, `MerossApiError`, `MerossNetworkError`
+  - Removed granular exports such as `MerossErrorAuthentication`, `MerossErrorTokenExpired`, `MerossErrorCommandTimeout`, `MerossErrorValidation`, etc.
+  - Catch category errors with `instanceof` and inspect `error.code` for specific handling (e.g. `TOKEN_EXPIRED`, `VALIDATION_ERROR`, `COMMAND_TIMEOUT`)
+  - Removed public `mapErrorCodeToError` export
+- **BREAKING**: Renamed `device.getUnifiedState()` to `device.getState()`
+  - State is now derived from dispatcher namespace descriptors rather than hand-maintained aggregation
+- **BREAKING**: Unified device initialization events
+  - Device emits `ready` (replacing `deviceInitialized`); manager emits `deviceReady` when a device finishes bootstrap
+  - `device.ready()` promise API unchanged
+- **BREAKING**: Device abilities are initialized conditionally based on supported namespaces
+  - Unsupported features are absent (`undefined`) rather than present with stub methods
+- **BREAKING**: Transport and statistics are accessed exclusively via sub-managers
+  - Use `meross.transport` for mode selection, error budgets, and request queuing
+  - Use `meross.statistics` for HTTP/MQTT stats (`enable()`, `getHttpStats()`, `getMqttStats()`)
+- **BREAKING**: Trimmed public module exports to documented API surface
+  - Removed exports for state classes, push notification classes, `TimerUtils`, `TriggerUtils`, `createDebugUtils`, `ManagerSubscription`, and `MerossHttpClient`
+  - Removed `ThermostatWorkingMode` and `ThermostatModeBState` from package root exports (still available internally)
+- **BREAKING**: Internal package layout restructured (no import-path stability for deep requires)
+  - `lib/controller/features/` → `lib/abilities/`
+  - `lib/managers/` → `manager/`
+  - `lib/controller/` → `lib/device/`
+  - `lib/http-api.js` → `lib/api/client.js`
+- Subdevice state updates now pass through the same ordering gate as base devices, preventing stale hub sensor payloads from overwriting fresher per-namespace data
+- Rewrote TypeScript definitions to match the simplified public API
+- Updated all examples for the new connect/authenticate flow and ability-based device control
+
+### Fixed
+- Rewrote `publishMessage` without an async Promise executor
+- HTTP API status errors are routed through `mapErrorCodeToError` consistently
+- Exposed `manager.mqtt.connections` and aligned `disconnectAll()` routing through the mqtt getter
+
+### Removed
+- Standalone `lib/error-budget.js` (error budget logic lives on `ManagerTransport`)
+- `lib/utilities/debug.js` and `createDebugUtils` export
+- Internal ability `_update*` test hooks; state is exercised through dispatcher shims in tests
+
 ## [0.9.1] - 2026-01-22
 
 ### Fixed

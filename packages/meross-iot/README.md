@@ -26,12 +26,12 @@ The library can control devices locally via HTTP or via cloud MQTT server.
 npm install meross-iot@alpha
 
 # Or install specific version
-npm install meross-iot@0.9.1
+npm install meross-iot@0.10.0
 ```
 
 ## Usage & Documentation
 
-Refer to the [example/README.md](example/README.md) for detailed usage instructions, or simply have a look at the `/example` directory.
+Runnable examples live in the GitHub repo under [`packages/meross-iot/example/`](https://github.com/Doekse/merossiot/tree/main/packages/meross-iot/example). See [example/README.md](https://github.com/Doekse/merossiot/blob/main/packages/meross-iot/example/README.md) for the full table (not included in the npm tarball).
 
 If you are really impatient to use this library, refer to the following snippet of code that looks for a device and turns it on/off.
 
@@ -54,7 +54,7 @@ const Meross = require('meross-iot');
 })();
 ```
 
-The `example/` directory contains focused examples. See **[example/README.md](example/README.md)** for the full table. Highlights:
+Clone the repo or browse GitHub for runnable scripts. Highlights:
 
 - **`basic-usage.js`** — `Meross.connect()` and list devices
 - **`authenticate.js`** — `Meross.authenticate()` then selective `connect()`
@@ -91,13 +91,14 @@ When removing a hub device, all its subdevices are automatically removed as well
 
 ## API Organization
 
-The library follows a modular architecture with specialized managers for different concerns:
+The library follows a modular architecture with specialized managers on the connected `Meross` instance:
 
-- **`manager.devices`** - Device discovery, initialization, and lifecycle management
-- **`manager.mqtt`** - MQTT connection management and message publishing
-- **`manager.http`** - LAN HTTP communication with devices
-- **`manager.transport`** - Transport mode selection and message routing
-- **`manager.subscription`** - Automatic polling and unified update streams
+- **`meross.devices`** — device discovery, initialization, and lifecycle management
+- **`meross.mqtt`** — MQTT connection management and message publishing
+- **`meross.http`** — LAN HTTP communication with devices
+- **`meross.transport`** — transport mode selection and message routing
+- **`meross.subscription`** — automatic polling and unified update streams
+- **`meross.statistics`** — optional HTTP/MQTT request diagnostics
 
 Most apps use feature objects on devices (`device.toggle.set()`, etc.). Lower-level managers (`mqtt`, `http`, `transport`) remain available for advanced use:
 
@@ -150,13 +151,32 @@ Please create an issue on GitHub and include:
 
 ## Changelog
 
+See **[CHANGELOG.md](CHANGELOG.md)** for the full release history.
+
+### [0.10.0] - 2026-05-19
+
+Major API simplification release. Highlights:
+
+#### Added
+- `Meross.authenticate()` and `Meross.connect()` static entry points
+- Multi-channel `getAll()` on toggle, timer, and trigger abilities
+- Namespace dispatcher with header-timestamp ordering for state updates
+- Unit test suite (198 tests)
+
+#### Changed
+- **BREAKING**: `ManagerMeross` → `Meross`; removed public `MerossHttpClient` export
+- **BREAKING**: Consolidated error classes (`MerossAuthError`, `MerossDeviceError`, etc.) with string `code` discriminators
+- **BREAKING**: `device.getUnifiedState()` → `device.getState()`; `deviceInitialized` → `ready` / `deviceReady`
+- **BREAKING**: Conditional ability initialization; trimmed public module exports
+- Internal layout: `lib/abilities/`, `manager/`, `lib/device/`
+
+<details>
+<summary>Older releases</summary>
+
 ### [0.9.1] - 2026-01-22
 
 #### Fixed
 - Improve heartbeat offline detection by using response silence (≥ heartbeat interval) instead of treating individual command errors/timeouts as offline signals
-
-<details>
-<summary>Older</summary>
 
 ### [0.9.0] - 2026-01-22
 

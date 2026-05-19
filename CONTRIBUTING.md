@@ -27,7 +27,15 @@ npm run lint:fix
 
 ### Testing
 
-Please ensure your changes work correctly. While automated tests are not yet fully implemented, please test your changes manually before submitting a pull request.
+```bash
+# Run unit tests for all workspaces
+npm test
+
+# meross-iot only
+npm test -w meross-iot
+```
+
+CI runs `npm test` on every push and pull request. Please add or update tests when changing library behavior. Hardware-specific flows can still be exercised manually via `meross-cli`.
 
 ## Submitting Changes
 

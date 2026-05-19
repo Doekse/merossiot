@@ -23,7 +23,7 @@ Command-line interface for controlling and managing Meross smart home devices.
 npm install -g meross-cli@alpha
 
 # Or install specific version
-npm install -g meross-cli@0.6.0
+npm install -g meross-cli@0.7.0
 ```
 
 Or use via npx:
@@ -73,9 +73,27 @@ You can set these environment variables instead of using command-line options:
 
 ## Supported Devices
 
-The CLI supports all devices that are supported by the underlying `meross-iot` library. See the [meross-iot README](../meross-iot/README.md) for a list of supported devices.
+The CLI supports all devices that are supported by the underlying `meross-iot` library. See the [meross-iot README](https://github.com/Doekse/merossiot/blob/main/packages/meross-iot/README.md) for a list of supported devices.
 
 ## Changelog
+
+See **[CHANGELOG.md](CHANGELOG.md)** for the full release history.
+
+### [0.7.0] - 2026-05-19
+
+Updated for `meross-iot` v0.10.0. Highlights:
+
+#### Added
+- Multi-channel control helpers (`cli/utils/device.js`)
+- Optional `subdeviceId` in programmatic control commands
+
+#### Changed
+- **BREAKING**: `Meross.connect()` / `Meross.authenticate()` flow; consolidated error classes
+- **BREAKING**: `deviceReady` / `getState()`; transport and stats via sub-managers
+- Status, MQTT view, and integration tests aligned with the public `meross-iot` API
+
+<details>
+<summary>Older releases</summary>
 
 ### [0.6.1] - 2026-01-22
 

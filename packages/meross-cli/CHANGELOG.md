@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-05-19
+
+### Added
+- `cli/utils/device.js` helpers for multi-channel control defaults (`getChannelIds`, `getPrimaryChannel`, `resolveControlChannel`)
+- Optional `subdeviceId` support in `executeControlCommand` for hub subdevice control
+
+### Changed
+- **BREAKING**: Updated for `meross-iot` v0.10.0 API simplification
+  - Uses `Meross` default export with `Meross.connect()` / `Meross.authenticate()` entry points
+  - Interactive menu authenticates before selective device initialization
+  - Error handling uses consolidated `MerossError` hierarchy and `error.code` discriminators
+  - Device initialization events: `deviceReady` / `ready` instead of `deviceInitialized`
+  - Status and tests use `device.getState()` instead of `getUnifiedState()`
+  - Transport and statistics accessed via `meross.transport` and `meross.statistics`
+- Status display aligned with ability-based state and multi-channel feature helpers
+- `mqtt` command reads connection state from `meross.mqtt.connections`
+- Integration tests drop defensive fallbacks; failures surface real API errors
+
+### Fixed
+- Hub status display no longer calls redundant `getBattery`
+- Thermostat status section indentation in `device-status.js`
+- `execute.js` errors aligned with `meross-iot` exception types
+
 ## [0.6.1] - 2026-01-22
 
 ### Changed
