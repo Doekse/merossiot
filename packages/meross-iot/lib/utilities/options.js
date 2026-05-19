@@ -1,6 +1,6 @@
 'use strict';
 
-const { MerossDeviceError } = require('../model/exception');
+const { MerossDeviceError } = require('../exception');
 
 /**
  * Options normalization utilities.

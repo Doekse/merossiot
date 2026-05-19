@@ -1,6 +1,6 @@
 'use strict';
 
-const { MerossDeviceError } = require('../model/exception');
+const { MerossDeviceError } = require('../exception');
 
 /**
  * Manages per-device request queues with batch processing and inter-batch delays.

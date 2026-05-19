@@ -1,23 +1,18 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * ManagerSubscription: polling + `deviceUpdate` / `deviceListUpdate`
- *
- * Polling intervals are passed per `subscribe()` (`Meross.connect()` does not pass
- * constructor subscription defaults).
+ * {@link ManagerSubscription}: per-device polling and `deviceListUpdate` events.
  */
 
 const Meross = require('../index.js');
+const { getCredentials, shutdown } = require('./shared.js');
 const { onEachDevice } = require('./on-each-device.js');
 
-const poll = {
+const POLL_CONFIG = {
     deviceStateInterval: 30000,
     electricityInterval: 30000,
     consumptionInterval: 60000,
+    runtimeInterval: 60000,
     smartCaching: true,
     cacheMaxAge: 10000
 };
@@ -26,48 +21,43 @@ const poll = {
     try {
         console.log('Connecting…');
         const meross = await Meross.connect({
-            email: 'your@email.com',
-            password: 'yourpassword',
-            logger: (m) => console.log(`[sub] ${m}`)
+            ...getCredentials(),
+            logger: (msg) => console.log(`[meross] ${msg}`)
         });
 
         const sub = meross.subscription;
-        sub.on('error', (err, ctx) => console.error('[sub error]', ctx, err.message));
+        sub.on('error', (err, ctx) => console.error('[subscription]', ctx, err.message));
 
         onEachDevice(meross, (device) => {
-            console.log(`subscribe ${device.name}`);
-            sub.subscribe(device, poll);
+            console.log(`Subscribe → ${device.name}`);
+            sub.subscribe(device, POLL_CONFIG);
+
+            sub.on(`deviceUpdate:${device.uuid}`, (update) => {
+                const types = update.changes?.map((c) => c.type).join(', ') || update.type;
+                console.log(`  [poll] ${device.name}: ${types}`);
+            });
         });
 
         meross.on('deviceUpdate', (device, change) => {
-            console.log(`update ${device.name}: ${change.type}`);
+            console.log(`[push] ${device.name}: ${change.type}`);
         });
 
         sub.subscribeToDeviceList();
-        sub.on('deviceListUpdate', (u) => {
-            console.log(`device list: +${u.added.length} -${u.removed.length} ~${u.changed.length}`);
+        sub.on('deviceListUpdate', (update) => {
+            console.log(
+                `Account devices: +${update.added.length} -${update.removed.length} ~${update.changed.length}`
+            );
         });
-
-        const devices = meross.devices.list();
-        if (devices[0]) {
-            const d0 = devices[0];
-            meross.on('deviceUpdate', (d, c) => {
-                if (d.uuid === d0.uuid && c.type === 'toggle') {
-                    console.log(`(extra listener) toggle on ${d0.name}`);
-                }
-            });
-        }
 
         process.on('SIGINT', async () => {
             sub.destroy();
-            await meross.logout();
-            meross.disconnectAll(true);
+            await shutdown(meross);
             process.exit(0);
         });
 
-        console.log('✓ Running (Ctrl+C to exit)');
+        console.log('\nRunning (Ctrl+C to exit)…');
     } catch (error) {
-        console.error(error.message);
+        console.error(`Error: ${error.message}`);
         process.exit(1);
     }
 })();

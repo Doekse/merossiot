@@ -22,7 +22,7 @@ function _displayInfoRows(infoData, maxLabelLength) {
  * Builds basic device information array for display.
  *
  * @param {Object} device - Device instance
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @returns {Array<Array<string>>} Array of [label, value] pairs
  */
 function _buildBasicDeviceInfo(device, manager) {
@@ -180,7 +180,7 @@ function _buildAbilityCategories(abilityNames) {
  * Displays device abilities (raw namespace list) when verbose mode is enabled.
  *
  * @param {Object} device - Device instance
- * @param {Object} manager - ManagerMeross instance (to check verbose state)
+ * @param {Object} manager - Meross instance (to check verbose state)
  */
 function _displayAbilities(device, manager) {
     // Check verbose mode via environment variable or manager logger option
@@ -396,7 +396,7 @@ async function _displaySubdevices(device) {
  * Shows device properties, network info, channels, HTTP metadata, and capabilities
  * in a formatted, human-readable output.
  *
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {string} uuid - Device UUID
  */
 async function showDeviceInfo(manager, uuid) {

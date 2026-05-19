@@ -348,13 +348,6 @@ declare module 'meross-iot' {
         destroy(): void;
     }
 
-    /** Per-device error budget used to throttle failing devices. */
-    export interface ManagerErrorBudget {
-        getBudget(deviceUuid: string): number;
-        resetBudget(deviceUuid: string): void;
-        isOutOfBudget(deviceUuid: string): boolean;
-    }
-
     /** HTTP/MQTT diagnostics counters; enable only when needed to limit overhead. */
     export interface ManagerStatistics {
         enable(maxSamples?: number): void;
@@ -366,12 +359,29 @@ declare module 'meross-iot' {
         getDroppedMqttStats(timeWindowMs?: number): any | null;
     }
 
-    /** Public transport preferences on {@link ManagerMeross}. */
+    /** Public transport preferences on {@link Meross}. */
     export interface ManagerTransport {
         defaultMode: number;
+        readonly errorBudgetMaxErrors: number;
+        readonly errorBudgetTimeWindow: number;
+        getBudget(deviceUuid: string): number;
+        resetBudget(deviceUuid: string): void;
+        isOutOfBudget(deviceUuid: string): boolean;
     }
 
-    export class ManagerMeross extends EventEmitter {
+    export interface ManagerAuth {
+        readonly token: string | null;
+        readonly key: string | null;
+        readonly userId: string | null;
+        readonly userEmail: string | null;
+        readonly httpDomain: string | null;
+        readonly authenticated: boolean;
+        readonly mqttDomain: string;
+        getTokenData(): TokenData | null;
+        logout(): Promise<any>;
+    }
+
+    export class Meross extends EventEmitter {
         static authenticate(options: {
             email?: string;
             password?: string;
@@ -382,7 +392,7 @@ declare module 'meross-iot' {
             domain?: string;
             mqttDomain?: string;
             logger?: Logger;
-        }): Promise<ManagerMeross>;
+        }): Promise<Meross>;
 
         static connect(options: {
             email?: string;
@@ -394,18 +404,24 @@ declare module 'meross-iot' {
             domain?: string;
             mqttDomain?: string;
             logger?: Logger;
-        }): Promise<ManagerMeross>;
+        }): Promise<Meross>;
 
-        /** Prefer {@link ManagerMeross.authenticate} or {@link ManagerMeross.connect}; the HTTP client is not part of the public API. */
+        /** Prefer {@link Meross.authenticate} or {@link Meross.connect}; the HTTP client is not part of the public API. */
         constructor(options: { httpClient: object });
 
+        readonly auth: ManagerAuth;
         readonly devices: ManagerDevices;
         readonly subscription: ManagerSubscription;
         readonly transport: ManagerTransport;
         readonly statistics: ManagerStatistics;
-        readonly errorBudget: ManagerErrorBudget;
         readonly options: { logger?: Logger | null; [key: string]: any };
         readonly authenticated: boolean;
+        readonly token: string | null;
+        readonly key: string | null;
+        readonly userId: string | null;
+        readonly userEmail: string | null;
+        readonly httpDomain: string | null;
+        readonly mqttDomain: string;
         timeout: number;
         logger: Logger | null;
 
@@ -416,5 +432,5 @@ declare module 'meross-iot' {
         getTokenData(): TokenData | null;
     }
 
-    export default ManagerMeross;
+    export default Meross;
 }

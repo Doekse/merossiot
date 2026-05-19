@@ -1,46 +1,52 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Two accounts → two managers (separate MQTT sessions)
+ * Two Meross accounts → two independent {@link Meross} manager instances.
  */
 
 const Meross = require('../index.js');
 const { onEachDevice } = require('./on-each-device.js');
 
+const ACCOUNT_A = {
+    email: process.env.MEROSS_EMAIL_A || 'account1@example.com',
+    password: process.env.MEROSS_PASSWORD_A || 'password1'
+};
+
+const ACCOUNT_B = {
+    email: process.env.MEROSS_EMAIL_B || 'account2@example.com',
+    password: process.env.MEROSS_PASSWORD_B || 'password2'
+};
+
 (async () => {
     try {
-        const account1 = await Meross.connect({
-            email: 'account1@example.com',
-            password: 'password1',
-            logger: (m) => console.log(`[A1] ${m}`)
-        });
-        account1.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
+        const [account1, account2] = await Promise.all([
+            Meross.connect({
+                ...ACCOUNT_A,
+                logger: (m) => console.log(`[A1] ${m}`)
+            }),
+            Meross.connect({
+                ...ACCOUNT_B,
+                logger: (m) => console.log(`[A2] ${m}`)
+            })
+        ]);
 
-        const account2 = await Meross.connect({
-            email: 'account2@example.com',
-            password: 'password2',
-            logger: (m) => console.log(`[A2] ${m}`)
-        });
+        account1.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
         account2.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
 
-        onEachDevice(account1, (d) => console.log(`A1 device: ${d.name}`));
-        onEachDevice(account2, (d) => console.log(`A2 device: ${d.name}`));
+        onEachDevice(account1, (d) => console.log(`A1: ${d.name}`));
+        onEachDevice(account2, (d) => console.log(`A2: ${d.name}`));
 
-        console.log(`\nA1: ${account1.devices.list().length} device(s)`);
-        console.log(`A2: ${account2.devices.list().length} device(s)`);
+        console.log(`\nAccount 1: ${account1.devices.list().length} device(s)`);
+        console.log(`Account 2: ${account2.devices.list().length} device(s)`);
+        console.log('\nCtrl+C to exit.');
 
         process.on('SIGINT', async () => {
-            await Promise.all([account1.logout(), account2.logout()]);
-            account1.disconnectAll(true);
-            account2.disconnectAll(true);
+            const { shutdown } = require('./shared.js');
+            await Promise.all([shutdown(account1), shutdown(account2)]);
             process.exit(0);
         });
     } catch (error) {
-        console.error(error.message);
+        console.error(`Error: ${error.message}`);
         process.exit(1);
     }
 })();

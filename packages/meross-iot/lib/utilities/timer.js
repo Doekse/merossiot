@@ -1,7 +1,7 @@
 'use strict';
 
-const TimerType = require('../model/enums').TimerType;
-const { MerossDeviceError } = require('../model/exception');
+const TimerType = require('../enums').TimerType;
+const { MerossDeviceError } = require('../exception');
 
 /**
  * Timer utility functions.

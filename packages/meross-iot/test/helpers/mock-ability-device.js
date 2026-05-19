@@ -3,10 +3,10 @@
 const EventEmitter = require('events');
 
 const { getMessageTimestamp } = require('../../lib/utilities/state-ordering');
-const { getNamespaceDescriptors, dispatch } = require('../../lib/controller/state-dispatcher');
+const { getNamespaceDescriptors, dispatch } = require('../../lib/dispatcher');
 
 /**
- * Shared stubs for unit-testing {@link module:controller/abilities} feature factories
+ * Shared stubs for unit-testing {@link module:abilities} feature factories
  * without MQTT, HTTP, or {@link MerossDevice}.
  */
 
@@ -24,7 +24,7 @@ function createDeviceEmitter() {
  *
  * @param {Object} [options]
  * @param {function(string, string, *): *} [options.responseFor] - Resolves the response **payload** (not the `publishMessage` envelope)
- * @param {() => (object|undefined)} [options.getDevice] - When set, the mock applies the same namespace {@link module:lib/controller/state-dispatcher.dispatch}
+ * @param {() => (object|undefined)} [options.getDevice] - When set, the mock applies the same namespace {@link module:dispatcher.dispatch}
  *   as production `Device` so tests can assert state maps after GET/SET without hand-calling updaters
  * @returns {{ calls: Array<{ method: string, namespace: string, payload: * }>, publishMessage: function(string, string, *): Promise<{ header: Object, payload: Object }> }}
  */
@@ -33,7 +33,7 @@ function createPublishRecorder(options = {}) {
     const calls = [];
 
     /**
-     * Mirrors production {@link module:lib/controller/device.Device.publishMessage} resolution: `{ header, payload }`, with optional
+     * Mirrors production {@link module:lib/device/device.Device.publishMessage} resolution: `{ header, payload }`, with optional
      * `dispatch` when `getDevice` is provided.
      *
      * @param {string} method

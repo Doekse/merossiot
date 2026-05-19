@@ -23,7 +23,7 @@ async function question(rl, query) {
 
 /**
  * Interactive device control menu.
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {Object} rl - Readline interface
  * @param {string|null} currentUser - Current logged in user name
  */
@@ -141,16 +141,15 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
                 console.log(chalk.yellow('\nNote: Statistics tracking is disabled. Enable it in Settings to track control commands.'));
             }
 
-            // Check error budget if using LAN HTTP transport modes
-            const transportMode = manager.transport.defaultMode;
-            const usesLanHttp = transportMode === TransportMode.LAN_HTTP_FIRST ||
-                                transportMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET;
-            if (usesLanHttp) {
-                const budget = manager.errorBudget.getBudget(uuid);
-                if (budget < 1) {
-                    console.log(chalk.yellow(`\n⚠ Device is out of error budget (${budget} remaining). HTTP requests will be blocked and fallback to MQTT will be used.`));
-                    console.log(chalk.dim('   You can reset the error budget in Settings > Error Budget Management.\n'));
-                }
+            const transport = manager.transport;
+            const usesLanHttp = transport.defaultMode === TransportMode.LAN_HTTP_FIRST ||
+                transport.defaultMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET;
+            if (usesLanHttp && transport.isOutOfBudget(uuid)) {
+                console.log(chalk.yellow(
+                    `\n⚠ Device is out of transport error budget (${transport.getBudget(uuid)} remaining). `
+                    + 'LAN HTTP is skipped; commands use MQTT.\n'
+                ));
+                console.log(chalk.dim('   Reset in Settings > Transport Error Budgets.\n'));
             }
 
             // Execute command

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Validates {@link ManagerMeross.authenticate} rejects invalid option shapes before any HTTP work,
+ * Validates {@link Meross.authenticate} rejects invalid option shapes before any HTTP work,
  * and that password login issues a Meross sign-in request matching the HTTP client contract.
  */
 
@@ -9,9 +9,9 @@ const assert = require('node:assert');
 const crypto = require('node:crypto');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 
-const ManagerMeross = require('..');
+const Meross = require('..');
 const { MerossDeviceError } = require('..');
-const { MEROSS_DOMAIN, LOGIN_URL } = require('../lib/model/constants');
+const { MEROSS_DOMAIN, LOGIN_URL } = require('../lib/api/constants');
 
 const EXPECTED_LOGIN_URL = `https://${MEROSS_DOMAIN}${LOGIN_URL}`;
 
@@ -31,7 +31,7 @@ function jsonFetchResponse(body) {
     });
 }
 
-describe('ManagerMeross.authenticate', () => {
+describe('Meross.authenticate', () => {
     describe('validation errors (fetch not invoked)', () => {
         beforeEach((t) => {
             t.mock.method(globalThis, 'fetch', async () => {
@@ -45,7 +45,7 @@ describe('ManagerMeross.authenticate', () => {
 
         it('throws MerossDeviceError with VALIDATION_ERROR when neither password nor token auth is provided', async () => {
             await assert.rejects(
-                () => ManagerMeross.authenticate({}),
+                () => Meross.authenticate({}),
                 (err) => {
                     assert.ok(err instanceof MerossDeviceError);
                     assert.strictEqual(err.code, 'VALIDATION_ERROR');
@@ -58,7 +58,7 @@ describe('ManagerMeross.authenticate', () => {
 
         it('throws for undefined options like empty object', async () => {
             await assert.rejects(
-                () => ManagerMeross.authenticate(undefined),
+                () => Meross.authenticate(undefined),
                 (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR'
             );
             assert.strictEqual(globalThis.fetch.mock.callCount(), 0);
@@ -66,7 +66,7 @@ describe('ManagerMeross.authenticate', () => {
 
         it('throws when email is present without password', async () => {
             await assert.rejects(
-                () => ManagerMeross.authenticate({ email: 'a@b.c' }),
+                () => Meross.authenticate({ email: 'a@b.c' }),
                 (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR'
             );
             assert.strictEqual(globalThis.fetch.mock.callCount(), 0);
@@ -74,7 +74,7 @@ describe('ManagerMeross.authenticate', () => {
 
         it('throws when token auth is incomplete', async () => {
             await assert.rejects(
-                () => ManagerMeross.authenticate({ token: 't', key: 'k' }),
+                () => Meross.authenticate({ token: 't', key: 'k' }),
                 (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR'
             );
             assert.strictEqual(globalThis.fetch.mock.callCount(), 0);
@@ -105,7 +105,7 @@ describe('ManagerMeross.authenticate', () => {
         });
 
         try {
-            const manager = await ManagerMeross.authenticate({ email, password });
+            const manager = await Meross.authenticate({ email, password });
             assert.ok(manager);
 
             const calls = globalThis.fetch.mock.calls;

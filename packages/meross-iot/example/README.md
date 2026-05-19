@@ -1,72 +1,109 @@
 # Examples
 
-Scripts in this folder are **small, runnable demos**. They assume Node 18+ and valid Meross credentials.
+Runnable scripts for the refactored **meross-iot** API. Requires Node.js 18+ and a Meross account.
 
-## Configure credentials
+## Credentials
 
-Edit the `email` / `password` fields in each script (or use saved tokens in `token-reuse.js` / `device-discovery.js` patterns).
+**Option A — environment variables (recommended):**
 
-```javascript
-const Meross = require('meross-iot'); // or require('../index.js') from this repo
-
-const meross = await Meross.connect({
-    email: 'you@example.com',
-    password: '…',
-    logger: console.log, // optional
-});
-
-// Runtime settings (any time after connect):
-// meross.transportMode = Meross.TransportMode.LAN_HTTP_FIRST;
-// meross.timeout = 15000;
-// meross.enableStats();
+```bash
+export MEROSS_EMAIL='you@example.com'
+export MEROSS_PASSWORD='your-password'
+# export MEROSS_MFA_CODE='123456'   # when MFA is enabled
 ```
 
-Environment variables (if you wire them in your own code): `MEROSS_EMAIL`, `MEROSS_PASSWORD`.
+**Option B — edit placeholders** in each script (`your@email.com` / `yourpassword`).
 
-## Helper: `on-each-device.js`
-
-`ManagerMeross.connect()` initializes devices internally, so `deviceReady` may fire before your code runs. Examples that need per-device setup import:
-
-```javascript
-const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
-
-onEachDevice(meross, (device) => {
-    runWhenConnected(device, async () => {
-        /* device is on the network */
-    });
-});
-```
-
-## Catalogue
-
-| Script | Purpose |
-|--------|---------|
-| **basic-usage.js** | Connect and list devices |
-| **device-control.js** | Toggle, light, electricity, `system.getAllData` |
-| **event-handling.js** | Manager `deviceUpdate` and device `stateChange` |
-| **token-reuse.js** | Save/load `getTokenData()` to skip password login |
-| **device-discovery.js** | `discover` / `discoverSubdevices` filters, `initializeDevice`, `initialize({ uuids })` |
-| **statistics.js** | `statistics.enable()` + `statistics.getMqttStats` / `getHttpStats` |
-| **error-handling.js** | `connect()` failures, `describeMerossError` helper |
-| **hub-devices.js** | Hubs, `getSubdevices()`, subdevice toggle |
-| **transport-modes.js** | `meross.transport.defaultMode` (MQTT vs LAN-first) |
-| **multiple-accounts.js** | Two `Meross.connect()` calls → two managers |
-| **timer-usage.js** | `setTimerX`, list/delete timers |
-| **subscription-manager.js** | `meross.subscription`, polling, `deviceListUpdate` |
-
-## Run
-
-From the `meross-iot` package directory:
+From the `packages/meross-iot` directory:
 
 ```bash
 node example/basic-usage.js
 ```
 
-## Subscription polling
+## Quick start
 
-Intervals are usually passed to `meross.subscription.subscribe(device, { deviceStateInterval, … })`. Default constructor options for the subscription manager are not applied when you only use `Meross.connect()` (auth-only factory); pass the config you need on each `subscribe()` call.
+```javascript
+const Meross = require('meross-iot');
+
+const meross = await Meross.connect({
+  email: 'you@example.com',
+  password: 'your-password',
+});
+
+const device = meross.devices.list()[0];
+if (device.toggle) {
+  await device.toggle.set({ channel: 0, on: true });
+}
+```
+
+Use `Meross.authenticate()` when you need discovery or runtime options **before** calling `meross.connect()` — see `authenticate.js`.
+
+## Shared helpers
+
+| File | Purpose |
+|------|---------|
+| **shared.js** | `getCredentials()`, `shutdown()`, `bindShutdown()` |
+| **on-each-device.js** | `onEachDevice()` / `runWhenConnected()` for `deviceReady` race |
+
+## Scripts
+
+| Script | What it demonstrates |
+|--------|----------------------|
+| **basic-usage.js** | `Meross.connect()` and `meross.devices.list()` |
+| **authenticate.js** | `Meross.authenticate()` → discover → `connect()` |
+| **device-control.js** | `device.toggle`, `light`, `electricity`, `system` |
+| **device-discovery.js** | `discover` / `discoverSubdevices`, `initializeDevice` |
+| **event-handling.js** | Manager + device events |
+| **error-handling.js** | `MerossError` subclasses and `code` values |
+| **token-reuse.js** | Save/load `getTokenData()` |
+| **hub-devices.js** | Hubs, `getSubdevices()`, subdevice toggle |
+| **transport-modes.js** | `meross.transport.defaultMode` |
+| **statistics.js** | `meross.statistics.enable()` and stats getters |
+| **subscription-manager.js** | `meross.subscription` polling |
+| **timer-usage.js** | `device.timer` create/list/delete |
+| **multiple-accounts.js** | Two `Meross.connect()` instances |
+
+## API patterns
+
+### Entry points
+
+- **`Meross.connect(options)`** — authenticate, enroll all online devices, return a ready manager.
+- **`Meross.authenticate(options)`** — credentials only; call `meross.connect()` when ready.
+
+### Device features (capability-based)
+
+Devices expose optional feature objects. Check before use:
+
+```javascript
+if (device.toggle) await device.toggle.set({ channel: 0, on: true });
+if (device.light) await device.light.set({ channel: 0, luminance: 80 });
+if (device.electricity) await device.electricity.get({ channel: 0 });
+if (device.timer) await device.timer.set({ time: '18:00', alias: 'Lights', on: true });
+```
+
+### Managers on `meross`
+
+| Accessor | Role |
+|----------|------|
+| `meross.devices` | Registry, discovery, `initialize()` / `initializeDevice()` |
+| `meross.transport` | `defaultMode`, `getBudget` / `isOutOfBudget` / `resetBudget` |
+| `meross.subscription` | Polling and unified update events |
+| `meross.statistics` | Optional HTTP/MQTT diagnostics |
+| `meross.auth` | Token/session (usually via `getTokenData()`) |
+
+### Subscription polling
+
+Pass intervals on each `subscribe()` call — `Meross.connect()` does not apply constructor subscription defaults:
+
+```javascript
+meross.subscription.subscribe(device, {
+  deviceStateInterval: 30000,
+  electricityInterval: 30000,
+  pushOnly: false,
+});
+```
 
 ## Further reading
 
 - Package overview: [../README.md](../README.md)
-- Type definitions: `index.d.ts` (`ManagerMeross`, `MerossError*`)
+- Type definitions: [../index.d.ts](../index.d.ts)

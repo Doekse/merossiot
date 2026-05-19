@@ -38,7 +38,7 @@ function isMts100Subdevice(sub) {
  * Runs MTS100 hub live scenarios.
  *
  * @param {Object} context - Runner context
- * @param {import('meross-iot').ManagerMeross} context.manager - Cloud manager
+ * @param {import('meross-iot').Meross} context.manager - Cloud manager
  * @param {Array<import('meross-iot').MerossHubDevice>} [context.devices] - Pre-selected hubs
  * @param {Object} [context.options]
  * @returns {Promise<Array<Object>>}

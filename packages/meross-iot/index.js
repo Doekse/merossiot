@@ -1,10 +1,10 @@
 'use strict';
 
-const ManagerMeross = require('./lib/manager');
-const enums = require('./lib/model/enums');
-const errors = require('./lib/model/exception');
+const Meross = require('./lib/meross');
+const enums = require('./lib/enums');
+const errors = require('./lib/exception');
 
-module.exports = ManagerMeross;
+module.exports = Meross;
 
 module.exports.MerossError = errors.MerossError;
 module.exports.MerossAuthError = errors.MerossAuthError;
@@ -24,12 +24,12 @@ module.exports.SmokeAlarmStatus = enums.SmokeAlarmStatus;
 module.exports.TimerType = enums.TimerType;
 module.exports.TriggerType = enums.TriggerType;
 
-const baseDevice = require('./lib/controller/device');
-const hubDevice = require('./lib/controller/hub-device');
+const baseDevice = require('./lib/device/device');
+const hubDevice = require('./lib/device/hubdevice');
 module.exports.MerossDevice = baseDevice.MerossDevice;
 module.exports.MerossHubDevice = hubDevice.MerossHubDevice;
 
-const subdevice = require('./lib/controller/subdevice');
+const subdevice = require('./lib/device/subdevice');
 module.exports.MerossSubDevice = subdevice.MerossSubDevice;
 module.exports.HubTempHumSensor = subdevice.HubTempHumSensor;
 module.exports.HubThermostatValve = subdevice.HubThermostatValve;

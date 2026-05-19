@@ -1,6 +1,6 @@
 'use strict';
 
-const ManagerMeross = require('meross-iot');
+const Meross = require('meross-iot');
 
 /**
  * Executes a control command using the feature-based API.
@@ -8,7 +8,7 @@ const ManagerMeross = require('meross-iot');
  * Routes commands to device feature modules based on method name format "feature.action".
  * This allows dynamic command execution without hardcoding device-specific logic.
  *
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {string} uuid - Device UUID (hub UUID when controlling a subdevice)
  * @param {string|null|undefined} [subdeviceIdOrMethodName] - Subdevice ID for hub children, or method name when omitted (4-arg form)
  * @param {string|Object} [methodNameOrParams] - Method name (`feature.action`) or params object in 4-arg form
@@ -33,7 +33,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
         : manager.devices.get(uuid);
 
     if (!device) {
-        throw new ManagerMeross.MerossDeviceError(
+        throw new Meross.MerossDeviceError(
             subdeviceId
                 ? `Subdevice with ID ${subdeviceId} not found in hub ${uuid}`
                 : `Device not found: ${uuid}`,
@@ -45,7 +45,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     }
 
     if (!device.deviceConnected) {
-        throw new ManagerMeross.MerossDeviceError(
+        throw new Meross.MerossDeviceError(
             'Device is not connected. Please wait for device to connect.',
             'DEVICE_UNCONNECTED',
             { deviceUuid: device.uuid }
@@ -54,7 +54,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
 
     const parts = String(methodName).split('.');
     if (parts.length !== 2) {
-        throw new ManagerMeross.MerossDeviceError(
+        throw new Meross.MerossDeviceError(
             `Invalid method name format: ${methodName}. Expected format: "feature.action" (e.g., "toggle.set")`,
             'UNSUPPORTED',
             { operation: String(methodName), reason: 'Method name must be in format: feature.action' }
@@ -69,7 +69,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     });
 
     if (!ability || typeof ability !== 'object') {
-        throw new ManagerMeross.MerossDeviceError(
+        throw new Meross.MerossDeviceError(
             `Ability '${abilityName}' is not available on this device`,
             'UNSUPPORTED',
             {
@@ -82,7 +82,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     }
 
     if (typeof ability[action] !== 'function') {
-        throw new ManagerMeross.MerossDeviceError(
+        throw new Meross.MerossDeviceError(
             `Action '${action}' not available on ability '${abilityName}'`,
             'UNSUPPORTED',
             {

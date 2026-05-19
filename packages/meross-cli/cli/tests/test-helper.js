@@ -21,7 +21,7 @@ const { OnlineStatus } = require('meross-iot');
  * device UUID (or subdevice ID) for deduplication to avoid returning the same
  * device multiple times.
  *
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {number} timeout - Timeout in milliseconds (default: 5000)
  * @returns {Promise<Array<MerossDevice>>} Array of device instances
  */
@@ -118,7 +118,7 @@ function deviceHasAbility(device, namespace) {
 
 /**
  * Finds devices by ability namespace
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {string} namespace - Ability namespace (e.g., 'Appliance.Control.ToggleX')
  * @param {number|null} onlineStatus - OnlineStatus filter (optional, null = any status)
  * @param {Array<Object>} deviceFilter - Optional pre-filtered device list (for CLI device selection)
@@ -165,7 +165,7 @@ async function findDevicesByAbility(manager, namespace, onlineStatus = null, dev
 
 /**
  * Finds devices by device type
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {string} deviceType - Device type (e.g., 'mss310', 'msg100')
  * @param {number|null} onlineStatus - OnlineStatus filter (optional, null = any status)
  * @param {Array<Object>} deviceFilter - Optional pre-filtered device list (for CLI device selection)

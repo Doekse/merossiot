@@ -1,97 +1,81 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Token Reuse and Credentials Management
- *
- * Demonstrates how to save and reuse authentication tokens to avoid repeated
- * logins and MFA requests using {@link ManagerMeross.connect}.
+ * Persist {@link Meross#getTokenData} between runs to avoid password login / MFA.
  */
 
-const Meross = require('../index.js');
 const fs = require('fs');
 const path = require('path');
+const Meross = require('../index.js');
+const { getCredentials, bindShutdown } = require('./shared.js');
 
 const TOKEN_FILE = path.join(__dirname, 'token-data.json');
 
+/**
+ * @param {import('../index')} meross
+ * @returns {void}
+ */
 function saveTokenData(meross) {
     const tokenData = meross.getTokenData();
-    if (tokenData) {
-        fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2));
-        console.log('✓ Token data saved to', TOKEN_FILE);
+    if (!tokenData) {
+        return;
     }
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2));
+    console.log(`Saved token data → ${TOKEN_FILE}`);
 }
 
+/**
+ * @returns {import('../index').TokenData | null}
+ */
 function loadTokenData() {
-    if (fs.existsSync(TOKEN_FILE)) {
-        const data = fs.readFileSync(TOKEN_FILE, 'utf8');
-        return JSON.parse(data);
+    if (!fs.existsSync(TOKEN_FILE)) {
+        return null;
     }
-    return null;
+    return JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
 }
 
 (async () => {
     try {
+        const saved = loadTokenData();
         let meross;
 
-        const savedTokenData = loadTokenData();
-
-        if (savedTokenData) {
-            console.log('Found saved token data, attempting to reuse...');
+        if (saved?.token && saved?.key && saved?.userId && saved?.domain) {
+            console.log('Reusing saved credentials…');
             meross = await Meross.connect({
-                token: savedTokenData.token,
-                key: savedTokenData.key,
-                userId: savedTokenData.userId,
-                domain: savedTokenData.domain,
-                mqttDomain: savedTokenData.mqttDomain,
+                token: saved.token,
+                key: saved.key,
+                userId: saved.userId,
+                domain: saved.domain,
+                mqttDomain: saved.mqttDomain,
                 logger: console.log
             });
         } else {
-            console.log('No saved token data, performing login...');
+            console.log('No valid token file — password login…');
             meross = await Meross.connect({
-                email: 'your@email.com',
-                password: 'yourpassword',
+                ...getCredentials(),
                 logger: console.log
             });
         }
 
-        console.log('✓ Connected successfully');
-
         saveTokenData(meross);
-
-        const devices = meross.devices.list();
-        console.log(`\nFound ${devices.length} device(s)`);
+        bindShutdown(meross);
 
         const tokenData = meross.getTokenData();
-        if (tokenData) {
-            console.log('\nCurrent token info:');
-            console.log(`  User: ${tokenData.userEmail}`);
-            console.log(`  Domain: ${tokenData.domain}`);
-            console.log(`  MQTT Domain: ${tokenData.mqttDomain}`);
-            console.log(`  Issued: ${tokenData.issuedOn}`);
-        }
+        console.log('\nSession:');
+        console.log(`  User:   ${tokenData?.userEmail ?? meross.userEmail}`);
+        console.log(`  Domain: ${tokenData?.domain ?? meross.httpDomain}`);
+        console.log(`  MQTT:   ${tokenData?.mqttDomain ?? meross.mqttDomain}`);
+        console.log(`  Issued: ${tokenData?.issuedOn ?? 'n/a'}`);
 
-        console.log('\nListening... (Press Ctrl+C to exit)');
-
-        process.on('SIGINT', async () => {
-            console.log('\n\nShutting down...');
-            await meross.logout();
-            meross.disconnectAll(true);
-            process.exit(0);
-        });
-
+        console.log(`\n${meross.devices.list().length} device(s) in registry.`);
+        console.log('Press Ctrl+C to exit (token file kept for next run).');
     } catch (error) {
         console.error(`Error: ${error.message}`);
 
-        // Delete invalid token file to force re-authentication on next run
         if (fs.existsSync(TOKEN_FILE)) {
             fs.unlinkSync(TOKEN_FILE);
-            console.log('Deleted invalid token file');
+            console.log('Removed invalid token file — run again with password login.');
         }
-
         process.exit(1);
     }
 })();

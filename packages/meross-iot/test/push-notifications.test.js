@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Unit tests for {@link module:lib/model/push} notification classes: constructor
+ * Unit tests for {@link module:lib/push} notification classes: constructor
  * normalization (including {@link GenericPushNotification.normalizeToArray}) and
  * {@link GenericPushNotification#extractChanges}.
  */
@@ -38,8 +38,8 @@ const {
     FirmwareInfo,
     TimeInfo,
     parsePushNotification
-} = require('../lib/model/push');
-const { PresenceState } = require('../lib/model/enums');
+} = require('../lib/push');
+const { PresenceState } = require('../lib/enums');
 
 const UUID = 'push-test-uuid';
 
@@ -72,7 +72,7 @@ describe('push notification models', () => {
     });
 
     /**
-     * Table-driven check that every namespace in {@link module:lib/model/push/factory}'s
+     * Table-driven check that every namespace in {@link module:lib/push/factory}'s
      * `PUSH_NOTIFICATION_BINDING` routes to its declared class.
      *
      * Keeping this one test in lock-step with the factory binding catches accidental drops

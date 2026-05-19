@@ -1,7 +1,7 @@
 'use strict';
 
 const chalk = require('chalk');
-const ManagerMeross = require('meross-iot');
+const Meross = require('meross-iot');
 
 /**
  * Formats error messages for display in the CLI.
@@ -14,7 +14,7 @@ const ManagerMeross = require('meross-iot');
  * @returns {string} Formatted error message
  */
 function formatError(error, verbose = false) {
-    if (error instanceof ManagerMeross.MerossError) {
+    if (error instanceof Meross.MerossError) {
         switch (error.code) {
         case 'MFA_REQUIRED':
             return chalk.red('\n✗ MFA (Multi-Factor Authentication) is required.\n') +

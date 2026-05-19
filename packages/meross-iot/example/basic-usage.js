@@ -1,39 +1,33 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Basic Usage Example
- *
- * Demonstrates the simplest way to connect to Meross Cloud and discover devices
- * using the static {@link ManagerMeross.connect} factory.
+ * Connect with {@link Meross.connect} and list registered devices.
  */
 
 const Meross = require('../index.js');
+const { getCredentials, shutdown } = require('./shared.js');
 
 (async () => {
     try {
-        console.log('Connecting to Meross Cloud...');
+        console.log('Connecting to Meross cloud…');
         const meross = await Meross.connect({
-            email: 'your@email.com',
-            password: 'yourpassword',
+            ...getCredentials(),
             logger: console.log
         });
 
         const devices = meross.devices.list();
-        console.log(`\n✓ Successfully connected to ${devices.length} device(s)`);
+        console.log(`\nConnected — ${devices.length} device(s) in registry:\n`);
 
-        console.log('\nAll devices:');
-        devices.forEach(device => {
-            console.log(`  - ${device.name || 'Unknown'} (${device.uuid})`);
-            console.log(`    Type: ${device.deviceType}`);
-            console.log(`    Status: ${device.onlineStatus === 1 ? 'Online' : 'Offline'}`);
-        });
+        for (const device of devices) {
+            const online = device.onlineStatus === Meross.OnlineStatus.ONLINE;
+            console.log(`  ${device.name || 'Unknown'}`);
+            console.log(`    UUID:   ${device.uuid}`);
+            console.log(`    Type:   ${device.deviceType}`);
+            console.log(`    Online: ${online ? 'yes' : 'no'}`);
+        }
 
-        console.log('\nDone (Ctrl+C to exit if you keep the process open).');
-
+        await shutdown(meross);
+        console.log('\nDone.');
     } catch (error) {
         console.error(`Error: ${error.message}`);
         process.exit(1);

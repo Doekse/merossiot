@@ -1,8 +1,8 @@
 'use strict';
 
-const TriggerType = require('../model/enums').TriggerType;
+const TriggerType = require('../enums').TriggerType;
 const { normalizeWeekBitmask, generateTimerId } = require('./timer');
-const { MerossDeviceError } = require('../model/exception');
+const { MerossDeviceError } = require('../exception');
 
 /**
  * Trigger utility functions.

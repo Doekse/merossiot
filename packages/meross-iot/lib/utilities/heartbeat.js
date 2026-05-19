@@ -1,6 +1,6 @@
 'use strict';
 
-const { OnlineStatus } = require('../model/enums');
+const { OnlineStatus } = require('../enums');
 
 /**
  * Manages device online/offline detection using time-based silence detection.

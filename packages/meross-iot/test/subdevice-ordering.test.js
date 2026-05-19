@@ -16,8 +16,8 @@ const {
     HubTempHumSensor,
     HubWaterLeakSensor,
     HubSmokeDetector
-} = require('../lib/controller/subdevice');
-const { OnlineStatus, SmokeAlarmStatus } = require('../lib/model/enums');
+} = require('../lib/device/subdevice');
+const { OnlineStatus, SmokeAlarmStatus } = require('../lib/enums');
 
 /**
  * Builds a subdevice stub without invoking the real constructor (which requires a

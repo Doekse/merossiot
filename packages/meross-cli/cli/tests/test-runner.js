@@ -161,7 +161,7 @@ async function runTest(testType, context) {
     const { manager, devices = [], options = {} } = context;
     
     if (!manager) {
-        throw new Error('ManagerMeross instance is required in context');
+        throw new Error('Meross instance is required in context');
     }
     
     // Resolve test type (handles aliases)
@@ -317,7 +317,7 @@ function getTestFile(testType) {
 /**
  * Finds devices for a given test type
  * @param {string} testType - Test type name or alias
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @returns {Promise<Array>} Array of matching devices
  */
 async function findDevicesForTestType(testType, manager) {

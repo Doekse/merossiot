@@ -1,6 +1,6 @@
 'use strict';
 
-const ManagerMeross = require('meross-iot');
+const Meross = require('meross-iot');
 const ora = require('ora');
 const { handleError } = require('../utils/error-handler');
 
@@ -30,29 +30,29 @@ function applyMerossRuntimeSettings(manager, settings) {
 }
 
 /**
- * Connects via {@link ManagerMeross.connect} and applies runtime settings (CLI one-shot commands).
+ * Connects via {@link Meross.connect} and applies runtime settings (CLI one-shot commands).
  *
- * @param {Object} connectOpts - Password or credential options for {@link ManagerMeross.connect}
+ * @param {Object} connectOpts - Password or credential options for {@link Meross.connect}
  * @param {{ transportMode?: number, timeout?: number, enableStats?: boolean, verbose?: boolean }} settings - Runtime options
  * @returns {Promise<import('meross-iot')>}
  */
 async function createAndConnect(connectOpts, settings) {
-    const manager = await ManagerMeross.connect(connectOpts);
+    const manager = await Meross.connect(connectOpts);
     applyMerossRuntimeSettings(manager, settings);
     return manager;
 }
 
 /**
- * Builds an authenticated manager via {@link ManagerMeross.authenticate} without calling
- * {@link ManagerMeross#connect}, so callers can run discovery and selective
+ * Builds an authenticated manager via {@link Meross.authenticate} without calling
+ * {@link Meross#connect}, so callers can run discovery and selective
  * {@link ManagerDevices#initialize} (interactive menu).
  *
- * @param {Object} connectOpts - Same shape as {@link ManagerMeross.connect} (email/password or token credentials)
+ * @param {Object} connectOpts - Same shape as {@link Meross.connect} (email/password or token credentials)
  * @param {{ transportMode?: number, timeout?: number, enableStats?: boolean, verbose?: boolean }} [settings] - Runtime options
  * @returns {Promise<import('meross-iot')>}
  */
 async function createMerossInstance(connectOpts, settings = {}) {
-    const manager = await ManagerMeross.authenticate(connectOpts);
+    const manager = await Meross.authenticate(connectOpts);
     applyMerossRuntimeSettings(manager, settings);
 
     if (settings.verbose) {

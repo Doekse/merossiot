@@ -37,9 +37,9 @@ const EXPECTED_NAMED_EXPORTS = [
 ];
 
 describe('meross-iot module surface', () => {
-    it('exports ManagerMeross as the default', () => {
+    it('exports Meross as the default', () => {
         assert.strictEqual(typeof meross, 'function');
-        assert.strictEqual(meross.name, 'ManagerMeross');
+        assert.strictEqual(meross.name, 'Meross');
     });
 
     it('exports the documented named symbols from index.js', () => {

@@ -1,31 +1,22 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Discovery, filters, and targeted initialization
- *
- * {@link ManagerMeross.connect} already loads your online devices. This script shows the
- * discovery APIs you use for **pairing UIs** (list candidates, filter by type) and for
- * **adding** a device or subdevice by id (`initializeDevice`). Those calls are idempotent:
- * if the device is already in the registry, you get the existing instance back.
+ * Discovery APIs for pairing UIs and targeted {@link ManagerDevices#initializeDevice}.
  */
 
 const Meross = require('../index.js');
+const { getCredentials, shutdown } = require('./shared.js');
 
 (async () => {
     try {
-        console.log('Connecting to Meross Cloud...');
+        console.log('Connecting (full account enrollment)…');
         const meross = await Meross.connect({
-            email: 'your@email.com',
-            password: 'yourpassword',
+            ...getCredentials(),
             logger: console.log
         });
 
         const online = await meross.devices.discover({ onlineOnly: true });
-        console.log(`\nOnline devices (cloud list): ${online.length}`);
+        console.log(`\nCloud list (online): ${online.length}`);
         online.slice(0, 8).forEach((d) => {
             console.log(`  - ${d.devName || '?'}  ${d.deviceType}  ${d.uuid}`);
         });
@@ -34,61 +25,58 @@ const Meross = require('../index.js');
         }
 
         const subdevices = await meross.devices.discoverSubdevices({ onlineOnly: true });
-        console.log(`\nSubdevices (hub metadata): ${subdevices.length}`);
+        console.log(`\nSubdevice metadata: ${subdevices.length}`);
         subdevices.slice(0, 5).forEach((s) => {
-            console.log(`  - ${s.subdeviceName || '?'}  (${s.subdeviceType})  hub ${s.hubName}`);
+            console.log(`  - ${s.subdeviceName || '?'} (${s.subdeviceType}) on hub ${s.hubName}`);
         });
 
         const plugs = await meross.devices.discover({
             deviceTypes: ['mss315', 'mss425'],
             onlineOnly: true
         });
-        console.log(`\nFiltered example (smart plugs): ${plugs.length} match(es)`);
+        console.log(`\nFiltered plugs (mss315/mss425): ${plugs.length}`);
 
-        const alarms = await meross.devices.discoverSubdevices({
+        const smoke = await meross.devices.discoverSubdevices({
             subdeviceType: 'ma151',
             onlineOnly: true
         });
-        console.log(`Filtered example (smoke alarms ma151): ${alarms.length} match(es)`);
+        console.log(`Filtered smoke alarms (ma151): ${smoke.length}`);
 
         if (online.length > 0) {
             const d = await meross.devices.initializeDevice(online[0].uuid);
-            console.log(`\ninitializeDevice(uuid) → ${d ? d.name : 'null'} (same instance if already loaded)`);
+            console.log(`\ninitializeDevice → ${d?.name ?? 'null'} (idempotent if already loaded)`);
         }
 
         if (online.length >= 2) {
             const uuids = online.slice(0, 2).map((x) => x.uuid);
             const n = await meross.devices.initialize({ uuids });
-            console.log(`\ninitialize({ uuids }) → ${n} device(s) in scope`);
+            console.log(`initialize({ uuids }) → ${n} device(s)`);
         }
 
         if (subdevices.length > 0) {
-            const s = subdevices[0];
+            const meta = subdevices[0];
             const sub = await meross.devices.initializeDevice({
-                hubUuid: s.hubUuid,
-                id: s.subdeviceId
+                hubUuid: meta.hubUuid,
+                id: meta.subdeviceId
             });
             if (sub) {
-                console.log(`\nSubdevice by id → ${sub.name} on hub ${sub.hub.name}`);
+                console.log(`Subdevice init → ${sub.name} (hub ${sub.hub.name})`);
             }
         }
 
         console.log('\n--- Registry ---');
-        meross.devices.list().forEach((device) => {
-            const label = device.subdeviceId
-                ? `[Sub] ${device.name} (${device.subdeviceId})`
-                : `[Dev] ${device.name} (${device.uuid})`;
-            console.log(`  ${label}`);
-        });
+        for (const device of meross.devices.list()) {
+            if (device.subdeviceId) {
+                console.log(`  [sub] ${device.name} (${device.subdeviceId})`);
+            } else {
+                console.log(`  [dev] ${device.name} (${device.uuid})`);
+            }
+        }
 
-        await meross.logout();
-        meross.disconnectAll(true);
+        await shutdown(meross);
         console.log('\nDone.');
     } catch (error) {
         console.error(`Error: ${error.message}`);
-        if (error.stack) {
-            console.error(error.stack);
-        }
         process.exit(1);
     }
 })();

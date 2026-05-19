@@ -1,86 +1,71 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Timer Usage Example
- *
- * Demonstrates how to create and manage timers using helper methods and utilities.
+ * Timers via {@link TimerFeature} (`device.timer`).
  */
 
 const Meross = require('../index.js');
+const { getCredentials, shutdown } = require('./shared.js');
 
 (async () => {
     try {
-        console.log('Connecting to Meross Cloud...');
+        console.log('Connecting…');
         const meross = await Meross.connect({
-            email: 'your@email.com',
-            password: 'yourpassword',
+            ...getCredentials(),
             logger: console.log
         });
 
-        const devices = meross.devices.list();
-        if (devices.length === 0) {
-            console.log('No devices found.');
+        const device = meross.devices.list().find((d) => d.timer);
+        if (!device) {
+            console.log('No timer-capable device in registry.');
+            await shutdown(meross);
             return;
         }
 
-        const device = devices[0];
-        console.log(`\nUsing device: ${device.name || 'Unknown'}`);
-
         if (!device.deviceConnected) {
-            console.log('Waiting for device to connect...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            console.log('Waiting for device connection…');
+            await new Promise((resolve) => device.once('connected', resolve));
         }
 
-        console.log('\n=== Creating Daily Timer ===');
+        console.log(`\nDevice: ${device.name}\n`);
+
+        if (!device.timer) {
+            throw new Error('device.timer feature missing');
+        }
+
+        const timer = device.timer;
+
+        console.log('=== Create daily timer ===');
         try {
-            const dailyTimer = await device.setTimerX({
+            const created = await timer.set({
                 time: '18:00',
                 alias: 'Evening Lights',
                 days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                 on: true,
                 channel: 0
             });
-            console.log('✓ Daily timer created:', dailyTimer);
-        } catch (error) {
-            console.error('Failed to create daily timer:', error.message);
+            console.log('Created:', created?.timerx ?? created);
+        } catch (err) {
+            console.error('Daily timer:', err.message);
         }
 
-        console.log('\n=== Creating Weekday Timer ===');
+        console.log('\n=== Create weekday timer ===');
         try {
-            const weekdayTimer = await device.setTimerX({
+            await timer.set({
                 time: '09:00',
                 alias: 'Work Start',
                 days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
                 on: true,
                 channel: 0
             });
-            console.log('✓ Weekday timer created:', weekdayTimer);
-        } catch (error) {
-            console.error('Failed to create weekday timer:', error.message);
+            console.log('Weekday timer set.');
+        } catch (err) {
+            console.error('Weekday timer:', err.message);
         }
 
-        console.log('\n=== Creating Custom Days Timer ===');
+        console.log('\n=== One-shot timer ===');
         try {
-            const customTimer = await device.setTimerX({
-                alias: 'Custom Schedule',
-                time: '14:30',
-                days: ['monday', 'wednesday', 'friday'],
-                on: false,
-                channel: 0,
-                enabled: true
-            });
-            console.log('✓ Custom timer created:', customTimer);
-        } catch (error) {
-            console.error('Failed to create custom timer:', error.message);
-        }
-
-        console.log('\n=== Creating One-Time Timer ===');
-        try {
-            const oneTimeTimer = await device.setTimerX({
+            await timer.set({
                 time: '20:00',
                 days: ['friday'],
                 alias: 'Movie Night',
@@ -88,76 +73,54 @@ const Meross = require('../index.js');
                 channel: 0,
                 type: Meross.TimerType.SINGLE_POINT_SINGLE_SHOT
             });
-            console.log('✓ One-time timer created:', oneTimeTimer);
-        } catch (error) {
-            console.error('Failed to create one-time timer:', error.message);
+            console.log('One-shot timer set.');
+        } catch (err) {
+            console.error('One-shot timer:', err.message);
         }
 
-        console.log('\n=== Listing All Timers ===');
+        console.log('\n=== List timers ===');
         try {
-            const timers = await device.getTimerX({ channel: 0 });
-            if (timers && timers.timerx && Array.isArray(timers.timerx)) {
-                console.log(`Found ${timers.timerx.length} timer(s):`);
-                timers.timerx.forEach(timer => {
-                    const hours = Math.floor((timer.time || 0) / 60);
-                    const minutes = (timer.time || 0) % 60;
+            const response = await timer.get({ channel: 0 });
+            const list = response?.timerx;
+            if (Array.isArray(list) && list.length > 0) {
+                for (const t of list) {
+                    const hours = Math.floor((t.time || 0) / 60);
+                    const minutes = (t.time || 0) % 60;
                     const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                    console.log(`  - ${timer.alias || 'Unnamed'}: ${timeStr} (${timer.enable === 1 ? 'Enabled' : 'Disabled'})`);
-                });
+                    console.log(`  - ${t.alias || 'Unnamed'}: ${timeStr} (${t.enable === 1 ? 'on' : 'off'})`);
+                }
             } else {
-                console.log('No timers found.');
+                console.log('  (none)');
             }
-        } catch (error) {
-            console.error('Failed to list timers:', error.message);
+        } catch (err) {
+            console.error('List:', err.message);
         }
 
-        console.log('\n=== Finding Timer by Alias ===');
+        console.log('\n=== Find by alias ===');
         try {
-            const timer = await device.findTimerByAlias({ alias: 'Evening Lights', channel: 0 });
-            if (timer) {
-                console.log('✓ Found timer:', {
-                    id: timer.id,
-                    alias: timer.alias,
-                    time: timer.time,
-                    enabled: timer.enable
-                });
-            } else {
-                console.log('Timer not found.');
-            }
-        } catch (error) {
-            console.error('Failed to find timer:', error.message);
+            const found = await timer.findTimerByAlias({ alias: 'Evening Lights', channel: 0 });
+            console.log(found ? `Found id ${found.id}` : 'Not found');
+        } catch (err) {
+            console.error('Find:', err.message);
         }
 
-        console.log('\n=== Deleting Timer by Alias ===');
+        console.log('\n=== Delete by alias ===');
         try {
-            const result = await device.deleteTimerByAlias({ alias: 'Movie Night', channel: 0 });
-            console.log('✓ Timer deleted:', result);
-        } catch (error) {
-            console.error('Failed to delete timer:', error.message);
+            await timer.deleteTimerByAlias({ alias: 'Movie Night', channel: 0 });
+            console.log('Deleted "Movie Night" (if it existed).');
+        } catch (err) {
+            console.error('Delete:', err.message);
         }
 
-        // Uncomment to delete all timers:
-        /*
-        console.log('\n=== Deleting All Timers ===');
-        try {
-            const results = await device.deleteAllTimers({ channel: 0 });
-            console.log(`✓ Deleted ${results.length} timer(s)`);
-        } catch (error) {
-            console.error('Failed to delete timers:', error.message);
-        }
-        */
+        console.log('\n=== Utilities ===');
+        console.log('timeToMinutes("14:30"):', timer.timeToMinutes('14:30'));
+        console.log('minutesToTime(870):', timer.minutesToTime(870));
+        console.log('daysToWeekMask(["monday","friday"]):', timer.daysToWeekMask(['monday', 'friday']));
 
-        console.log('\n=== Using Timer Utilities ===');
-        console.log('Time to minutes:', device.timer.timeToMinutes('14:30'));
-        console.log('Minutes to time:', device.timer.minutesToTime(870));
-        console.log('Days to bitmask:', device.timer.daysToWeekMask(['monday', 'friday']));
-
-        console.log('\n✓ Examples completed!');
-
+        await shutdown(meross);
+        console.log('\nDone.');
     } catch (error) {
-        console.error('Error:', error);
-        if (error.stack) {
-            console.error(error.stack);
-        }
+        console.error('Error:', error.message);
+        process.exit(1);
     }
 })();

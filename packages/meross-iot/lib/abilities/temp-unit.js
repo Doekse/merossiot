@@ -1,0 +1,76 @@
+'use strict';
+
+const { normalizeChannel } = require('../utilities/options');
+
+/**
+ * Creates a temperature unit feature object for a device.
+ *
+ * Provides control over the temperature unit display preference (Celsius or Fahrenheit).
+ *
+ * @param {Object} device - The device instance
+ * @returns {Object} Temperature unit feature object with set() and get() methods
+ */
+function createTempUnitAbility(device) {
+    return {
+        /**
+         * Gets the temperature unit configuration from the device.
+         *
+         * @param {Object} [options={}] - Get options
+         * @param {number} [options.channel=0] - Channel to get temperature unit for (default: 0)
+         * @returns {Promise<Object>} Response containing temperature unit configuration with `tempUnit` array
+         */
+        async get(options = {}) {
+            const channel = normalizeChannel(options);
+            const payload = {
+                tempUnit: [{
+                    channel
+                }]
+            };
+            const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.TempUnit', payload);
+            return out;
+        },
+
+        /**
+         * Sets the temperature unit configuration.
+         *
+         * @param {Object} options - Temperature unit options
+         * @param {Object|Array<Object>} [options.tempUnitData] - Temperature unit data object or array (if provided, used directly)
+         * @param {number} [options.channel] - Channel to configure
+         * @param {number} [options.tempUnit] - Temperature unit (1 = Celsius, 2 = Fahrenheit)
+         * @returns {Promise<Object>} Response from the device
+         */
+        async set(options = {}) {
+            let tempUnitData;
+            if (options.tempUnitData) {
+                tempUnitData = Array.isArray(options.tempUnitData) ? options.tempUnitData : [options.tempUnitData];
+            } else {
+                const channel = normalizeChannel(options);
+                tempUnitData = [{
+                    channel,
+                    tempUnit: options.tempUnit
+                }];
+            }
+            const payload = { tempUnit: tempUnitData };
+            const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.TempUnit', payload);
+            return out;
+        }
+    };
+}
+
+/**
+ * Gets temp unit capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} _channelIds - Array of channel IDs (unused; consistent with `getCapabilities` signature)
+ * @returns {Object|null} Temp unit capability object or null if not supported
+ */
+function getTempUnitCapabilities(device, _channelIds) {
+    if (!device.abilities || !device.abilities['Appliance.Control.TempUnit']) {return null;}
+
+    return {
+        supported: true
+    };
+}
+
+module.exports = createTempUnitAbility;
+module.exports.getCapabilities = getTempUnitCapabilities;

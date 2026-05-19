@@ -56,11 +56,11 @@ const Meross = require('meross-iot');
 
 The `example/` directory contains focused examples. See **[example/README.md](example/README.md)** for the full table. Highlights:
 
-- **`basic-usage.js`** — Connect and list devices
-- **`device-control.js`** — Switches, lights, power monitoring
-- **`device-discovery.js`** — Discovery filters and targeted `initializeDevice`
-- **`on-each-device.js`** — Helper for `deviceReady` + existing registry (used by several demos)
-- **`subscription-manager.js`** — `ManagerSubscription` polling and list updates
+- **`basic-usage.js`** — `Meross.connect()` and list devices
+- **`authenticate.js`** — `Meross.authenticate()` then selective `connect()`
+- **`device-control.js`** — Feature objects: `toggle`, `light`, `electricity`, `system`
+- **`device-discovery.js`** — `discover` / `discoverSubdevices` and `initializeDevice`
+- **`subscription-manager.js`** — `meross.subscription` polling and list updates
 - **`token-reuse.js`** — Persist `getTokenData()` between runs
 
 ## Adding and Removing Devices
@@ -69,21 +69,21 @@ You can dynamically add and remove devices from the manager after initialization
 
 ```javascript
 // Add a single device
-const device = await manager.devices.initializeDevice('device-uuid');
+const device = await meross.devices.initializeDevice('device-uuid');
 
 // Add a subdevice (hub will be auto-initialized if needed)
-const subdevice = await manager.devices.initializeDevice({ 
-  hubUuid: 'hub-uuid', 
-  id: 'subdevice-id' 
+const subdevice = await meross.devices.initializeDevice({
+  hubUuid: 'hub-uuid',
+  id: 'subdevice-id'
 });
 
 // Remove a device
-const removed = await manager.devices.remove('device-uuid');
+const removed = await meross.devices.remove('device-uuid');
 
 // Remove a subdevice
-const removed = await manager.devices.remove({ 
-  hubUuid: 'hub-uuid', 
-  id: 'subdevice-id' 
+const removed = await meross.devices.remove({
+  hubUuid: 'hub-uuid',
+  id: 'subdevice-id'
 });
 ```
 
@@ -99,24 +99,20 @@ The library follows a modular architecture with specialized managers for differe
 - **`manager.transport`** - Transport mode selection and message routing
 - **`manager.subscription`** - Automatic polling and unified update streams
 
-This organization makes the API more discoverable and easier to use. For example:
+Most apps use feature objects on devices (`device.toggle.set()`, etc.). Lower-level managers (`mqtt`, `http`, `transport`) remain available for advanced use:
 
 ```javascript
-// Discover devices without initializing
-const availableDevices = await manager.devices.discover({ onlineOnly: true });
+// Discover devices without initializing (after Meross.authenticate)
+const availableDevices = await meross.devices.discover({ onlineOnly: true });
 
-// Initialize devices
-const count = await manager.devices.initialize();
+// Initialize all or selected devices
+const count = await meross.devices.initialize();
 
-// Encode and send a message via MQTT
-const data = manager.mqtt.encode('GET', 'Appliance.Control.ToggleX', {}, device.uuid);
-manager.mqtt.send(device, data);
+// Prefer feature API for everyday control
+await device.toggle.set({ channel: 0, on: true });
 
-// Send a message via LAN HTTP
-await manager.http.send(device, '192.168.1.100', data);
-
-// Use transport manager for automatic routing
-await manager.transport.request(device, '192.168.1.100', data);
+// Transport mode (MQTT vs LAN-first)
+meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST;
 ```
 
 ## Supported Devices

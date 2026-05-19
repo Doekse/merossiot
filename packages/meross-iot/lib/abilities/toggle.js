@@ -1,0 +1,130 @@
+'use strict';
+
+const { MerossDeviceError } = require('../exception');
+const ToggleState = require('../states/toggle-state');
+const { getCachedOrFetch } = require('../utilities/cache');
+const { normalizeChannel, validateRequired } = require('../utilities/options');
+const { registerNamespaceDescriptor } = require('../dispatcher');
+
+/**
+ * Creates a toggle feature object for a device.
+ *
+ * Provides control over device on/off state for single-channel and multi-channel devices.
+ * Auto-detects Toggle vs ToggleX capabilities internally.
+ *
+ * @param {Object} device - The device instance
+ * @returns {Object} Toggle feature object with set(), get(), and isOn() methods
+ */
+function createToggleAbility(device) {
+    return {
+        /**
+         * Sets the toggle state (on/off) for a channel.
+         *
+         * Auto-detects whether to use Toggle or ToggleX based on device capabilities.
+         *
+         * @param {Object} options - Toggle options
+         * @param {number} [options.channel=0] - Channel to control (default: 0)
+         * @param {boolean} options.on - True to turn on, false to turn off
+         * @returns {Promise<void>} Promise that resolves when state is set
+         * @throws {MerossDeviceError} If device is not connected, command times out, or toggle is unsupported (UNKNOWN_DEVICE_TYPE, DEVICE_UNCONNECTED, COMMAND_TIMEOUT)
+         */
+        async set(options = {}) {
+            validateRequired(options, ['on']);
+            const channel = normalizeChannel(options);
+            const onoff = options.on ? 1 : 0;
+
+            // Auto-detect Toggle vs ToggleX
+            const hasToggleX = device.abilities?.['Appliance.Control.ToggleX'];
+            const hasToggle = device.abilities?.['Appliance.Control.Toggle'];
+
+            if (hasToggleX) {
+                const payload = { 'togglex': { channel, onoff } };
+                await device.publishMessage('SET', 'Appliance.Control.ToggleX', payload);
+            } else if (hasToggle) {
+                const payload = { 'toggle': { onoff } };
+                await device.publishMessage('SET', 'Appliance.Control.Toggle', payload);
+            } else {
+                throw new MerossDeviceError('Device does not support Toggle or ToggleX', 'UNKNOWN_DEVICE_TYPE', { deviceType: device.deviceType });
+            }
+        },
+
+        /**
+         * Gets the current toggle state for a channel.
+         *
+         * Automatically uses cache if fresh (within 5 seconds), otherwise fetches from device.
+         *
+         * @param {Object} [options={}] - Get options
+         * @param {number} [options.channel=0] - Channel to get state for (default: 0)
+         * @returns {Promise<ToggleState|undefined>} Promise that resolves with toggle state or undefined
+         * @throws {MerossDeviceError} If device is not connected (DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
+         */
+        async get(options = {}) {
+            const channel = normalizeChannel(options);
+            return getCachedOrFetch(
+                device,
+                '_toggleStateByChannel',
+                channel,
+                () => device.publishMessage('GET', 'Appliance.Control.ToggleX', { togglex: { channel } })
+            );
+        },
+
+        /**
+         * Checks if the device is on for the specified channel.
+         *
+         * @param {Object} [options={}] - Options
+         * @param {number} [options.channel=0] - Channel to check (default: 0)
+         * @returns {boolean|undefined} True if on, false if off, undefined if not available
+         */
+        isOn(options = {}) {
+            const channel = normalizeChannel(options);
+            const toggleState = device._toggleStateByChannel.get(channel);
+            if (toggleState) {
+                return toggleState.isOn;
+            }
+            return undefined;
+        }
+    };
+}
+
+/**
+ * Gets toggle capability information for a device.
+ *
+ * @param {Object} device - The device instance
+ * @param {Array<number>} channelIds - Array of channel IDs
+ * @returns {Object|null} Toggle capability object or null if not supported
+ */
+function getToggleCapabilities(device, channelIds) {
+    if (!device.abilities) {return null;}
+
+    const hasToggleX = !!device.abilities['Appliance.Control.ToggleX'];
+    const hasToggle = !!device.abilities['Appliance.Control.Toggle'];
+
+    if (!hasToggleX && !hasToggle) {return null;}
+
+    return {
+        supported: true,
+        channels: channelIds,
+        multiChannel: channelIds.length > 1
+    };
+}
+
+const toggleDescriptor = {
+    namespace: 'Appliance.Control.ToggleX',
+    payloadKey: 'togglex',
+    stateMap: '_toggleStateByChannel',
+    StateClass: ToggleState,
+    eventType: 'toggle',
+    snapshot: (s) => ({ isOn: s.isOn }),
+    emitValue: (oldSnap, newSnap) => (oldSnap?.isOn !== newSnap.isOn ? newSnap.isOn : undefined)
+};
+
+registerNamespaceDescriptor('Appliance.Control.ToggleX', toggleDescriptor);
+registerNamespaceDescriptor('Appliance.Control.Toggle', {
+    ...toggleDescriptor,
+    namespace: 'Appliance.Control.Toggle',
+    payloadKey: 'toggle'
+});
+
+module.exports = createToggleAbility;
+module.exports.getCapabilities = getToggleCapabilities;
+

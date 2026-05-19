@@ -6,7 +6,7 @@ const { TransportMode } = require('meross-iot');
 /**
  * Builds auth-only connect options plus runtime settings from CLI flags and env.
  *
- * Separates credentials (used by {@link ManagerMeross.connect}) from transport,
+ * Separates credentials (used by {@link Meross.connect}) from transport,
  * timeout, stats, and verbose flags that apply after connection.
  *
  * @param {Object} opts - Parsed CLI options and env-backed values

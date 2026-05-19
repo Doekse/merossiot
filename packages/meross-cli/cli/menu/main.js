@@ -193,7 +193,7 @@ async function _saveCredentialsPrompt(rl, currentCredentials) {
  * selection UI with subdevices indented under their hubs, and initializes
  * only the selected items.
  *
- * @param {ManagerMeross} manager - Meross manager instance
+ * @param {Meross} manager - Meross manager instance
  * @returns {Promise<boolean>} True if initialization succeeded, false otherwise
  * @private
  */

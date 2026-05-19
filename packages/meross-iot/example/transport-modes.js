@@ -1,69 +1,47 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Transport Modes Example
- *
- * Demonstrates the different transport modes available for communicating
- * with devices. Set {@link ManagerMeross#transport}'s `defaultMode` at any time after connect:
- * - MQTT_ONLY: Always use cloud MQTT
- * - LAN_HTTP_FIRST: Try local HTTP first, fallback to MQTT
- * - LAN_HTTP_FIRST_ONLY_GET: Try local HTTP for GET requests only, use MQTT for SET
+ * {@link ManagerTransport#defaultMode}: MQTT-only vs LAN-first routing.
  */
 
 const Meross = require('../index.js');
+const { getCredentials, bindShutdown } = require('./shared.js');
 
 (async () => {
     try {
-        console.log('Connecting to Meross Cloud...');
+        console.log('Connecting…');
         const meross = await Meross.connect({
-            email: 'your@email.com',
-            password: 'yourpassword',
+            ...getCredentials(),
             logger: console.log
         });
 
-        // Example 1: MQTT Only (default)
-        // meross.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
+        bindShutdown(meross);
 
-        // Example 2: LAN HTTP First
         // meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST;
-
-        // Example 3: LAN HTTP First (GET only)
         // meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST_ONLY_GET;
-
         meross.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
-        meross.logger = (msg) => console.log(`[MQTT Only] ${msg}`);
 
-        const deviceCount = meross.devices.list().length;
-        console.log(`\n✓ Successfully connected to ${deviceCount} device(s)`);
+        console.log(`Transport mode: ${meross.transport.defaultMode}`);
+        console.log(`Devices: ${meross.devices.list().length}`);
 
-        const devices = meross.devices.list();
-        if (devices.length > 0) {
-            const device = devices[0];
-            if (device.toggle) {
-                console.log(`\nToggling ${device.name || 'device'}...`);
-                await device.toggle();
-                console.log('✓ Device toggled');
-            }
+        const device = meross.devices.list().find((d) => d.toggle);
+        if (device) {
+            console.log(`\nToggling ${device.name} via current transport…`);
+            await device.toggle.set({ channel: 0, on: true });
+            await new Promise((r) => setTimeout(r, 1000));
+            await device.toggle.set({ channel: 0, on: false });
+            console.log('Done.');
+        } else {
+            console.log('\nNo toggle-capable device found.');
         }
 
-        console.log('\nListening... (Press Ctrl+C to exit)');
+        if (device && meross.transport.isOutOfBudget(device.uuid)) {
+            console.log(`Device ${device.uuid} is out of LAN error budget — using MQTT fallback.`);
+        }
 
-        process.on('SIGINT', async () => {
-            console.log('\n\nShutting down...');
-            await meross.logout();
-            meross.disconnectAll(true);
-            process.exit(0);
-        });
-
+        console.log('\nCtrl+C to exit.');
     } catch (error) {
         console.error(`Error: ${error.message}`);
-        if (error.stack) {
-            console.error(error.stack);
-        }
         process.exit(1);
     }
 })();

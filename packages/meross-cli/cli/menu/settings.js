@@ -8,6 +8,28 @@ const { clearScreen, renderSimpleHeader, clearMenuArea, SIMPLE_CONTENT_START_LIN
 const { showStats } = require('../commands');
 const { getUser, listUsers, addUser, removeUser } = require('../config/users');
 
+/**
+ * @param {import('meross-iot').ManagerTransport} transport
+ * @param {string} deviceUuid
+ * @returns {string}
+ */
+function formatErrorBudgetLabel(transport, deviceUuid) {
+    if (transport.isOutOfBudget(deviceUuid)) {
+        const remaining = transport.getBudget(deviceUuid);
+        return chalk.red(`Out of budget (${remaining} remaining)`);
+    }
+    return chalk.green(`OK (${transport.getBudget(deviceUuid)} remaining)`);
+}
+
+/**
+ * @param {import('meross-iot').ManagerTransport} transport
+ * @param {string} deviceUuid
+ * @returns {string}
+ */
+function formatErrorBudgetChoiceSuffix(transport, deviceUuid) {
+    return transport.isOutOfBudget(deviceUuid) ? chalk.red('(Out of budget)') : chalk.green('(OK)');
+}
+
 async function showSettingsMenu(rl, currentManager, currentUser, timeout, enableStats, verbose,
     setTransportMode, setTimeout, setEnableStats, setVerbose,
     userManagementCallbacks) {
@@ -64,7 +86,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
                     value: 'verbose'
                 },
                 {
-                    name: 'Error Budget Management',
+                    name: 'Transport Error Budgets',
                     value: 'error-budget'
                 },
                 new inquirer.Separator(),
@@ -108,6 +130,11 @@ async function showTransportModeSettings(rl, currentManager, currentUser, setTra
     clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
     process.stdout.write(chalk.bold('=== Transport Mode Settings ===\n\n'));
+    const transport = currentManager.transport;
+    const budgetSec = Math.floor(transport.errorBudgetTimeWindow / 1000);
+    console.log(chalk.dim(
+        `LAN modes use transport error budgets: ${transport.errorBudgetMaxErrors} failure(s) per device per ${budgetSec}s, then MQTT fallback.\n`
+    ));
     const { mode } = await inquirer.prompt([{
         type: 'list',
         name: 'mode',
@@ -569,7 +596,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
         return;
     }
 
-    const errorBudget = currentManager.errorBudget;
+    const transport = currentManager.transport;
 
     while (true) {
         // Clear screen and render simple header
@@ -578,19 +605,19 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
         renderSimpleHeader(currentUser, deviceCount);
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
-        process.stdout.write(chalk.bold('=== Error Budget Management ===\n\n'));
+        process.stdout.write(chalk.bold('=== Transport Error Budgets ===\n\n'));
 
-        // Get error budget configuration
-        const maxErrors = errorBudget?._maxErrors || 1;
-        const timeWindowMs = errorBudget?._window || 60000;
-        const timeWindowSec = Math.floor(timeWindowMs / 1000);
+        const maxErrors = transport.errorBudgetMaxErrors;
+        const timeWindowSec = Math.floor(transport.errorBudgetTimeWindow / 1000);
 
-        console.log(chalk.dim(`Configuration: Max ${maxErrors} error(s) per ${timeWindowSec} seconds\n`));
+        console.log(chalk.dim(
+            `LAN HTTP: max ${maxErrors} failure(s) per device per ${timeWindowSec}s before MQTT fallback\n`
+        ));
 
         const { action } = await inquirer.prompt([{
             type: 'list',
             name: 'action',
-            message: 'Error Budget Management',
+            message: 'Transport error budgets',
             choices: [
                 {
                     name: 'View Error Budgets (all devices)',
@@ -627,12 +654,9 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 devices.forEach(device => {
                     const uuid = device.uuid;
                     const name = device.name || 'Unknown';
-                    const budget = errorBudget.getBudget(uuid);
-                    const isOutOfBudget = budget < 1;
-                    const status = isOutOfBudget
-                        ? chalk.red(`Out of budget (${budget} remaining)`)
-                        : chalk.green(`OK (${budget} remaining)`);
-                    console.log(`  ${chalk.bold(name)} (${chalk.cyan(uuid.substring(0, 8))}...): ${status}`);
+                    console.log(
+                        `  ${chalk.bold(name)} (${chalk.cyan(uuid.substring(0, 8))}...): ${formatErrorBudgetLabel(transport, uuid)}`
+                    );
                 });
                 console.log('');
             }
@@ -653,17 +677,10 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 continue;
             }
 
-            const deviceChoices = devices.map(device => {
-                const uuid = device.uuid;
-                const name = device.name || 'Unknown';
-                const budget = errorBudget.getBudget(uuid);
-                const isOutOfBudget = budget < 1;
-                const status = isOutOfBudget ? chalk.red('(Out of budget)') : chalk.green('(OK)');
-                return {
-                    name: `${name} ${status}`,
-                    value: uuid
-                };
-            });
+            const deviceChoices = devices.map(device => ({
+                name: `${device.name || 'Unknown'} ${formatErrorBudgetChoiceSuffix(transport, device.uuid)}`,
+                value: device.uuid
+            }));
 
             const { deviceUuid } = await inquirer.prompt([{
                 type: 'list',
@@ -672,20 +689,18 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 choices: deviceChoices
             }]);
 
-            const budget = errorBudget.getBudget(deviceUuid);
-            const isOutOfBudget = budget < 1;
-            const device = devices.find(d => {
-                const dev = d.dev || {};
-                return (dev.uuid || d.uuid) === deviceUuid;
-            });
-            const dev = device?.dev || {};
-            const name = dev.devName || 'Unknown';
+            const device = devices.find(d => d.uuid === deviceUuid);
+            const name = device?.name || 'Unknown';
+            const budget = transport.getBudget(deviceUuid);
+            const outOfBudget = transport.isOutOfBudget(deviceUuid);
 
             console.log(`\n${chalk.bold('Device:')} ${name}`);
             console.log(`${chalk.bold('UUID:')} ${deviceUuid}`);
-            console.log(`${chalk.bold('Error Budget:')} ${isOutOfBudget ? chalk.red(budget) : chalk.green(budget)}`);
-            console.log(`${chalk.bold('Status:')} ${isOutOfBudget ? chalk.red('Out of budget - HTTP blocked, using MQTT') : chalk.green('OK - HTTP allowed')}`);
-            console.log(`${chalk.bold('Configuration:')} Max ${maxErrors} error(s) per ${timeWindowSec} seconds\n`);
+            console.log(`${chalk.bold('Remaining:')} ${outOfBudget ? chalk.red(budget) : chalk.green(budget)}`);
+            console.log(`${chalk.bold('Status:')} ${outOfBudget
+                ? chalk.red('Out of budget — LAN HTTP skipped, using MQTT')
+                : chalk.green('OK — LAN HTTP allowed')}`);
+            console.log(chalk.dim(`Policy: max ${maxErrors} failure(s) per ${timeWindowSec}s\n`));
 
             await inquirer.prompt([{
                 type: 'input',
@@ -704,17 +719,10 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 continue;
             }
 
-            const deviceChoices = devices.map(device => {
-                const uuid = device.uuid;
-                const name = device.name || 'Unknown';
-                const budget = errorBudget.getBudget(uuid);
-                const isOutOfBudget = budget < 1;
-                const status = isOutOfBudget ? chalk.red('(Out of budget)') : chalk.green('(OK)');
-                return {
-                    name: `${name} ${status}`,
-                    value: uuid
-                };
-            });
+            const deviceChoices = devices.map(device => ({
+                name: `${device.name || 'Unknown'} ${formatErrorBudgetChoiceSuffix(transport, device.uuid)}`,
+                value: device.uuid
+            }));
 
             const { deviceUuid } = await inquirer.prompt([{
                 type: 'list',
@@ -723,12 +731,8 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 choices: deviceChoices
             }]);
 
-            const device = devices.find(d => {
-                const dev = d.dev || {};
-                return (dev.uuid || d.uuid) === deviceUuid;
-            });
-            const dev = device?.dev || {};
-            const name = dev.devName || 'Unknown';
+            const device = devices.find(d => d.uuid === deviceUuid);
+            const name = device?.name || 'Unknown';
 
             const { confirm } = await inquirer.prompt([{
                 type: 'confirm',
@@ -738,7 +742,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
             }]);
 
             if (confirm) {
-                errorBudget.resetBudget(deviceUuid);
+                transport.resetBudget(deviceUuid);
                 console.log(chalk.green(`\n✓ Error budget reset for "${name}"\n`));
             }
 
@@ -761,7 +765,7 @@ async function showErrorBudgetSettings(rl, currentManager, currentUser) {
                 devices.forEach(device => {
                     const uuid = device.uuid;
                     if (uuid) {
-                        errorBudget.resetBudget(uuid);
+                        transport.resetBudget(uuid);
                         resetCount++;
                     }
                 });

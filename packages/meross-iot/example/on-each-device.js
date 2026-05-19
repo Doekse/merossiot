@@ -1,44 +1,40 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * {@link ManagerMeross.connect} runs device initialization internally, so `deviceReady` may
- * fire before your code can attach listeners. These helpers cover both devices already in
- * `meross.devices.list()` and devices that appear later.
+ * Helpers for examples that run logic per device after {@link Meross.connect}.
+ *
+ * `connect()` initializes devices internally, so `deviceReady` may fire before your
+ * listeners are attached. These helpers cover devices already in the registry and
+ * devices that become ready later.
  */
 
 /**
- * Invokes `fn(device)` once per device (by UUID), for the current registry and future
- * `deviceReady` events.
+ * Invokes `fn(device)` once per device UUID (registry + future `deviceReady` events).
  *
- * @param {object} manager - ManagerMeross instance (EventEmitter)
- * @param {(device: object) => void} fn - Handler
+ * @param {import('../index')} meross - Root manager
+ * @param {(device: import('../index').MerossDevice) => void} fn - Per-device handler
  * @returns {void}
  */
-function onEachDevice(manager, fn) {
+function onEachDevice(meross, fn) {
     const seen = new Set();
 
     function run(device) {
-        if (!device || !device.uuid || seen.has(device.uuid)) {
+        if (!device?.uuid || seen.has(device.uuid)) {
             return;
         }
         seen.add(device.uuid);
         fn(device);
     }
 
-    manager.on('deviceReady', run);
-    manager.devices.list().forEach(run);
+    meross.on('deviceReady', run);
+    meross.devices.list().forEach(run);
 }
 
 /**
- * Runs `fn` when the device is reachable: immediately if already connected, otherwise on
- * the next `connected` event.
+ * Runs `fn` when the device is reachable: immediately if connected, else on `connected`.
  *
- * @param {object} device - Device instance
- * @param {() => void | Promise<void>} fn - May be async (rejections are logged)
+ * @param {import('../index').MerossDevice} device - Device instance
+ * @param {() => void | Promise<void>} fn - Async-safe handler
  * @returns {void}
  */
 function runWhenConnected(device, fn) {

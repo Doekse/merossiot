@@ -1,91 +1,81 @@
-/* jshint -W097 */
-/* jshint -W030 */
-/* jslint node: true */
-/* jslint esversion: 6 */
 'use strict';
 
 /**
- * Connection errors and MFA
- *
- * Demonstrates `connect()` failure handling via `describeMerossError`. For command
- * failures on a device, catch `MerossDeviceError` where you
- * call `device.toggle.set` (see `device-control.js`). Retry backoff is app-specific.
+ * Typed errors from {@link Meross.connect} and device commands.
  */
 
 const Meross = require('../index.js');
+const { getCredentials } = require('./shared.js');
 
 /**
- * Logs a human-readable explanation for errors thrown during {@link ManagerMeross.connect}
- * or other Meross operations using category errors + error codes.
+ * Prints actionable detail for Meross error subclasses.
  *
  * @param {Error} error - Thrown value
- * @param {object} M - Module default export (class with `MerossError*` attached)
  * @returns {void}
  */
-function describeMerossError(error, M) {
-    if (error instanceof M.MerossAuthError ||
-        error instanceof M.MerossDeviceError ||
-        error instanceof M.MerossApiError ||
-        error instanceof M.MerossNetworkError ||
-        error instanceof M.MerossError) {
-        console.error(`\n  Meross Error: ${error.message}`);
-        console.error(`  Error Code: ${error.code}`);
-        switch (error.code) {
-            case 'MFA_REQUIRED':
-                console.error('  Pass `mfaCode` in connect options or use connectWithMFA().');
-                break;
-            case 'MFA_WRONG':
-                console.error('  MFA code is incorrect.');
-                break;
-            case 'COMMAND_TIMEOUT':
-                console.error(`  Device: ${error.deviceUuid || 'Unknown'}`);
-                console.error(`  Timeout: ${error.timeout || 'n/a'}ms`);
-                break;
-            case 'HTTP_API_ERROR':
-                if (error.httpStatusCode) {
-                    console.error(`  HTTP Status: ${error.httpStatusCode}`);
-                }
-                break;
-            default:
-                break;
+function describeMerossError(error) {
+    if (!(error instanceof Meross.MerossError)) {
+        console.error('\nUnexpected error (not a MerossError subclass).');
+        if (error.stack) {
+            console.error(error.stack);
         }
         return;
     }
-    console.error('\n  Unexpected error.');
-    if (error.stack) {
-        console.error(error.stack);
-    }
-}
 
-async function connectWithMFA(email, password, mfaCode) {
-    try {
-        const meross = await Meross.connect({
-            email: email,
-            password: password,
-            mfaCode: mfaCode,
-            logger: console.log
-        });
-        return meross;
-    } catch (error) {
-        throw error;
+    console.error(`\n  ${error.name}: ${error.message}`);
+    console.error(`  code: ${error.code}`);
+    if (error.errorCode != null) {
+        console.error(`  api errorCode: ${error.errorCode}`);
+    }
+
+    switch (error.code) {
+        case 'MFA_REQUIRED':
+            console.error('  → Set MEROSS_MFA_CODE or pass mfaCode in connect options.');
+            break;
+        case 'MFA_WRONG':
+            console.error('  → MFA code was rejected; request a new code.');
+            break;
+        case 'COMMAND_TIMEOUT':
+            if (error.deviceUuid) {
+                console.error(`  → Device: ${error.deviceUuid}`);
+            }
+            if (error.timeout) {
+                console.error(`  → Timeout: ${error.timeout}ms`);
+            }
+            break;
+        case 'HTTP_API_ERROR':
+            if (error.httpStatusCode) {
+                console.error(`  → HTTP status: ${error.httpStatusCode}`);
+            }
+            break;
+        default:
+            break;
     }
 }
 
 (async () => {
     try {
-        console.log('Connecting to Meross Cloud...');
-        await Meross.connect({
-            email: 'your@email.com',
-            password: 'yourpassword',
+        console.log('Connecting…');
+        const meross = await Meross.connect({
+            ...getCredentials(),
             logger: console.log
-            // mfaCode: '123456'  // Provide MFA code if required
+            // mfaCode: process.env.MEROSS_MFA_CODE
         });
 
-        console.log('✓ Connected successfully');
+        const device = meross.devices.list()[0];
+        if (device?.toggle) {
+            await device.toggle.set({ channel: 0, on: true });
+            console.log('Toggle command succeeded.');
+        } else {
+            console.log('No toggle-capable device in registry.');
+        }
 
+        await meross.logout();
+        meross.disconnectAll(true);
+        console.log('\nDone.');
     } catch (error) {
-        console.error(`\n✗ ${error.message}`);
-        describeMerossError(error, Meross);
+        console.error(`\nFailed: ${error.message}`);
+        describeMerossError(error);
         process.exit(1);
     }
 })();

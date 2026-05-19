@@ -69,7 +69,7 @@ When reporting issues, please include:
 
 If you're adding support for a new device type:
 1. Check if similar device types already exist for reference
-2. Add appropriate feature files in `packages/meross-iot/lib/controller/features/`
+2. Add appropriate ability files in `packages/meross-iot/lib/abilities/`
 3. Update device factory if needed
 4. Add examples or tests if possible
 5. Update documentation

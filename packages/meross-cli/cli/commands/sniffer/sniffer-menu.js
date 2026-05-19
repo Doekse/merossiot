@@ -447,7 +447,7 @@ async function _createZipArchive(options) {
 
 /**
  * Main sniffer menu function
- * @param {Object} manager - ManagerMeross instance
+ * @param {Object} manager - Meross instance
  * @param {Object} rl - Readline interface
  * @param {string|null} currentUser - Current logged in user name
  */
