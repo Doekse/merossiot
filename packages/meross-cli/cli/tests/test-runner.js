@@ -2,6 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { MerossSubDevice, OnlineStatus } = require('meross-iot');
 const testRegistry = require('./test-registry');
 
 /**
@@ -321,7 +322,6 @@ function getTestFile(testType) {
  * @returns {Promise<Array>} Array of matching devices
  */
 async function findDevicesForTestType(testType, manager) {
-    const { OnlineStatus } = require('./test-helper');
     const abilities = testRegistry.getRequiredAbilities(testType);
     
     if (!abilities || abilities.length === 0) {
@@ -337,15 +337,7 @@ async function findDevicesForTestType(testType, manager) {
     
     const matchingDevices = [];
     const seenUuids = new Set();
-    
-    // Import MerossHubDevice for filtering (lazy import to avoid circular dependency)
-    let MerossHubDevice = null;
-    try {
-        MerossHubDevice = require('meross-iot').MerossHubDevice;
-    } catch (e) {
-        // Fallback if import fails
-    }
-    
+
     for (const device of allDevices) {
         const uuid = device.uuid;
         if (seenUuids.has(uuid)) {
@@ -356,22 +348,11 @@ async function findDevicesForTestType(testType, manager) {
             continue;
         }
         
-        // Filter out subdevices when searching for hub abilities
-        // Subdevices inherit hub abilities but we want the actual hub device
-        const isSubdevice = device.constructor.name === 'MerossSubDevice' ||
-                           device.constructor.name === 'HubTempHumSensor' ||
-                           device.constructor.name === 'HubWaterLeakSensor' ||
-                           device.constructor.name === 'HubSmokeDetector' ||
-                           device.constructor.name === 'HubThermostatValve' ||
-                           device.subdeviceId ||
-                           device.hub;
-        
-        // Check if this is a hub ability search - if so, exclude subdevices
-        const isHubAbilitySearch = abilities.some(ability => 
+        const isHubAbilitySearch = abilities.some(ability =>
             ability.startsWith('Appliance.Hub.')
         );
-        
-        if (isHubAbilitySearch && isSubdevice) {
+
+        if (isHubAbilitySearch && device instanceof MerossSubDevice) {
             // Skip subdevices when searching for hub abilities
             continue;
         }

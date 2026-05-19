@@ -5,6 +5,7 @@
  * Standalone LatestX sensors only (hub flows are covered in the hub scenario).
  */
 
+const { MerossHubDevice } = require('meross-iot');
 const {
     findDevicesByAbility,
     waitForDeviceConnection,
@@ -40,9 +41,7 @@ async function runTests(context) {
         presenceDevices = await findDevicesByAbility(manager, 'Appliance.Control.Sensor.LatestX', OnlineStatus.ONLINE);
     }
 
-    presenceDevices = presenceDevices.filter((device) => {
-        return device.constructor.name !== 'MerossHubDevice' && typeof device.getSubdevice !== 'function';
-    });
+    presenceDevices = presenceDevices.filter((device) => !(device instanceof MerossHubDevice));
 
     for (const device of presenceDevices) {
         await waitForDeviceConnection(device, timeout);

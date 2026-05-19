@@ -1,6 +1,6 @@
 'use strict';
 
-const Meross = require('meross-iot');
+const { MerossDeviceError } = require('meross-iot');
 
 /**
  * Executes a control command using the feature-based API.
@@ -33,7 +33,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
         : manager.devices.get(uuid);
 
     if (!device) {
-        throw new Meross.MerossDeviceError(
+        throw new MerossDeviceError(
             subdeviceId
                 ? `Subdevice with ID ${subdeviceId} not found in hub ${uuid}`
                 : `Device not found: ${uuid}`,
@@ -45,7 +45,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     }
 
     if (!device.deviceConnected) {
-        throw new Meross.MerossDeviceError(
+        throw new MerossDeviceError(
             'Device is not connected. Please wait for device to connect.',
             'DEVICE_UNCONNECTED',
             { deviceUuid: device.uuid }
@@ -54,7 +54,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
 
     const parts = String(methodName).split('.');
     if (parts.length !== 2) {
-        throw new Meross.MerossDeviceError(
+        throw new MerossDeviceError(
             `Invalid method name format: ${methodName}. Expected format: "feature.action" (e.g., "toggle.set")`,
             'UNSUPPORTED',
             { operation: String(methodName), reason: 'Method name must be in format: feature.action' }
@@ -69,7 +69,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     });
 
     if (!ability || typeof ability !== 'object') {
-        throw new Meross.MerossDeviceError(
+        throw new MerossDeviceError(
             `Ability '${abilityName}' is not available on this device`,
             'UNSUPPORTED',
             {
@@ -82,7 +82,7 @@ async function executeControlCommand(manager, uuid, subdeviceIdOrMethodName, met
     }
 
     if (typeof ability[action] !== 'function') {
-        throw new Meross.MerossDeviceError(
+        throw new MerossDeviceError(
             `Action '${action}' not available on ability '${abilityName}'`,
             'UNSUPPORTED',
             {
