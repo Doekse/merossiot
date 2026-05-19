@@ -26,11 +26,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      
-      - name: Install npm 11.5.1+ for trusted publishing
-        if: steps.tag_info.outputs.is_package_specific == 'true'
-        run: npm install -g npm@^11.5.1
-      
+
       - name: Parse tag and extract package/version
         id: tag_info
         run: |
@@ -64,6 +60,10 @@ jobs:
             echo "Changelog path: packages/$PACKAGE/CHANGELOG.md"
           fi
           echo "Version: $VERSION"
+
+      - name: Install npm 11.5.1+ for trusted publishing
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: npm install -g npm@^11.5.1
       
       - name: Configure npm for provenance
         if: steps.tag_info.outputs.is_package_specific == 'true'
