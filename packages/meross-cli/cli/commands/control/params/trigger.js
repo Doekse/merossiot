@@ -3,6 +3,7 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const { TriggerType } = require('meross-iot');
+const { resolveControlChannel } = require('../../../utils/device');
 
 /**
  * Collects parameters for setTriggerX interactively.
@@ -16,7 +17,7 @@ const { TriggerType } = require('meross-iot');
  */
 async function collectSetTriggerXParams(methodMetadata, device) {
     const params = {};
-    const channel = methodMetadata.params.find(p => p.name === 'triggerx')?.properties?.find(prop => prop.name === 'channel')?.default || 0;
+    const channel = resolveControlChannel(methodMetadata, device, { nestedIn: 'triggerx' });
 
     let hasTriggers = false;
     try {
@@ -146,14 +147,12 @@ async function collectSetTriggerXParams(methodMetadata, device) {
  */
 async function collectDeleteTriggerXParams(methodMetadata, device) {
     const params = {};
-    const channel = methodMetadata.params.find(p => p.name === 'channel')?.default || 0;
+    const channel = resolveControlChannel(methodMetadata, device);
 
     try {
         if (device.trigger && typeof device.trigger.get === 'function') {
             // Clear cache to force fresh fetch after potential deletions
-            if (device._triggerxStateByChannel) {
-                device._triggerxStateByChannel.delete(channel);
-            }
+            device.trigger.invalidateCache({ channel });
             console.log(chalk.dim('Fetching existing triggers...'));
             const response = await device.trigger.get({ channel });
             const items = response && response.triggerx && Array.isArray(response.triggerx) ? response.triggerx : [];

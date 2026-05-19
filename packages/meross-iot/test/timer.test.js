@@ -58,6 +58,57 @@ describe('timer ability (mocked device)', () => {
         await assert.rejects(() => timer.delete({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
 
+    it('getAll returns timers from cache across channels', async () => {
+        const device = {
+            capabilities: { channels: { ids: [0, 1], count: 2 } },
+            publishMessage: async () => ({ header: {}, payload: {} }),
+            _timerxStateByChannel: new Map([
+                [0, [{ id: 'a', channel: 0, toObject: () => ({ id: 'a', channel: 0 }) }]],
+                [1, [{ id: 'b', channel: 1, toObject: () => ({ id: 'b', channel: 1 }) }]]
+            ])
+        };
+        const timer = createTimerAbility(device);
+
+        const all = await timer.getAll();
+
+        assert.strictEqual(all.length, 2);
+        assert.strictEqual(all[0].id, 'a');
+        assert.strictEqual(all[1].id, 'b');
+    });
+
+    it('count returns number of cached timers', async () => {
+        const device = {
+            capabilities: { channels: { ids: [0], count: 1 } },
+            publishMessage: async () => ({ header: {}, payload: {} }),
+            _timerxStateByChannel: new Map([
+                [0, [{ id: 'a', channel: 0, toObject: () => ({ id: 'a' }) }]]
+            ])
+        };
+        const timer = createTimerAbility(device);
+
+        assert.strictEqual(await timer.count(), 1);
+
+        const response = await timer.get({ channel: 0 });
+        assert.strictEqual(response.timerx.length, 1);
+    });
+
+    it('invalidateCache clears channel or all cached timers', () => {
+        const device = {
+            _timerxStateByChannel: new Map([
+                [0, [{ id: 'a' }]],
+                [1, [{ id: 'b' }]]
+            ])
+        };
+        const timer = createTimerAbility(device);
+
+        timer.invalidateCache({ channel: 0 });
+        assert.strictEqual(device._timerxStateByChannel.has(0), false);
+        assert.strictEqual(device._timerxStateByChannel.has(1), true);
+
+        timer.invalidateCache();
+        assert.strictEqual(device._timerxStateByChannel.size, 0);
+    });
+
     it('push-shaped timerx payload updates cache and emits stateChange', () => {
         const emitter = createDeviceEmitter();
         const events = [];

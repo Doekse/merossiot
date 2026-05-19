@@ -1,7 +1,7 @@
 'use strict';
 
 const TimerState = require('../states/timer-state');
-const { normalizeChannel } = require('../utilities/options');
+const { normalizeChannel, getDeviceChannelIds } = require('../utilities/options');
 const timerUtils = require('../utilities/timer');
 const { MerossDeviceError } = require('../exception');
 const { registerNamespaceDescriptor } = require('../dispatcher');
@@ -31,6 +31,58 @@ function createTimerAbility(device) {
                 return await this._getTimerXById(options.timerId);
             }
             return await this._getTimerXByChannel(normalizeChannel(options));
+        },
+
+        /**
+         * Returns all timers across every channel on the device.
+         *
+         * Use {@link TimerFeature#get} for a single channel.
+         *
+         * @returns {Promise<Array<Object>>} Timer entries from `timerx` payloads
+         */
+        async getAll() {
+            const all = [];
+            for (const channel of getDeviceChannelIds(device)) {
+                try {
+                    const response = await this.get({ channel });
+                    if (Array.isArray(response?.timerx)) {
+                        all.push(...response.timerx);
+                    }
+                } catch {
+                    // Skip channels that fail to respond
+                }
+            }
+            return all;
+        },
+
+        /**
+         * Counts timers across every channel on the device.
+         *
+         * Use {@link TimerFeature#get} for a single channel.
+         *
+         * @returns {Promise<number>} Number of timer entries
+         */
+        async count() {
+            const timers = await this.getAll();
+            return timers.length;
+        },
+
+        /**
+         * Clears cached timer state so the next {@link TimerFeature#get} fetches fresh data.
+         *
+         * @param {Object} [options={}] - Invalidation options
+         * @param {number} [options.channel] - Channel to invalidate; clears all channels when omitted
+         * @returns {void}
+         */
+        invalidateCache(options = {}) {
+            if (!device._timerxStateByChannel) {
+                return;
+            }
+            if (options.channel !== undefined) {
+                device._timerxStateByChannel.delete(normalizeChannel(options));
+                return;
+            }
+            device._timerxStateByChannel.clear();
         },
 
         /**

@@ -3,7 +3,7 @@
 const { MerossDeviceError } = require('../exception');
 const ToggleState = require('../states/toggle-state');
 const { getCachedOrFetch } = require('../utilities/cache');
-const { normalizeChannel, validateRequired } = require('../utilities/options');
+const { normalizeChannel, validateRequired, getDeviceChannelIds } = require('../utilities/options');
 const { registerNamespaceDescriptor } = require('../dispatcher');
 
 /**
@@ -82,6 +82,25 @@ function createToggleAbility(device) {
                 return toggleState.isOn;
             }
             return undefined;
+        },
+
+        /**
+         * Returns cached on/off state for every channel on this device.
+         *
+         * Use {@link ToggleFeature#isOn} or {@link ToggleFeature#get} for a single channel.
+         * Channels without cached toggle state are omitted from the map.
+         *
+         * @returns {Map<number, boolean>} Channel index to on/off state
+         */
+        getAll() {
+            const states = new Map();
+            for (const channel of getDeviceChannelIds(device)) {
+                const isOn = this.isOn({ channel });
+                if (isOn !== undefined) {
+                    states.set(channel, isOn);
+                }
+            }
+            return states;
         }
     };
 }

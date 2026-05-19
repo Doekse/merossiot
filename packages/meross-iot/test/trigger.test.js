@@ -56,6 +56,39 @@ describe('trigger ability (mocked device)', () => {
         await assert.rejects(() => trigger.delete({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
 
+    it('getAll and count aggregate cached triggers across channels', async () => {
+        const device = {
+            capabilities: { channels: { ids: [0, 1], count: 2 } },
+            lastFullUpdateTimestamp: Date.now(),
+            _triggerxStateByChannel: new Map([
+                [0, [{ id: 'a', channel: 0, toObject: () => ({ id: 'a' }) }]],
+                [1, [{ id: 'b', channel: 1, toObject: () => ({ id: 'b' }) }]]
+            ]),
+            publishMessage: async () => ({ header: {}, payload: {} })
+        };
+        const trigger = createTriggerAbility(device);
+
+        const all = await trigger.getAll();
+        assert.strictEqual(all.length, 2);
+        assert.strictEqual(await trigger.count(), 2);
+    });
+
+    it('invalidateCache clears channel or all cached triggers', () => {
+        const device = {
+            _triggerxStateByChannel: new Map([
+                [0, [{ id: 'a' }]],
+                [1, [{ id: 'b' }]]
+            ])
+        };
+        const trigger = createTriggerAbility(device);
+
+        trigger.invalidateCache({ channel: 0 });
+        assert.strictEqual(device._triggerxStateByChannel.has(0), false);
+
+        trigger.invalidateCache();
+        assert.strictEqual(device._triggerxStateByChannel.size, 0);
+    });
+
     it('push-shaped triggerx payload updates cache and emits stateChange', () => {
         const emitter = createDeviceEmitter();
         const events = [];

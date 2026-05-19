@@ -124,10 +124,14 @@ declare module 'meross-iot' {
         set(options: { on: boolean; channel?: number }): Promise<void>;
         get(options?: { channel?: number }): Promise<any>;
         isOn(options?: { channel?: number }): boolean | undefined;
+        getAll(): Map<number, boolean>;
     }
 
     export interface TimerFeature {
         get(options?: { channel?: number; timerId?: string }): Promise<any>;
+        getAll(): Promise<any[]>;
+        count(): Promise<number>;
+        invalidateCache(options?: { channel?: number }): void;
         set(options?: any): Promise<any>;
         delete(options: { timerId: string; channel?: number }): Promise<any>;
         findTimerByAlias(options: { alias: string; channel?: number }): Promise<any>;
@@ -143,6 +147,9 @@ declare module 'meross-iot' {
 
     export interface TriggerFeature {
         get(options?: { channel?: number }): Promise<any>;
+        getAll(): Promise<any[]>;
+        count(): Promise<number>;
+        invalidateCache(options?: { channel?: number }): void;
         set(options?: any): Promise<any>;
         delete(options: { triggerId: string; channel?: number }): Promise<any>;
         findTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>;
@@ -215,9 +222,19 @@ declare module 'meross-iot' {
 
     export interface DiffuserFeature {
         set(options?: Record<string, any>): Promise<any>;
-        get(options?: { channel?: number }): Promise<any>;
+        get(options?: { channel?: number; type?: 'light' | 'spray' }): Promise<any>;
+        getLight(options?: { channel?: number }): Promise<any>;
+        getSpray(options?: { channel?: number }): Promise<any>;
         getSensor(options?: Record<string, any>): Promise<any>;
         setSensor(options?: Record<string, any>): Promise<any>;
+    }
+
+    export interface DeviceCapabilities {
+        channels?: {
+            ids: number[];
+            count: number;
+        };
+        [key: string]: any;
     }
 
     export interface PresenceFeature {
@@ -295,6 +312,8 @@ declare module 'meross-iot' {
         readonly deviceType: string;
         readonly onlineStatus: number;
         readonly deviceConnected: boolean;
+        readonly capabilities: DeviceCapabilities | null;
+        getChannelIds(): number[];
         readonly toggle?: ToggleFeature;
         readonly light?: LightFeature;
         readonly thermostat?: ThermostatFeature;

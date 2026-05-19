@@ -30,22 +30,12 @@ async function displayHubStatus(device, filterSubdeviceId = null) {
     try {
         await device.refreshState();
 
-        try {
-            if (device.hub && typeof device.hub.getBattery === 'function') {
-                const batteryResponse = await device.hub.getBattery();
-                if (batteryResponse && batteryResponse.battery && Array.isArray(batteryResponse.battery)) {
-                    for (const batteryData of batteryResponse.battery) {
-                        const subdeviceId = batteryData.id;
-                        const subdevice = device.getSubdevice(subdeviceId);
-                        if (subdevice && batteryData.value !== undefined && batteryData.value !== null &&
-                            batteryData.value !== 0xFFFFFFFF && batteryData.value !== -1) {
-                            subdevice._battery = batteryData.value;
-                        }
-                    }
-                }
+        if (device.hub && typeof device.hub.getBattery === 'function') {
+            try {
+                await device.hub.getBattery();
+            } catch {
+                // Continue without battery data if fetch fails
             }
-        } catch {
-            // Continue without battery data if fetch fails
         }
     } catch (error) {
         // Continue with cached data if refresh fails

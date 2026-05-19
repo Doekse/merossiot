@@ -147,6 +147,23 @@ describe('toggle ability (mocked device)', () => {
         assert.strictEqual(state?.isOn, true);
     });
 
+    it('getAll returns cached on/off per channel', () => {
+        const { device } = baseDevice({
+            capabilities: { channels: { ids: [0, 1], count: 2 } },
+            abilities: { 'Appliance.Control.ToggleX': {} }
+        });
+        pushToggleX(device, { channel: 0, onoff: 1 }, 'response');
+        pushToggleX(device, { channel: 1, onoff: 0 }, 'response');
+        const toggle = createToggleAbility(device);
+
+        const states = toggle.getAll();
+
+        assert.strictEqual(states.size, 2);
+        assert.strictEqual(states.get(0), true);
+        assert.strictEqual(states.get(1), false);
+        assert.strictEqual(toggle.isOn({ channel: 1 }), false);
+    });
+
     it('isOn reads from toggle state map', () => {
         const { device } = baseDevice({
             abilities: { 'Appliance.Control.ToggleX': {} }

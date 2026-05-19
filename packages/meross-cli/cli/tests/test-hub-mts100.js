@@ -30,7 +30,7 @@ const metadata = {
  * @returns {boolean}
  */
 function isMts100Subdevice(sub) {
-    const t = String(sub.type || sub._type || '').toLowerCase();
+    const t = String(sub.type || '').toLowerCase();
     return t === 'mts100' || t === 'mts100v3';
 }
 

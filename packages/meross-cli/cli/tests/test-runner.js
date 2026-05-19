@@ -363,8 +363,8 @@ async function findDevicesForTestType(testType, manager) {
                            device.constructor.name === 'HubWaterLeakSensor' ||
                            device.constructor.name === 'HubSmokeDetector' ||
                            device.constructor.name === 'HubThermostatValve' ||
-                           (device.subdeviceId || device._subdeviceId) ||
-                           (device.hub || device._hub);
+                           device.subdeviceId ||
+                           device.hub;
         
         // Check if this is a hub ability search - if so, exclude subdevices
         const isHubAbilitySearch = abilities.some(ability => 
@@ -394,7 +394,7 @@ async function findDevicesForTestType(testType, manager) {
                 continue;
             }
             
-            const subdeviceType = device.type || device._type;
+            const subdeviceType = device.type;
             const matchesType = device.deviceType === 'msg100' || subdeviceType === 'msg100';
             
             if (matchesType && device.onlineStatus === OnlineStatus.ONLINE) {

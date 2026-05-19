@@ -90,6 +90,28 @@ function createDiffuserAbility(device) {
         },
 
         /**
+         * Gets the current diffuser light state for a channel.
+         *
+         * @param {Object} [options={}] - Get options
+         * @param {number} [options.channel=0] - Channel to get state for (default: 0)
+         * @returns {Promise<import('../states/diffuser-light-state')|undefined>}
+         */
+        async getLight(options = {}) {
+            return await this.get({ ...options, type: 'light' });
+        },
+
+        /**
+         * Gets the current diffuser spray state for a channel.
+         *
+         * @param {Object} [options={}] - Get options
+         * @param {number} [options.channel=0] - Channel to get state for (default: 0)
+         * @returns {Promise<import('../states/diffuser-spray-state')|undefined>}
+         */
+        async getSpray(options = {}) {
+            return await this.get({ ...options, type: 'spray' });
+        },
+
+        /**
          * Gets the diffuser sensor data (humidity and temperature) from the device.
          *
          * @param {Object} [options={}] - Get options

@@ -2,7 +2,7 @@
 
 const TriggerState = require('../states/trigger-state');
 const { readCache } = require('../utilities/cache');
-const { normalizeChannel } = require('../utilities/options');
+const { normalizeChannel, getDeviceChannelIds } = require('../utilities/options');
 const triggerUtils = require('../utilities/trigger');
 const { MerossDeviceError } = require('../exception');
 const { registerNamespaceDescriptor } = require('../dispatcher');
@@ -48,6 +48,57 @@ function createTriggerAbility(device) {
             return response;
         },
 
+        /**
+         * Returns all triggers across every channel on the device.
+         *
+         * Use {@link TriggerFeature#get} for a single channel.
+         *
+         * @returns {Promise<Array<Object>>} Trigger entries from `triggerx` payloads
+         */
+        async getAll() {
+            const all = [];
+            for (const channel of getDeviceChannelIds(device)) {
+                try {
+                    const response = await this.get({ channel });
+                    if (Array.isArray(response?.triggerx)) {
+                        all.push(...response.triggerx);
+                    }
+                } catch {
+                    // Skip channels that fail to respond
+                }
+            }
+            return all;
+        },
+
+        /**
+         * Counts triggers across every channel on the device.
+         *
+         * Use {@link TriggerFeature#get} for a single channel.
+         *
+         * @returns {Promise<number>} Number of trigger entries
+         */
+        async count() {
+            const triggers = await this.getAll();
+            return triggers.length;
+        },
+
+        /**
+         * Clears cached trigger state so the next {@link TriggerFeature#get} fetches fresh data.
+         *
+         * @param {Object} [options={}] - Invalidation options
+         * @param {number} [options.channel] - Channel to invalidate; clears all channels when omitted
+         * @returns {void}
+         */
+        invalidateCache(options = {}) {
+            if (!device._triggerxStateByChannel) {
+                return;
+            }
+            if (options.channel !== undefined) {
+                device._triggerxStateByChannel.delete(normalizeChannel(options));
+                return;
+            }
+            device._triggerxStateByChannel.clear();
+        },
 
         /**
          * Sets a trigger (creates or updates).

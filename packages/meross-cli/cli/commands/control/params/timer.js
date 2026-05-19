@@ -3,6 +3,7 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const { TimerType } = require('meross-iot');
+const { resolveControlChannel } = require('../../../utils/device');
 
 /**
  * Collects parameters for setTimerX interactively.
@@ -16,7 +17,7 @@ const { TimerType } = require('meross-iot');
  */
 async function collectSetTimerXParams(methodMetadata, device) {
     const params = {};
-    const channel = methodMetadata.params.find(p => p.name === 'timerx')?.properties?.find(prop => prop.name === 'channel')?.default || 0;
+    const channel = resolveControlChannel(methodMetadata, device, { nestedIn: 'timerx' });
 
     let hasTimers = false;
     try {
@@ -169,14 +170,11 @@ async function collectSetTimerXParams(methodMetadata, device) {
  */
 async function collectDeleteTimerXParams(methodMetadata, device) {
     const params = {};
-    const channel = methodMetadata.params.find(p => p.name === 'channel')?.default || 0;
+    const channel = resolveControlChannel(methodMetadata, device);
 
     try {
         if (device.timer && typeof device.timer.get === 'function') {
-            // Clear cache to force fresh fetch after potential deletions
-            if (device._timerxStateByChannel) {
-                device._timerxStateByChannel.delete(channel);
-            }
+            device.timer.invalidateCache({ channel });
             console.log(chalk.dim('Fetching existing timers...'));
             const response = await device.timer.get({ channel });
             const items = response && response.timerx && Array.isArray(response.timerx) ? response.timerx : [];

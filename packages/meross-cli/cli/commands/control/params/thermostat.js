@@ -3,6 +3,7 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const { ThermostatMode } = require('meross-iot');
+const { resolveControlChannel } = require('../../../utils/device');
 
 /**
  * Collects parameters for thermostat.set interactively.
@@ -16,7 +17,7 @@ const { ThermostatMode } = require('meross-iot');
  */
 async function collectThermostatModeParams(methodMetadata, device) {
     const params = {};
-    const channel = methodMetadata.params.find(p => p.name === 'channel')?.default || 0;
+    const channel = resolveControlChannel(methodMetadata, device);
 
     try {
         if (device.thermostat) {

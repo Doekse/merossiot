@@ -30,7 +30,7 @@ const metadata = {
  * @returns {string}
  */
 function subdeviceTypeLower(sub) {
-    return String(sub.type || sub._type || '').toLowerCase();
+    return String(sub.type || '').toLowerCase();
 }
 
 /**

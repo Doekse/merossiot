@@ -578,6 +578,24 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
+     * Returns sorted, unique channel indices for this device.
+     *
+     * Multi-outlet and multi-channel devices expose one index per controllable endpoint.
+     * Mirrors {@link MerossDevice#capabilities}.channels.ids when capabilities are built.
+     *
+     * @returns {number[]} Channel indices (defaults to `[0]` when no channel metadata exists)
+     */
+    getChannelIds() {
+        if (this.capabilities?.channels?.ids?.length) {
+            return [...this.capabilities.channels.ids];
+        }
+        if (this.channels && this.channels.length > 0) {
+            return [...new Set(this.channels.map(ch => ch.index))].sort((a, b) => a - b);
+        }
+        return [0];
+    }
+
+    /**
      * Updates the device's MAC address.
      *
      * MAC address is used by the encryption feature for key derivation in some firmware versions.

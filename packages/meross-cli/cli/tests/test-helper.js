@@ -9,9 +9,7 @@ const { OnlineStatus } = require('meross-iot');
  * All functions accept explicit parameters — no globals or environment variables.
  *
  * **Channel options:** For `{ channel }` arguments on feature APIs, prefer
- * {@link getPrimaryChannel} so multi-outlet devices use a valid index. Use a
- * literal `0` (or iterate `device.capabilities.channels.ids`) only when the
- * scenario intentionally targets a fixed or every-channel case.
+ * {@link getPrimaryChannel} or {@link getChannelIds} from `../utils/device`.
  */
 
 /**
@@ -176,7 +174,7 @@ async function findDevicesByType(manager, deviceType, onlineStatus = null, devic
     if (deviceFilter && Array.isArray(deviceFilter) && deviceFilter.length > 0) {
         return deviceFilter.filter(device => {
             const baseDeviceType = device.deviceType;
-            const subdeviceType = device.type || device._type;
+            const subdeviceType = device.type;
             const matchesType = baseDeviceType === deviceType || subdeviceType === deviceType;
             
             if (!matchesType) {
@@ -199,7 +197,7 @@ async function findDevicesByType(manager, deviceType, onlineStatus = null, devic
     for (const device of devices) {
         // Check both base device type and subdevice type
         const baseDeviceType = device.deviceType;
-        const subdeviceType = device.type || device._type;
+        const subdeviceType = device.type;
         const matchesType = baseDeviceType === deviceType || subdeviceType === deviceType;
         
         if (matchesType) {
@@ -292,33 +290,7 @@ function getDeviceName(device) {
     return device.name || device.uuid || 'Unknown device';
 }
 
-/**
- * Returns the first channel index for channel-scoped feature APIs. Prefer
- * `capabilities.channels.ids` when present, then
- * `channels[0].index`, so multi-outlet plugs and similar devices use a valid channel.
- *
- * @param {Object} device - Meross device instance
- * @returns {number} Channel index (defaults to 0)
- */
-function getPrimaryChannel(device) {
-    if (!device) {
-        return 0;
-    }
-    const ids = device.capabilities?.channels?.ids;
-    if (Array.isArray(ids) && ids.length > 0) {
-        const first = ids[0];
-        if (typeof first === 'number' && !Number.isNaN(first)) {
-            return first;
-        }
-    }
-    if (Array.isArray(device.channels) && device.channels.length > 0) {
-        const idx = device.channels[0].index;
-        if (typeof idx === 'number' && !Number.isNaN(idx)) {
-            return idx;
-        }
-    }
-    return 0;
-}
+const { getChannelIds, getPrimaryChannel } = require('../utils/device');
 
 /**
  * Whether the device exposes a public feature API object (e.g. `device.toggle`).
@@ -375,6 +347,7 @@ module.exports = {
     
     // Device utilities
     getDeviceName,
+    getChannelIds,
     getPrimaryChannel,
     getDeviceOnlineStatus,
     deviceHasAbility,

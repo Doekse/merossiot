@@ -48,6 +48,25 @@ function normalizeChannel(options = {}, defaultChannel = 0) {
  * validateRequired({onoff: true}, ['onoff']); // OK
  * validateRequired({}, ['onoff']); // Throws error
  */
+/**
+ * Returns sorted, unique channel indices for a device.
+ *
+ * Prefers the normalized capabilities map when present so callers stay aligned
+ * with {@link MerossDevice#getChannelIds}.
+ *
+ * @param {Object} device - Device instance
+ * @returns {number[]} Channel indices (defaults to `[0]`)
+ */
+function getDeviceChannelIds(device) {
+    if (device?.capabilities?.channels?.ids?.length) {
+        return [...device.capabilities.channels.ids];
+    }
+    if (device?.channels?.length) {
+        return [...new Set(device.channels.map(ch => ch.index))].sort((a, b) => a - b);
+    }
+    return [0];
+}
+
 function validateRequired(options = {}, requiredFields = []) {
     if (!options || typeof options !== 'object') {
         throw new MerossDeviceError('Options must be an object', 'VALIDATION_ERROR', { field: 'options' });
@@ -61,6 +80,7 @@ function validateRequired(options = {}, requiredFields = []) {
 
 module.exports = {
     normalizeChannel,
-    validateRequired
+    validateRequired,
+    getDeviceChannelIds
 };
 
