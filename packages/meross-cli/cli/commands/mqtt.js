@@ -4,8 +4,9 @@ const chalk = require('chalk');
 
 async function listMqttConnections(manager, options = {}) {
     const { verbose = false, json = false } = options;
-    const mqttConnections = manager.mqttConnections || {};
-    const domains = Object.keys(mqttConnections);
+    const mqtt = manager.mqtt;
+    const connections = mqtt.connections || {};
+    const domains = Object.keys(connections);
 
     if (domains.length === 0) {
         if (json) {
@@ -17,7 +18,7 @@ async function listMqttConnections(manager, options = {}) {
     }
 
     const connectionsData = domains.map(domain => {
-        const conn = mqttConnections[domain];
+        const conn = connections[domain];
         const client = conn?.client;
 
         let status = 'disconnected';
@@ -36,8 +37,8 @@ async function listMqttConnections(manager, options = {}) {
         if (manager.userId) {
             subscribedTopics.push(`/app/${manager.userId}/subscribe`);
         }
-        if (manager.clientResponseTopic) {
-            subscribedTopics.push(manager.clientResponseTopic);
+        if (mqtt.clientResponseTopic) {
+            subscribedTopics.push(mqtt.clientResponseTopic);
         }
 
         const namespaces = new Set();
@@ -111,6 +112,17 @@ async function listMqttConnections(manager, options = {}) {
                 ? chalk.yellow('Reconnecting')
                 : chalk.red('Disconnected');
 
+        const verboseInfo = verbose
+            ? [
+                ['Client ID', chalk.cyan(
+                    conn.clientId !== 'N/A' && conn.clientId.length > 20
+                        ? `${conn.clientId.substring(0, 8)}...${conn.clientId.substring(conn.clientId.length - 8)}`
+                        : conn.clientId
+                )],
+                ['Keepalive', chalk.cyan(`${conn.keepalive}s`)]
+            ]
+            : [];
+
         const connectionInfo = [
             ['Status', statusColor],
             ['Port', chalk.cyan(conn.port)],
@@ -118,12 +130,15 @@ async function listMqttConnections(manager, options = {}) {
             ['Devices', chalk.cyan(conn.deviceCount.toString())]
         ];
 
-        const maxLabelLength = Math.max(...connectionInfo.map(([label]) => label.length));
+        const labelRows = [...connectionInfo, ...verboseInfo];
+        const maxLabelLength = Math.max(...labelRows.map(([label]) => label.length));
 
-        connectionInfo.forEach(([label, value]) => {
-            const padding = ' '.repeat(maxLabelLength - label.length);
+        const printLabelRow = ([label, value]) => {
+            const padding = ' '.repeat(Math.max(0, maxLabelLength - label.length));
             console.log(`  ${chalk.white.bold(label)}:${padding} ${chalk.italic(value)}`);
-        });
+        };
+
+        connectionInfo.forEach(printLabelRow);
 
         if (conn.subscribedTopics.length > 0) {
             console.log(`\n  ${chalk.white.bold(`Subscribed Topics (${chalk.cyan(conn.subscribedTopics.length)}):`)}`);
@@ -153,19 +168,7 @@ async function listMqttConnections(manager, options = {}) {
         }
 
         if (verbose) {
-            const clientIdDisplay = conn.clientId !== 'N/A' && conn.clientId.length > 20
-                ? `${conn.clientId.substring(0, 8)}...${conn.clientId.substring(conn.clientId.length - 8)}`
-                : conn.clientId;
-
-            const verboseInfo = [
-                ['Client ID', chalk.cyan(clientIdDisplay)],
-                ['Keepalive', chalk.cyan(`${conn.keepalive}s`)]
-            ];
-
-            verboseInfo.forEach(([label, value]) => {
-                const padding = ' '.repeat(maxLabelLength - label.length);
-                console.log(`  ${chalk.white.bold(label)}:${padding} ${chalk.italic(value)}`);
-            });
+            verboseInfo.forEach(printLabelRow);
 
             if (conn.deviceUuids.length > 0) {
                 console.log(`\n  ${chalk.white.bold(`Device UUIDs (${chalk.cyan(conn.deviceUuids.length)}):`)}`);

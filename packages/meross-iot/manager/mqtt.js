@@ -28,7 +28,7 @@ class ManagerMqtt extends Manager {
      */
     constructor(meross) {
         super(meross);
-        this.mqttConnections = {};
+        this.connections = {};
         this._connectionPromises = new Map();
         this._pendingMessagesFutures = new Map();
         this._appId = null;
@@ -58,7 +58,7 @@ class ManagerMqtt extends Manager {
      * @returns {boolean}
      */
     hasConnection(domain) {
-        return !!(this.mqttConnections[domain]?.client);
+        return !!(this.connections[domain]?.client);
     }
 
     /**
@@ -66,7 +66,7 @@ class ManagerMqtt extends Manager {
      * @returns {Object|null}
      */
     getConnection(domain) {
-        return this.mqttConnections[domain] || null;
+        return this.connections[domain] || null;
     }
 
     /**
@@ -78,8 +78,8 @@ class ManagerMqtt extends Manager {
     async init(dev) {
         const domain = dev.domain || this.mqttDomain;
 
-        if (!this.mqttConnections[domain]) {
-            this.mqttConnections[domain] = {};
+        if (!this.connections[domain]) {
+            this.connections[domain] = {};
         }
 
         await this._getMqttClient(domain, dev.uuid);
@@ -95,7 +95,7 @@ class ManagerMqtt extends Manager {
      */
     send(device, data) {
         const domain = device.domain || this.mqttDomain;
-        if (!this.mqttConnections[domain] || !this.mqttConnections[domain].client) {
+        if (!this.connections[domain] || !this.connections[domain].client) {
             return false;
         }
 
@@ -108,7 +108,7 @@ class ManagerMqtt extends Manager {
         }
 
         const topic = buildDeviceRequestTopic(device.uuid);
-        this.mqttConnections[domain].client.publish(topic, JSON.stringify(data), undefined, err => {
+        this.connections[domain].client.publish(topic, JSON.stringify(data), undefined, err => {
             if (err) {
                 this._logError(device.uuid, err);
                 const deviceObj = this.meross.devices.get(device.uuid) || null;
@@ -180,14 +180,14 @@ class ManagerMqtt extends Manager {
      * @returns {void}
      */
     disconnectAll(force) {
-        for (const domain of Object.keys(this.mqttConnections)) {
-            if (this.mqttConnections[domain]?.client) {
-                this.mqttConnections[domain].client.removeAllListeners();
-                this.mqttConnections[domain].client.end(force);
+        for (const domain of Object.keys(this.connections)) {
+            if (this.connections[domain]?.client) {
+                this.connections[domain].client.removeAllListeners();
+                this.connections[domain].client.end(force);
             }
         }
 
-        this.mqttConnections = {};
+        this.connections = {};
         this._connectionPromises.clear();
     }
 
@@ -413,12 +413,12 @@ class ManagerMqtt extends Manager {
             });
 
             // Resolve connection promise after subscriptions complete to ensure client is fully ready
-            if (this.mqttConnections[domain]._connectionResolve) {
-                this.mqttConnections[domain]._connectionResolve();
-                this.mqttConnections[domain]._connectionResolve = null;
+            if (this.connections[domain]._connectionResolve) {
+                this.connections[domain]._connectionResolve();
+                this.connections[domain]._connectionResolve = null;
             }
 
-            this.mqttConnections[domain].deviceList.forEach(devId => {
+            this.connections[domain].deviceList.forEach(devId => {
                 const device = this.meross.devices.get(devId) || null;
                 if (device) {
                     device.emit('connected');
@@ -427,7 +427,7 @@ class ManagerMqtt extends Manager {
         });
 
         client.on('error', (error) => {
-            this.mqttConnections[domain].deviceList.forEach(devId => {
+            this.connections[domain].deviceList.forEach(devId => {
                 const device = this.meross.devices.get(devId) || null;
                 if (device) {
                     device.emit('error', error ? error.toString() : null);
@@ -436,7 +436,7 @@ class ManagerMqtt extends Manager {
         });
 
         client.on('close', (error) => {
-            this.mqttConnections[domain].deviceList.forEach(devId => {
+            this.connections[domain].deviceList.forEach(devId => {
                 const device = this.meross.devices.get(devId) || null;
                 if (device) {
                     device.emit('disconnected', error ? error.toString() : null);
@@ -445,7 +445,7 @@ class ManagerMqtt extends Manager {
         });
 
         client.on('reconnect', () => {
-            this.mqttConnections[domain].deviceList.forEach(devId => {
+            this.connections[domain].deviceList.forEach(devId => {
                 const device = this.meross.devices.get(devId) || null;
                 if (device) {
                     device.emit('reconnected');
@@ -493,22 +493,22 @@ class ManagerMqtt extends Manager {
      * @private
      */
     async _getMqttClient(domain, deviceUuid) {
-        if (!this.mqttConnections[domain]) {
-            this.mqttConnections[domain] = {};
+        if (!this.connections[domain]) {
+            this.connections[domain] = {};
         }
 
-        let client = this.mqttConnections[domain].client;
+        let client = this.connections[domain].client;
         if (!client) {
             client = this._createMqttClient(domain);
-            this.mqttConnections[domain].client = client;
-            this.mqttConnections[domain].deviceList = this.mqttConnections[domain].deviceList || [];
-            if (!this.mqttConnections[domain].deviceList.includes(deviceUuid)) {
-                this.mqttConnections[domain].deviceList.push(deviceUuid);
+            this.connections[domain].client = client;
+            this.connections[domain].deviceList = this.connections[domain].deviceList || [];
+            if (!this.connections[domain].deviceList.includes(deviceUuid)) {
+                this.connections[domain].deviceList.push(deviceUuid);
             }
         } else {
             if (client.connected) {
-                if (!this.mqttConnections[domain].deviceList.includes(deviceUuid)) {
-                    this.mqttConnections[domain].deviceList.push(deviceUuid);
+                if (!this.connections[domain].deviceList.includes(deviceUuid)) {
+                    this.connections[domain].deviceList.push(deviceUuid);
                 }
                 return client;
             }
@@ -517,11 +517,11 @@ class ManagerMqtt extends Manager {
         let connectionPromise = this._connectionPromises.get(domain);
         if (!connectionPromise) {
             connectionPromise = new Promise((resolve, reject) => {
-                this.mqttConnections[domain]._connectionResolve = resolve;
+                this.connections[domain]._connectionResolve = resolve;
 
                 setTimeout(() => {
-                    if (this.mqttConnections[domain]) {
-                        this.mqttConnections[domain]._connectionResolve = null;
+                    if (this.connections[domain]) {
+                        this.connections[domain]._connectionResolve = null;
                     }
                     this._connectionPromises.delete(domain);
                     reject(new MerossNetworkError(`MQTT connection timeout for domain ${domain}`, 'MQTT_ERROR'));
@@ -532,7 +532,7 @@ class ManagerMqtt extends Manager {
         }
 
         await connectionPromise;
-        return this.mqttConnections[domain].client;
+        return this.connections[domain].client;
     }
 }
 

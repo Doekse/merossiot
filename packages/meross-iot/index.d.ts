@@ -381,6 +381,22 @@ declare module 'meross-iot' {
         logout(): Promise<any>;
     }
 
+    export interface ManagerMqttConnection {
+        client?: { connected?: boolean; reconnecting?: boolean; options?: Record<string, any> };
+        deviceList?: string[];
+        [key: string]: any;
+    }
+
+    /** MQTT broker clients keyed by domain. */
+    export interface ManagerMqtt {
+        readonly connections: Record<string, ManagerMqttConnection>;
+        readonly clientResponseTopic: string | null;
+        readonly mqttDomain: string;
+        hasConnection(domain: string): boolean;
+        getConnection(domain: string): ManagerMqttConnection | null;
+        disconnectAll(force?: boolean): void;
+    }
+
     export class Meross extends EventEmitter {
         static authenticate(options: {
             email?: string;
@@ -411,6 +427,7 @@ declare module 'meross-iot' {
 
         readonly auth: ManagerAuth;
         readonly devices: ManagerDevices;
+        readonly mqtt: ManagerMqtt;
         readonly subscription: ManagerSubscription;
         readonly transport: ManagerTransport;
         readonly statistics: ManagerStatistics;
