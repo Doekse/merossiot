@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write  # Required for npm provenance
+      id-token: write  # Required for npm trusted publishing (OIDC)
     
     steps:
       - name: Checkout code
@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Parse tag and extract package/version
@@ -64,6 +64,13 @@ jobs:
       - name: Install npm 11.5.1+ for trusted publishing
         if: steps.tag_info.outputs.is_package_specific == 'true'
         run: npm install -g npm@^11.5.1
+
+      - name: Verify npm trusted publishing prerequisites
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: |
+          echo "node $(node --version)"
+          echo "npm $(npm --version)"
+          npm --version | awk -F. '$1 > 11 || ($1 == 11 && $2 > 5) || ($1 == 11 && $2 == 5 && $3 >= 1) { exit 0 } { print "npm 11.5.1+ required for trusted publishing"; exit 1 }'
       
       - name: Configure npm for provenance
         if: steps.tag_info.outputs.is_package_specific == 'true'
