@@ -16,7 +16,6 @@ const {
 } = require('./helpers/mock-ability-device');
 
 const pushToggleX = createDispatchStateShim('Appliance.Control.ToggleX', 'togglex');
-const pushToggle = createDispatchStateShim('Appliance.Control.Toggle', 'toggle');
 
 /**
  * @param {Object} partial

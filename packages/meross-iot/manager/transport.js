@@ -212,7 +212,7 @@ class ManagerTransport extends Manager {
             return true;
         } catch (err) {
             const isHttpFailure = !(err instanceof MerossApiError) ||
-                (err instanceof MerossApiError && err.httpStatusCode != null);
+                (err instanceof MerossApiError && err.httpStatusCode !== null && err.httpStatusCode !== undefined);
 
             if (isHttpFailure) {
                 const entry = this._errorBudgetEntry(device.uuid);

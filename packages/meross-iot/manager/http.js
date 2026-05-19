@@ -163,7 +163,7 @@ class ManagerHttp extends Manager {
         let errorHttpCode = null;
         const errorApiCode = null;
 
-        if (error instanceof MerossApiError && error.httpStatusCode != null) {
+        if (error instanceof MerossApiError && error.httpStatusCode !== null && error.httpStatusCode !== undefined) {
             errorHttpCode = error.httpStatusCode;
         } else if (!(error instanceof MerossApiError)) {
             // Extract HTTP status code from network errors, timeouts, and connection failures

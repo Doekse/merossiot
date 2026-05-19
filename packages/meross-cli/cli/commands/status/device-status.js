@@ -464,44 +464,44 @@ async function displayDeviceStatus(device) {
         if (device.thermostat && thermostatState) {
             const configInfo = [];
 
-                if (thermostatState.mode !== undefined) {
-                    const modeNames = {
-                        [ThermostatMode.HEAT]: 'Heat',
-                        [ThermostatMode.COOL]: 'Cool',
-                        [ThermostatMode.ECONOMY]: 'Economy',
-                        [ThermostatMode.AUTO]: 'Auto',
-                        [ThermostatMode.MANUAL]: 'Manual'
-                    };
-                    const modeName = modeNames[thermostatState.mode] || `Mode ${thermostatState.mode}`;
-                    const onoffStatus = thermostatState.isOn ? chalk.green('On') : chalk.red('Off');
-                    const targetTemp = thermostatState.targetTemperatureCelsius !== undefined
-                        ? `${thermostatState.targetTemperatureCelsius.toFixed(1)}°C`
-                        : '';
-                    configInfo.push(['Mode', `${onoffStatus} - ${modeName} ${targetTemp}`.trim()]);
-                }
+            if (thermostatState.mode !== undefined) {
+                const modeNames = {
+                    [ThermostatMode.HEAT]: 'Heat',
+                    [ThermostatMode.COOL]: 'Cool',
+                    [ThermostatMode.ECONOMY]: 'Economy',
+                    [ThermostatMode.AUTO]: 'Auto',
+                    [ThermostatMode.MANUAL]: 'Manual'
+                };
+                const modeName = modeNames[thermostatState.mode] || `Mode ${thermostatState.mode}`;
+                const onoffStatus = thermostatState.isOn ? chalk.green('On') : chalk.red('Off');
+                const targetTemp = thermostatState.targetTemperatureCelsius !== undefined
+                    ? `${thermostatState.targetTemperatureCelsius.toFixed(1)}°C`
+                    : '';
+                configInfo.push(['Mode', `${onoffStatus} - ${modeName} ${targetTemp}`.trim()]);
+            }
 
-                if (thermostatState.heatTemperatureCelsius !== undefined) {
-                    configInfo.push(['Comfort Temperature', `${thermostatState.heatTemperatureCelsius.toFixed(1)}°C`]);
-                }
-                if (thermostatState.coolTemperatureCelsius !== undefined) {
-                    configInfo.push(['Cool Temperature', `${thermostatState.coolTemperatureCelsius.toFixed(1)}°C`]);
-                }
-                if (thermostatState.ecoTemperatureCelsius !== undefined) {
-                    configInfo.push(['Economy Temperature', `${thermostatState.ecoTemperatureCelsius.toFixed(1)}°C`]);
-                }
-                if (thermostatState.manualTemperatureCelsius !== undefined) {
-                    configInfo.push(['Away Temperature', `${thermostatState.manualTemperatureCelsius.toFixed(1)}°C`]);
-                }
+            if (thermostatState.heatTemperatureCelsius !== undefined) {
+                configInfo.push(['Comfort Temperature', `${thermostatState.heatTemperatureCelsius.toFixed(1)}°C`]);
+            }
+            if (thermostatState.coolTemperatureCelsius !== undefined) {
+                configInfo.push(['Cool Temperature', `${thermostatState.coolTemperatureCelsius.toFixed(1)}°C`]);
+            }
+            if (thermostatState.ecoTemperatureCelsius !== undefined) {
+                configInfo.push(['Economy Temperature', `${thermostatState.ecoTemperatureCelsius.toFixed(1)}°C`]);
+            }
+            if (thermostatState.manualTemperatureCelsius !== undefined) {
+                configInfo.push(['Away Temperature', `${thermostatState.manualTemperatureCelsius.toFixed(1)}°C`]);
+            }
 
-                if (thermostatState.minTemperatureCelsius !== undefined && thermostatState.maxTemperatureCelsius !== undefined) {
-                    configInfo.push(['Temperature Range', `${thermostatState.minTemperatureCelsius.toFixed(1)}°C - ${thermostatState.maxTemperatureCelsius.toFixed(1)}°C`]);
-                }
+            if (thermostatState.minTemperatureCelsius !== undefined && thermostatState.maxTemperatureCelsius !== undefined) {
+                configInfo.push(['Temperature Range', `${thermostatState.minTemperatureCelsius.toFixed(1)}°C - ${thermostatState.maxTemperatureCelsius.toFixed(1)}°C`]);
+            }
 
-                if (thermostatState.workingMode !== undefined) {
-                    const isHeating = thermostatState.workingMode === 1;
-                    const stateColor = isHeating ? chalk.green('Heating') : chalk.gray.bold('Idle');
-                    configInfo.push(['Status', stateColor]);
-                }
+            if (thermostatState.workingMode !== undefined) {
+                const isHeating = thermostatState.workingMode === 1;
+                const stateColor = isHeating ? chalk.green('Heating') : chalk.gray.bold('Idle');
+                configInfo.push(['Status', stateColor]);
+            }
 
             if (configInfo.length > 0) {
                 allConfigItems.push(...configInfo);
