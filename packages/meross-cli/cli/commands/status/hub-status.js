@@ -6,8 +6,8 @@ const { displaySubdeviceStatus } = require('./subdevices');
 /**
  * Displays hub device status including all subdevices.
  *
- * Refreshes hub state to get latest subdevice data, fetches battery information
- * for sensors, and displays status for each subdevice.
+ * Refreshes hub state to load latest subdevice data (including battery via the hub
+ * feature), then displays status for each subdevice using getCachedBattery().
  *
  * @param {Object} device - Hub device instance
  * @param {string|null} filterSubdeviceId - Optional subdevice ID to filter to a single subdevice
@@ -29,15 +29,7 @@ async function displayHubStatus(device, filterSubdeviceId = null) {
 
     try {
         await device.refreshState();
-
-        if (device.hub && typeof device.hub.getBattery === 'function') {
-            try {
-                await device.hub.getBattery();
-            } catch {
-                // Continue without battery data if fetch fails
-            }
-        }
-    } catch (error) {
+    } catch {
         // Continue with cached data if refresh fails
     }
 
