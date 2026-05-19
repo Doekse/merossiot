@@ -27,6 +27,10 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
       
+      - name: Install npm 11.5.1+ for trusted publishing
+        if: steps.tag_info.outputs.is_package_specific == 'true'
+        run: npm install -g npm@^11.5.1
+      
       - name: Parse tag and extract package/version
         id: tag_info
         run: |
@@ -158,10 +162,6 @@ jobs:
           MEROSS_IOT_VERSION=$(node -p "require('../meross-iot/package.json').version")
           # Use caret range to allow patch updates
           npm pkg set "dependencies.meross-iot=^$MEROSS_IOT_VERSION"
-      
-      - name: Install npm 11.5.1+ for trusted publishing
-        if: steps.tag_info.outputs.is_package_specific == 'true'
-        run: npm install -g npm@^11.5.1
       
       - name: Publish to NPM
         if: steps.tag_info.outputs.is_package_specific == 'true'
