@@ -293,12 +293,6 @@ describe('MerossSubDevice.handleMessage header-timestamp ordering', () => {
 });
 
 describe('MerossSubDevice subscription parity', () => {
-    it('uses internalId as subscriptionKey', () => {
-        const sensor = createStub(HubTempHumSensor);
-        assert.ok(sensor.subscriptionKey.includes('hub-uuid'));
-        assert.ok(sensor.subscriptionKey.includes('sub-1'));
-    });
-
     it('emits stateChange and getState after hub message', async () => {
         const sensor = createStub(HubTempHumSensor);
         const events = [];

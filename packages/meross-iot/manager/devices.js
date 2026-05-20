@@ -628,11 +628,14 @@ class ManagerDevices extends Manager {
      */
     _cleanupSubscriptions(device) {
         const subscription = this.meross._managers.subscription;
-        const subscriptionKey = device?.subscriptionKey;
-        if (subscription && subscriptionKey) {
-            const eventName = `deviceUpdate:${subscriptionKey}`;
+        if (device?.subdeviceId) {
+            return;
+        }
+        const deviceUuid = device?.uuid;
+        if (subscription && deviceUuid) {
+            const eventName = `deviceUpdate:${deviceUuid}`;
             if (subscription.listenerCount(eventName) > 0) {
-                subscription.unsubscribe(subscriptionKey);
+                subscription.unsubscribe(deviceUuid);
             }
         }
     }
@@ -695,6 +698,7 @@ class ManagerDevices extends Manager {
         deviceObj.on('error', (error) => {
             this.meross.emit('error', error, deviceId);
         });
+        // Internal: forwards device state to subscription; not part of the public Meross API.
         deviceObj.on('stateChange', (change) => {
             this.meross.emit('deviceUpdate', deviceObj, change);
         });

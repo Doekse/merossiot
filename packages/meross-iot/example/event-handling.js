@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Manager lifecycle events and per-device `stateChange` updates.
+ * Manager lifecycle events and {@link ManagerSubscription} state updates.
  */
 
 const Meross = require('../index.js');
@@ -23,20 +23,18 @@ const { onEachDevice } = require('./on-each-device.js');
         meross.on('disconnected', (d, reason) => {
             console.log(`[mgr] disconnected ${d.uuid} ${reason || ''}`);
         });
-        meross.on('deviceUpdate', (d, change) => {
-            console.log(`[mgr] deviceUpdate ${d.name} type=${change.type}`);
-        });
+
+        const sub = meross.subscription;
+        sub.on('error', (err, ctx) => console.error('[subscription]', ctx, err.message));
 
         onEachDevice(meross, (device) => {
-            let lastOnline = device.onlineStatus;
+            sub.subscribe(device, { pushOnly: true });
 
-            device.on('stateChange', (ev) => {
-                if (ev.type === 'online' && ev.value !== lastOnline) {
-                    console.log(`[dev] ${device.name} online status ${lastOnline} → ${ev.value}`);
-                    lastOnline = ev.value;
-                } else if (ev.type !== 'online') {
-                    console.log(`[dev] ${device.name} ${ev.type} ch=${ev.channel ?? '-'}`);
-                }
+            sub.on(`deviceUpdate:${device.uuid}`, (update) => {
+                const types = update.changes
+                    ? Object.keys(update.changes).join(', ')
+                    : 'refresh';
+                console.log(`[sub] ${update.device.name} source=${update.source} ${types}`);
             });
         });
 

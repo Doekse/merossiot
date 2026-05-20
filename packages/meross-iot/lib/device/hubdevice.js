@@ -112,6 +112,10 @@ class MerossHubDevice extends MerossDevice {
         }
 
         this._subDevices.set(subdevice.subdeviceId, subdevice);
+
+        if (this.meross?.subscription) {
+            this.meross.subscription.onSubdeviceRegistered(this, subdevice);
+        }
     }
 
     /**

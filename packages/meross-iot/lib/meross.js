@@ -414,10 +414,10 @@ class Meross extends EventEmitter {
  * @property {Function} disconnected - Emitted when a device connection closes
  *   @param {MerossDevice|MerossHubDevice} device - Device instance
  *   @param {Error|string|null} error - Present when the disconnect was caused by an error
- * @property {Function} deviceUpdate - Emitted when a device reports a state change
- *   @param {MerossDevice|MerossHubDevice} device - Device instance
- *   @param {Object} change - State change payload from the device
  * @property {Function} error - Emitted when an error occurs on a device or in MQTT transport
+ *
+ * State changes are delivered through {@link ManagerSubscription} (`meross.subscription.subscribe`
+ * and `deviceUpdate:${deviceUuid}`). Subscribe to the hub UUID for hub subdevices.
  *   @param {Error|string} error - Error object or message
  *   @param {string|null} deviceId - Device UUID when scoped to a device, or null for manager-level errors
  */

@@ -255,6 +255,9 @@ const DIGEST_FLAT_ROUTES = [
  * and composes feature modules to provide device-specific capabilities. All device commands
  * and state updates flow through this class.
  *
+ * Consumers receive state through {@link ManagerSubscription} (`meross.subscription`), not
+ * `stateChange` events on the device (internal wiring for subscription and tests).
+ *
  * @extends EventEmitter
  */
 class MerossDevice extends EventEmitter {
@@ -630,15 +633,6 @@ class MerossDevice extends EventEmitter {
 
         this._internalId = DeviceRegistry.generateInternalId(this.uuid);
         return this._internalId;
-    }
-
-    /**
-     * Key used by {@link ManagerSubscription} for maps and `deviceUpdate:*` events.
-     *
-     * @returns {string} Device UUID
-     */
-    get subscriptionKey() {
-        return this.uuid;
     }
 
     /**

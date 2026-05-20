@@ -19,7 +19,10 @@ function onEachDevice(meross, fn) {
     const seen = new Set();
 
     function run(device) {
-        if (!device?.uuid || seen.has(device.uuid)) {
+        if (!device?.uuid || device.subdeviceId) {
+            return;
+        }
+        if (seen.has(device.uuid)) {
             return;
         }
         seen.add(device.uuid);

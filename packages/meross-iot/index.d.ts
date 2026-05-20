@@ -360,6 +360,7 @@ declare module 'meross-iot' {
         remove(identifier: string | { hubUuid: string; id: string }): Promise<boolean>;
     }
 
+    /** Subscribe with device/hub UUID; listen on `deviceUpdate:${uuid}` (`update.device` may be a subdevice). */
     export interface ManagerSubscription extends EventEmitter {
         subscribe(device: MerossDevice, config?: Record<string, any>): void;
         unsubscribe(deviceUuid: string): void;

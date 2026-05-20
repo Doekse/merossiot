@@ -18,9 +18,9 @@ const { dispatch, getNamespaceDescriptors } = require('../dispatcher');
  * Subdevices include sensors (temperature/humidity, water leak, smoke), thermostat
  * valves, and other devices that connect to hub devices rather than directly to WiFi.
  *
- * State updates follow the same subscription model as base devices: {@link MerossSubDevice#getState},
- * `stateChange` events, and `meross.subscription.subscribe(subdevice)` (keyed by {@link MerossSubDevice#subscriptionKey}).
- * Call {@link MerossSubDevice#refreshState} to refresh from the hub; sync getters read the latest cache.
+ * State updates are delivered through the parent hub: `meross.subscription.subscribe(hub)`
+ * and `deviceUpdate:${hub.uuid}` (`update.device` identifies the subdevice). Use
+ * {@link MerossSubDevice#getState} or {@link MerossSubDevice#refreshState} for reads.
  *
  * @class MerossSubDevice
  * @extends MerossDevice
@@ -70,15 +70,6 @@ class MerossSubDevice extends MerossDevice {
         this._onlineStatus = OnlineStatus.UNKNOWN;
         this._battery = null;
         this._subscriptionStateSnapshot = null;
-    }
-
-    /**
-     * Subscription map key (distinct from hub {@link MerossSubDevice#uuid}).
-     *
-     * @returns {string} Internal registry id (`#SUB:hubUuid:subdeviceId`)
-     */
-    get subscriptionKey() {
-        return this.internalId;
     }
 
     /**

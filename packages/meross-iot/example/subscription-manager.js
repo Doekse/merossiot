@@ -29,17 +29,15 @@ const POLL_CONFIG = {
         sub.on('error', (err, ctx) => console.error('[subscription]', ctx, err.message));
 
         onEachDevice(meross, (device) => {
-            console.log(`Subscribe → ${device.name}`);
+            console.log(`Subscribe → ${device.name} (${device.uuid})`);
             sub.subscribe(device, POLL_CONFIG);
 
             sub.on(`deviceUpdate:${device.uuid}`, (update) => {
-                const types = update.changes?.map((c) => c.type).join(', ') || update.type;
-                console.log(`  [poll] ${device.name}: ${types}`);
+                const types = update.changes
+                    ? Object.keys(update.changes).join(', ')
+                    : 'refresh';
+                console.log(`  [update] ${update.device.name}: ${types} (${update.source})`);
             });
-        });
-
-        meross.on('deviceUpdate', (device, change) => {
-            console.log(`[push] ${device.name}: ${change.type}`);
         });
 
         sub.subscribeToDeviceList();

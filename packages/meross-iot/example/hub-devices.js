@@ -18,6 +18,8 @@ const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
 
         bindShutdown(meross);
 
+        const sub = meross.subscription;
+
         const hubs = meross.devices.find({ deviceClass: 'hub' });
         console.log(`Hubs in registry: ${hubs.length}`);
 
@@ -47,11 +49,16 @@ const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
                 await first.toggle.set({ channel: 0, on: false });
             }
 
-            for (const sub of subdevices) {
-                sub.on('stateChange', (ev) => {
-                    console.log(`  [${sub.name}] ${ev.type}`);
-                });
-            }
+            sub.subscribe(device, { pushOnly: true });
+            sub.on(`deviceUpdate:${device.uuid}`, (update) => {
+                if (!update.device.subdeviceId) {
+                    return;
+                }
+                const types = update.changes
+                    ? Object.keys(update.changes).join(', ')
+                    : 'refresh';
+                console.log(`  [${update.device.name}] ${types} (${update.source})`);
+            });
         }
 
         onEachDevice(meross, (device) => {
