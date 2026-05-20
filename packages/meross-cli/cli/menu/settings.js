@@ -57,7 +57,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
         const currentTransportMode = currentManager
             ? getTransportModeName(currentManager.transport.defaultMode)
             : getTransportModeName(TransportMode.MQTT_ONLY);
-        const currentVerboseState = currentManager && currentManager.options ? (currentManager.options.logger !== null) : verbose;
+        const currentVerboseState = currentManager ? !!currentManager.logger : verbose;
 
         process.stdout.write(chalk.bold('=== Settings Menu ===\n\n'));
         const { action } = await inquirer.prompt([{
@@ -111,7 +111,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
         } else if (action === 'timeout') {
             await showTimeoutSettings(rl, currentManager, currentUser, timeout, wrappedSetTimeout);
         } else if (action === 'verbose') {
-            const currentVerboseState = currentManager && currentManager.options ? (currentManager.options.logger !== null) : verbose;
+            const currentVerboseState = currentManager ? !!currentManager.logger : verbose;
             await showVerboseSettings(rl, currentManager, currentUser, currentVerboseState, wrappedSetVerbose);
         } else if (action === 'error-budget') {
             await showErrorBudgetSettings(rl, currentManager, currentUser);

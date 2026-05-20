@@ -8,7 +8,7 @@ const testRunner = require('../tests/test-runner');
 const { clearScreen, renderLogoAtTop, renderSimpleHeader, clearMenuArea, CONTENT_START_LINE, SIMPLE_CONTENT_START_LINE, createRL, question, promptForPassword } = require('../utils/terminal');
 const { formatDevice } = require('../utils/display');
 const { listDevices, showStats, dumpRegistry, listMqttConnections, getDeviceStatus, showDeviceInfo, controlDeviceMenu, runTestCommand, snifferMenu } = require('../commands');
-const { addUser, getUser, listUsers } = require('../config/users');
+const { addUser, getUser, listUsers, removeUser } = require('../config/users');
 const { createMerossInstance, disconnectMeross } = require('../helpers/meross');
 const { showSettingsMenu } = require('./settings');
 
@@ -498,7 +498,7 @@ async function _handleStatsCommand(manager, rl) {
 }
 
 async function _handleMqttConnectionsCommand(manager, rl) {
-    const currentVerboseState = manager && manager.options ? (manager.options.logger !== null) : false;
+    const currentVerboseState = manager ? !!manager.logger : false;
     await listMqttConnections(manager, {
         verbose: currentVerboseState,
         json: false
@@ -589,7 +589,7 @@ async function _handleSettingsCommand(manager, rl, currentUserRef, currentCreden
     const transportModeRef = { current: manager.transport.defaultMode || TransportMode.MQTT_ONLY };
     const timeoutRef = { current: 10000 };
     const enableStatsRef = { current: manager.statistics.isEnabled() };
-    const verboseRef = { current: manager.options && manager.options.logger !== null };
+    const verboseRef = { current: !!manager.logger };
     const managerRef = { current: manager };
 
     const setTransportMode = (mode) => {

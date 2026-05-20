@@ -185,7 +185,7 @@ function _buildAbilityCategories(abilityNames) {
 function _displayAbilities(device, manager) {
     // Check verbose mode via environment variable or manager logger option
     const isVerbose = process.env.MEROSS_VERBOSE === 'true' ||
-        (manager && manager.options && manager.options.logger !== null);
+        (manager && !!manager.logger);
 
     if (!isVerbose) {
         return;
