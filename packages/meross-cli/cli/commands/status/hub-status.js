@@ -1,13 +1,13 @@
 'use strict';
 
 const chalk = require('chalk');
-const { displaySubdeviceStatus } = require('./subdevices');
+const { displaySubdeviceStatus } = require('./abilities');
 
 /**
  * Displays hub device status including all subdevices.
  *
  * Refreshes hub state to load latest subdevice data (including battery via the hub
- * feature), then displays status for each subdevice using getCachedBattery().
+ * feature), then displays status for each subdevice using getBattery().
  *
  * @param {Object} device - Hub device instance
  * @param {string|null} filterSubdeviceId - Optional subdevice ID to filter to a single subdevice

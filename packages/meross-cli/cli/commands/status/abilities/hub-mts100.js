@@ -3,11 +3,11 @@
 const chalk = require('chalk');
 const { ThermostatMode } = require('meross-iot');
 
-function displayThermostatValveStatus(subdevice) {
+function display(subdevice) {
     const temp = subdevice.getLastSampledTemperature();
     const targetTemp = subdevice.getTargetTemperature();
     const isHeating = subdevice.isHeating();
-    const battery = subdevice.getCachedBattery();
+    const battery = subdevice.getBattery();
     const mode = subdevice.getMode();
     const isWindowOpen = subdevice.isWindowOpen();
     const calibration = subdevice.getAdjust();
@@ -79,5 +79,4 @@ function displayThermostatValveStatus(subdevice) {
     return hasReadings;
 }
 
-module.exports = { displayThermostatValveStatus };
-
+module.exports = { display };

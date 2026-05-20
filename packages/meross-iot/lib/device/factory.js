@@ -332,6 +332,7 @@ const SUBDEVICE_MAPPING = {
     'ms100': require('./subdevice').HubTempHumSensor,
     'ms100f': require('./subdevice').HubTempHumSensor,
     'ms130': require('./subdevice').HubTempHumSensor,
+    'ms200': require('./subdevice').HubDoorWindowSensor,
     'ms405': require('./subdevice').HubWaterLeakSensor,
     'ms400': require('./subdevice').HubWaterLeakSensor,
     'ma151': require('./subdevice').HubSmokeDetector
@@ -349,16 +350,40 @@ const SUBDEVICE_MAPPING = {
  */
 const SUBDEVICE_ABILITY_MAPPING = {
     // Temperature/Humidity sensors
-    'ms100': ['Appliance.Hub.Sensor.TempHum', 'Appliance.Hub.Sensor.All'],
-    'ms100f': ['Appliance.Hub.Sensor.TempHum', 'Appliance.Hub.Sensor.All'],
-    'ms130': ['Appliance.Hub.Sensor.TempHum', 'Appliance.Hub.Sensor.All'],
+    'ms100': [
+        'Appliance.Hub.Sensor.TempHum',
+        'Appliance.Hub.Sensor.All',
+        'Appliance.Hub.Sensor.Alert',
+        'Appliance.Hub.Sensor.Adjust'
+    ],
+    'ms100f': [
+        'Appliance.Hub.Sensor.TempHum',
+        'Appliance.Hub.Sensor.All',
+        'Appliance.Hub.Sensor.Alert',
+        'Appliance.Hub.Sensor.Adjust'
+    ],
+    'ms130': [
+        'Appliance.Hub.Sensor.TempHum',
+        'Appliance.Hub.Sensor.All',
+        'Appliance.Hub.Sensor.Alert',
+        'Appliance.Hub.Sensor.Adjust'
+    ],
+    'ms200': ['Appliance.Hub.Sensor.DoorWindow', 'Appliance.Hub.Sensor.All'],
     // Smoke detectors
     'ma151': ['Appliance.Hub.Sensor.Smoke', 'Appliance.Hub.Sensor.All'],
     // Water leak sensors
     'ms405': ['Appliance.Hub.Sensor.WaterLeak', 'Appliance.Hub.Sensor.All'],
     'ms400': ['Appliance.Hub.Sensor.WaterLeak', 'Appliance.Hub.Sensor.All'],
     // Thermostat valves
-    'mts100v3': ['Appliance.Hub.Mts100.All', 'Appliance.Hub.Mts100.Temperature', 'Appliance.Hub.Mts100.Mode', 'Appliance.Hub.Mts100.Adjust']
+    'mts100v3': [
+        'Appliance.Hub.Mts100.All',
+        'Appliance.Hub.Mts100.Temperature',
+        'Appliance.Hub.Mts100.Mode',
+        'Appliance.Hub.Mts100.Adjust',
+        'Appliance.Hub.Mts100.SuperCtl',
+        'Appliance.Hub.Mts100.ScheduleB',
+        'Appliance.Hub.Mts100.Config'
+    ]
 };
 
 /**

@@ -29,9 +29,10 @@ class HubBatteryPushNotification extends GenericPushNotification {
      * @param {Object|Array} [rawData.battery] - Battery status data (single object or array)
      * @param {string|number} [rawData.battery.id] - Subdevice ID
      * @param {number} [rawData.battery.battery] - Battery level (typically 0-100)
+     * @param {string} [namespace='Appliance.Hub.Battery'] - MQTT namespace (also `Appliance.Hub.Mts100.Battery` on PUSH)
      */
-    constructor(originatingDeviceUuid, rawData) {
-        super('Appliance.Hub.Battery', originatingDeviceUuid, rawData);
+    constructor(originatingDeviceUuid, rawData, namespace = 'Appliance.Hub.Battery') {
+        super(namespace, originatingDeviceUuid, rawData);
 
         // Devices may send single objects or arrays; normalize to array for consistent processing
         const batteryRaw = rawData?.battery;

@@ -91,6 +91,7 @@ describe('push notification models', () => {
         ['Appliance.Hub.Online', HubOnlinePushNotification],
         ['Appliance.Hub.ToggleX', HubToggleXPushNotification],
         ['Appliance.Hub.Battery', HubBatteryPushNotification],
+        ['Appliance.Hub.Mts100.Battery', HubBatteryPushNotification],
         ['Appliance.Hub.Sensor.All', HubSensorAllPushNotification],
         ['Appliance.Hub.Sensor.TempHum', HubSensorTempHumPushNotification],
         ['Appliance.Hub.Sensor.Alert', HubSensorAlertPushNotification],

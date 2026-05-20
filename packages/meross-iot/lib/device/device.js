@@ -633,6 +633,15 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
+     * Key used by {@link ManagerSubscription} for maps and `deviceUpdate:*` events.
+     *
+     * @returns {string} Device UUID
+     */
+    get subscriptionKey() {
+        return this.uuid;
+    }
+
+    /**
      * Refreshes the device state by fetching System.All data.
      *
      * System.All provides complete device state in a single request, avoiding multiple

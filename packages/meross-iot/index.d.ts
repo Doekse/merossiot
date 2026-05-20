@@ -344,6 +344,7 @@ declare module 'meross-iot' {
         getSubdevices(): MerossSubDevice[];
     }
     export class HubTempHumSensor extends MerossSubDevice {}
+    export class HubDoorWindowSensor extends MerossSubDevice {}
     export class HubThermostatValve extends MerossSubDevice {}
     export class HubWaterLeakSensor extends MerossSubDevice {}
     export class HubSmokeDetector extends MerossSubDevice {}

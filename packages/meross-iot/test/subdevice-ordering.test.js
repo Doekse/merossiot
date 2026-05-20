@@ -14,8 +14,10 @@ const { EventEmitter } = require('node:events');
 
 const {
     HubTempHumSensor,
+    HubDoorWindowSensor,
     HubWaterLeakSensor,
-    HubSmokeDetector
+    HubSmokeDetector,
+    HubThermostatValve
 } = require('../lib/device/subdevice');
 const { OnlineStatus, SmokeAlarmStatus } = require('../lib/enums');
 
@@ -31,7 +33,11 @@ function createStub(Ctor) {
     const subdev = Object.create(Ctor.prototype);
     EventEmitter.call(subdev);
     subdev._subdeviceId = 'sub-1';
+    subdev._hub = { uuid: 'hub-uuid', onlineStatus: OnlineStatus.ONLINE };
     subdev._onlineStatus = OnlineStatus.UNKNOWN;
+    subdev._subscriptionStateSnapshot = null;
+    subdev.emit = EventEmitter.prototype.emit.bind(subdev);
+    subdev.on = EventEmitter.prototype.on.bind(subdev);
 
     if (Ctor === HubTempHumSensor) {
         subdev._temperature = {};
@@ -40,18 +46,39 @@ function createStub(Ctor) {
         subdev._lux = null;
         subdev._samples = [];
         subdev._lastSampledTime = null;
+        subdev._alert = {};
+        subdev._adjust = {};
+    } else if (Ctor === HubDoorWindowSensor) {
+        subdev._battery = null;
+        subdev._doorWindowStatus = null;
+        subdev._lmTime = null;
+        subdev._syncedTime = null;
+        subdev._samples = [];
     } else if (Ctor === HubWaterLeakSensor) {
+        subdev._battery = null;
         subdev._waterLeakState = null;
         subdev._lastEventTs = null;
         subdev._cachedEvents = [];
         subdev._maxEventsQueueLen = 30;
         subdev._lastWaterLeakEventTs = null;
     } else if (Ctor === HubSmokeDetector) {
+        subdev._battery = null;
         subdev._alarmStatus = null;
         subdev._interConn = null;
         subdev._lastStatusUpdate = null;
         subdev._testEvents = [];
         subdev._maxTestEvents = 10;
+    } else if (Ctor === HubThermostatValve) {
+        subdev._battery = null;
+        subdev._togglex = {};
+        subdev._mode = {};
+        subdev._temperature = {};
+        subdev._adjust = {};
+        subdev._scheduleBMode = null;
+        subdev._scheduleB = null;
+        subdev._superCtl = null;
+        subdev._mts100Config = null;
+        subdev._lastActiveTime = null;
     }
 
     return subdev;
@@ -167,13 +194,136 @@ describe('MerossSubDevice.handleMessage header-timestamp ordering', () => {
         assert.strictEqual(seen[0].namespace, 'Appliance.Hub.Battery');
         assert.strictEqual(seen[0].payload, envelope.payload);
     });
+
+    for (const [label, Ctor] of [
+        ['HubTempHumSensor', HubTempHumSensor],
+        ['HubWaterLeakSensor', HubWaterLeakSensor],
+        ['HubSmokeDetector', HubSmokeDetector],
+        ['HubThermostatValve', HubThermostatValve]
+    ]) {
+        for (const [batteryNs, batteryLabel] of [
+            ['Appliance.Hub.Battery', 'Hub.Battery'],
+            ['Appliance.Hub.Mts100.Battery', 'Hub.Mts100.Battery']
+        ]) {
+            it(`${label} caches ${batteryLabel} value`, async () => {
+                const subdevice = createStub(Ctor);
+
+                await subdevice.handleMessage({
+                    header: headerAt(100),
+                    namespace: batteryNs,
+                    payload: { id: 'sub-1', value: 88 }
+                });
+
+                assert.strictEqual(subdevice.getBattery(), 88);
+            });
+        }
+    }
+
+    it('HubTempHumSensor caches alert and adjust namespaces', async () => {
+        const sensor = createStub(HubTempHumSensor);
+
+        await sensor.handleMessage({
+            header: headerAt(100),
+            namespace: 'Appliance.Hub.Sensor.Alert',
+            payload: { id: 'sub-1', temperature: [[1, -100, 500]] }
+        });
+        await sensor.handleMessage({
+            header: headerAt(100),
+            namespace: 'Appliance.Hub.Sensor.Adjust',
+            payload: { id: 'sub-1', temperature: -20, humidity: 30 }
+        });
+
+        assert.deepStrictEqual(sensor.getAlert().temperature, [[1, -100, 500]]);
+        assert.strictEqual(sensor.getAdjust().temperature, -20);
+        assert.strictEqual(sensor.getAdjust().humidity, 30);
+    });
+
+    it('HubDoorWindowSensor caches door/window state', async () => {
+        const sensor = createStub(HubDoorWindowSensor);
+
+        await sensor.handleMessage({
+            header: headerAt(100),
+            namespace: 'Appliance.Hub.Sensor.DoorWindow',
+            payload: { id: 'sub-1', status: 1, lmTime: 1615876016 }
+        });
+
+        assert.strictEqual(sensor.isOpen(), true);
+        assert.strictEqual(sensor.getLatestLmTime(), 1615876016);
+    });
+
+    it('HubThermostatValve caches MTS100 adjust, superCtl, scheduleB, and config', async () => {
+        const valve = createStub(HubThermostatValve);
+
+        await valve.handleMessage({
+            header: headerAt(100),
+            namespace: 'Appliance.Hub.Mts100.Adjust',
+            payload: { id: 'sub-1', temperature: -200 }
+        });
+        await valve.handleMessage({
+            namespace: 'Appliance.Hub.Mts100.SuperCtl',
+            payload: { id: 'sub-1', enable: 2, level: 1, alert: 1 }
+        });
+        await valve.handleMessage({
+            namespace: 'Appliance.Hub.Mts100.ScheduleB',
+            payload: { id: 'sub-1', mon: [[480, 220]] }
+        });
+        await valve.handleMessage({
+            namespace: 'Appliance.Hub.Mts100.Config',
+            payload: { id: 'sub-1', pid: { grade: 0, p: 0, i: 0 } }
+        });
+
+        assert.strictEqual(valve.getAdjust(), -2);
+        assert.deepStrictEqual(valve.getSuperCtl(), { id: 'sub-1', enable: 2, level: 1, alert: 1 });
+        assert.deepStrictEqual(valve.getScheduleB().mon, [[480, 220]]);
+        assert.deepStrictEqual(valve.getMts100Config().pid, { grade: 0, p: 0, i: 0 });
+    });
+
+    it('HubTempHumSensor applies Hub.Online and records lastActiveTime', async () => {
+        const sensor = createStub(HubTempHumSensor);
+
+        await sensor.handleMessage({
+            header: headerAt(100),
+            namespace: 'Appliance.Hub.Online',
+            payload: { id: 'sub-1', status: 1, lastActiveTime: 12345 }
+        });
+
+        assert.strictEqual(sensor._onlineStatus, OnlineStatus.ONLINE);
+        assert.strictEqual(sensor._lastActiveTime, 12345);
+    });
+});
+
+describe('MerossSubDevice subscription parity', () => {
+    it('uses internalId as subscriptionKey', () => {
+        const sensor = createStub(HubTempHumSensor);
+        assert.ok(sensor.subscriptionKey.includes('hub-uuid'));
+        assert.ok(sensor.subscriptionKey.includes('sub-1'));
+    });
+
+    it('emits stateChange and getState after hub message', async () => {
+        const sensor = createStub(HubTempHumSensor);
+        const events = [];
+        sensor.on('stateChange', (e) => events.push(e));
+
+        await sensor.handleMessage({
+            header: { ...headerAt(100), method: 'PUSH' },
+            namespace: 'Appliance.Hub.Battery',
+            payload: { id: 'sub-1', value: 77 }
+        });
+
+        assert.strictEqual(sensor.getBattery(), 77);
+        const batteryEvent = events.find((e) => e.type === 'battery');
+        assert.ok(batteryEvent, `expected battery stateChange, got: ${events.map(e => e.type).join(',')}`);
+        assert.strictEqual(batteryEvent.channel, 0);
+        assert.strictEqual(batteryEvent.value, 77);
+        assert.strictEqual(batteryEvent.source, 'push');
+        assert.deepStrictEqual(sensor.getState().battery, { 0: 77 });
+    });
 });
 
 describe('HubSmokeDetector.refreshAlarmStatus routes through handleMessage', () => {
     it('applies the GET response through the dispatcher (ordering gate honoured)', async () => {
         const detector = createStub(HubSmokeDetector);
 
-        // Shared publishMessage stub; `header` controls the ordering gate.
         let pendingResponse = null;
         detector.publishMessage = async () => pendingResponse;
 
@@ -184,7 +334,6 @@ describe('HubSmokeDetector.refreshAlarmStatus routes through handleMessage', () 
         await detector.refreshAlarmStatus();
         assert.strictEqual(detector._alarmStatus, SmokeAlarmStatus.MUTE_SMOKE_ALARM);
 
-        // Stale response must not flip alarm status back.
         pendingResponse = {
             header: headerAt(100),
             payload: { smokeAlarm: [{ id: 'sub-1', status: SmokeAlarmStatus.NORMAL, timestamp: 1000 }] }

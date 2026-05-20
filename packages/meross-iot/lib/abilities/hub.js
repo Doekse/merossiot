@@ -1,19 +1,89 @@
 'use strict';
 
-const PUSH_MAP = {
+const { registerNamespaceDescriptor } = require('../dispatcher');
+const { getMessageTimestamp } = require('../utilities/state-ordering');
+
+/**
+ * Maps hub MQTT namespaces to the payload array key on GETACK/PUSH (see push/factory.js).
+ *
+ * @private
+ * @type {Record<string, string>}
+ */
+const HUB_NAMESPACE_PAYLOAD_KEYS = {
     'Appliance.Hub.Online': 'online',
     'Appliance.Hub.ToggleX': 'togglex',
     'Appliance.Hub.Battery': 'battery',
+    'Appliance.Hub.Mts100.Battery': 'battery',
     'Appliance.Hub.Sensor.WaterLeak': 'waterLeak',
     'Appliance.Hub.Sensor.All': 'all',
     'Appliance.Hub.Sensor.TempHum': 'tempHum',
     'Appliance.Hub.Sensor.Alert': 'alert',
+    'Appliance.Hub.Sensor.Adjust': 'adjust',
+    'Appliance.Hub.Sensor.DoorWindow': 'doorWindow',
     'Appliance.Hub.Sensor.Smoke': 'smokeAlarm',
     'Appliance.Control.Sensor.LatestX': 'latest',
     'Appliance.Hub.Mts100.All': 'all',
     'Appliance.Hub.Mts100.Mode': 'mode',
-    'Appliance.Hub.Mts100.Temperature': 'temperature'
+    'Appliance.Hub.Mts100.Temperature': 'temperature',
+    'Appliance.Hub.Mts100.Adjust': 'adjust',
+    'Appliance.Hub.Mts100.SuperCtl': 'superCtl',
+    'Appliance.Hub.Mts100.ScheduleB': 'scheduleB',
+    'Appliance.Hub.Mts100.Config': 'config',
+    'Appliance.Hub.SubdeviceList': 'subdeviceList'
 };
+
+/**
+ * @private
+ * @param {string} namespace
+ * @param {Object} rawData
+ * @returns {Array<Object>|null}
+ */
+function extractHubPayloadItems(namespace, rawData) {
+    const dataKey = HUB_NAMESPACE_PAYLOAD_KEYS[namespace];
+    if (!dataKey || !rawData) {
+        return null;
+    }
+
+    let items = rawData[dataKey];
+    if (!items && namespace === 'Appliance.Hub.Mts100.ScheduleB' && rawData.schedule) {
+        items = rawData.schedule;
+    }
+    if (items === null || items === undefined) {
+        return null;
+    }
+    return Array.isArray(items) ? items : [items];
+}
+
+/**
+ * @private
+ * @param {Object} device
+ * @param {Object|undefined} header
+ * @param {string} namespace
+ * @param {Array<Object>|null|undefined} items
+ * @returns {Promise<void>}
+ */
+async function routeItemsToSubdevices(device, header, namespace, items) {
+    if (!Array.isArray(items)) {
+        return;
+    }
+    for (const item of items) {
+        if (!item || item.id == null) {
+            continue;
+        }
+        const subdevice = device.getSubdevice(item.id);
+        if (subdevice && typeof subdevice.handleMessage === 'function') {
+            await subdevice.handleMessage({ header, namespace, payload: item });
+        }
+    }
+}
+
+/** @param {Array<{type?: string, subdeviceId: string}>} subdevices */
+function collectIdsByTypes(subdevices, types) {
+    const normalized = types.map(t => t.toLowerCase());
+    return subdevices
+        .filter(sub => normalized.includes((sub.type || '').toLowerCase()))
+        .map(sub => sub.subdeviceId);
+}
 
 /**
  * Handles push notifications for hub functionality.
@@ -26,21 +96,19 @@ const PUSH_MAP = {
  */
 function handlePushNotification(device, notification) {
     const namespace = notification?.namespace || '';
-    const dataKey = PUSH_MAP[namespace];
-
-    if (!dataKey) {
+    if (!HUB_NAMESPACE_PAYLOAD_KEYS[namespace]) {
         return false;
     }
 
-    const rawData = notification?.rawData || {};
-    const payload = rawData[dataKey];
-    if (!payload) {
+    const items = extractHubPayloadItems(namespace, notification?.rawData || {});
+    if (!items || items.length === 0) {
+        const dataKey = HUB_NAMESPACE_PAYLOAD_KEYS[namespace];
         const logger = device.meross.options.logger || console.warn;
-        logger(`${device.constructor.name} could not find ${dataKey} attribute in push notification data: ${JSON.stringify(rawData)}`);
+        logger(`${device.constructor.name} could not find ${dataKey} in push notification: ${JSON.stringify(notification?.rawData)}`);
         return false;
     }
 
-    if (notification && typeof notification.routeToSubdevices === 'function') {
+    if (typeof notification.routeToSubdevices === 'function') {
         notification.routeToSubdevices(device);
     }
 
@@ -123,6 +191,33 @@ function createHubAbility(device) {
             const logger = device.meross?.options?.logger || console.debug;
             logger(`Failed to update battery data: ${batteryError.message}`);
         }
+
+        const subdevices = device.getSubdevices();
+        const tempHumIds = collectIdsByTypes(subdevices, ['ms100', 'ms100f', 'ms130']);
+        if (tempHumIds.length > 0) {
+            try {
+                await hubFeature.getAlertSensor({ sensorIds: tempHumIds });
+            } catch (alertError) {
+                const logger = device.meross?.options?.logger || console.debug;
+                logger(`Failed to fetch sensor alert config: ${alertError.message}`);
+            }
+            try {
+                await hubFeature.getSensorAdjust({ sensorIds: tempHumIds });
+            } catch (adjustError) {
+                const logger = device.meross?.options?.logger || console.debug;
+                logger(`Failed to fetch sensor adjust config: ${adjustError.message}`);
+            }
+        }
+
+        const doorWindowIds = collectIdsByTypes(subdevices, ['ms200']);
+        if (doorWindowIds.length > 0) {
+            try {
+                await hubFeature.getSensorDoorWindow({ sensorIds: doorWindowIds });
+            } catch (doorError) {
+                const logger = device.meross?.options?.logger || console.debug;
+                logger(`Failed to fetch door/window sensor data: ${doorError.message}`);
+            }
+        }
     }
 
     /**
@@ -138,6 +233,31 @@ function createHubAbility(device) {
         }
 
         await hubFeature.getMts100All({ ids: mts100Ids });
+
+        try {
+            await hubFeature.getMts100Adjust({ ids: mts100Ids });
+        } catch (adjustError) {
+            const logger = device.meross?.options?.logger || console.debug;
+            logger(`Failed to fetch MTS100 adjust: ${adjustError.message}`);
+        }
+        try {
+            await hubFeature.getMts100SuperCtl({ ids: mts100Ids });
+        } catch (superCtlError) {
+            const logger = device.meross?.options?.logger || console.debug;
+            logger(`Failed to fetch MTS100 super control: ${superCtlError.message}`);
+        }
+        try {
+            await hubFeature.getMts100ScheduleB({ ids: mts100Ids });
+        } catch (scheduleError) {
+            const logger = device.meross?.options?.logger || console.debug;
+            logger(`Failed to fetch MTS100 schedule B: ${scheduleError.message}`);
+        }
+        try {
+            await hubFeature.getMts100Config({ ids: mts100Ids });
+        } catch (configError) {
+            const logger = device.meross?.options?.logger || console.debug;
+            logger(`Failed to fetch MTS100 config: ${configError.message}`);
+        }
     }
 
     const hubFeature = {
@@ -414,8 +534,13 @@ function createHubAbility(device) {
             } else {
                 payload.alert.push({ id: sensorIds });
             }
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Alert', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Alert', payload);
+
+            if (response && response.alert && Array.isArray(response.alert)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Sensor.Alert', response.alert);
+            }
+
+            return response;
         },
 
         /**
@@ -481,8 +606,13 @@ function createHubAbility(device) {
             if (Array.isArray(sensorIds) && sensorIds.length > 0) {
                 sensorIds.forEach(id => payload.adjust.push({ id }));
             }
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Adjust', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Adjust', payload);
+
+            if (response && response.adjust && Array.isArray(response.adjust)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Sensor.Adjust', response.adjust);
+            }
+
+            return response;
         },
 
         /**
@@ -512,8 +642,13 @@ function createHubAbility(device) {
             if (Array.isArray(sensorIds) && sensorIds.length > 0) {
                 sensorIds.forEach(id => payload.doorWindow.push({ id }));
             }
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.DoorWindow', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.DoorWindow', payload);
+
+            if (response && response.doorWindow && Array.isArray(response.doorWindow)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Sensor.DoorWindow', response.doorWindow);
+            }
+
+            return response;
         },
 
         /**
@@ -541,8 +676,13 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'all': [] };
             ids.forEach(id => payload.all.push({ id }));
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.All', payload, null);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.All', payload, null);
+
+            if (response && response.all && Array.isArray(response.all)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.All', response.all);
+            }
+
+            return response;
         },
 
         /**
@@ -603,8 +743,13 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'adjust': [] };
             ids.forEach(id => payload.adjust.push({ id }));
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Adjust', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Adjust', payload);
+
+            if (response && response.adjust && Array.isArray(response.adjust)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.Adjust', response.adjust);
+            }
+
+            return response;
         },
 
         /**
@@ -618,8 +763,13 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'superCtl': [] };
             ids.forEach(id => payload.superCtl.push({ id }));
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.SuperCtl', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.SuperCtl', payload);
+
+            if (response && response.superCtl && Array.isArray(response.superCtl)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.SuperCtl', response.superCtl);
+            }
+
+            return response;
         },
 
         /**
@@ -633,8 +783,14 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'scheduleB': [] };
             ids.forEach(id => payload.scheduleB.push({ id }));
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.ScheduleB', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.ScheduleB', payload);
+            const scheduleItems = response?.scheduleB || response?.schedule;
+
+            if (scheduleItems && Array.isArray(scheduleItems)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.ScheduleB', scheduleItems);
+            }
+
+            return response;
         },
 
         /**
@@ -648,8 +804,13 @@ function createHubAbility(device) {
             const { ids } = options;
             const payload = { 'config': [] };
             ids.forEach(id => payload.config.push({ id }));
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Config', payload);
-            return out;
+            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Config', payload);
+
+            if (response && response.config && Array.isArray(response.config)) {
+                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.Config', response.config);
+            }
+
+            return response;
         }
     };
 
@@ -734,8 +895,48 @@ function getSensorCapabilities(device, channelIds) {
         };
     }
 
+    const isDoorWindowSensor = device.constructor.name === 'HubDoorWindowSensor' ||
+        ['ms200'].includes(deviceType);
+    if (isDoorWindowSensor) {
+        return {
+            supported: true,
+            channels: channelIds,
+            doorWindow: true
+        };
+    }
+
     return null;
 }
+
+registerNamespaceDescriptor('Appliance.Hub.Battery', {
+    namespace: 'Appliance.Hub.Battery',
+    gateKey: '_handleBattery',
+    customApply: (device, payload) => {
+        if (device.subdeviceId != null && typeof device._handleBattery === 'function') {
+            device._handleBattery(payload);
+        }
+    }
+});
+
+registerNamespaceDescriptor('Appliance.Hub.Mts100.Battery', {
+    namespace: 'Appliance.Hub.Mts100.Battery',
+    gateKey: '_handleBattery',
+    customApply: (device, payload) => {
+        if (device.subdeviceId != null && typeof device._handleBattery === 'function') {
+            device._handleBattery(payload);
+        }
+    }
+});
+
+registerNamespaceDescriptor('Appliance.Hub.Online', {
+    namespace: 'Appliance.Hub.Online',
+    gateKey: '_handleOnline',
+    customApply: (device, payload, _source, header) => {
+        if (device.subdeviceId != null && typeof device._handleOnline === 'function') {
+            device._handleOnline(payload, getMessageTimestamp(header));
+        }
+    }
+});
 
 module.exports = createHubAbility;
 module.exports.handlePushNotification = handlePushNotification;

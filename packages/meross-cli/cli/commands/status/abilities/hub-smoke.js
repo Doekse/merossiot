@@ -3,10 +3,10 @@
 const chalk = require('chalk');
 const { SmokeAlarmStatus } = require('meross-iot');
 
-function displaySmokeDetectorStatus(subdevice) {
+function display(subdevice) {
     const status = subdevice.getSmokeAlarmStatus();
     const interConn = subdevice.getInterConnStatus();
-    const battery = subdevice.getCachedBattery();
+    const battery = subdevice.getBattery();
 
     console.log(`\n    ${chalk.bold.underline('Sensors')}`);
 
@@ -78,5 +78,4 @@ function displaySmokeDetectorStatus(subdevice) {
     return true;
 }
 
-module.exports = { displaySmokeDetectorStatus };
-
+module.exports = { display };

@@ -31,6 +31,7 @@ const EXPECTED_NAMED_EXPORTS = [
     'MerossHubDevice',
     'MerossSubDevice',
     'HubTempHumSensor',
+    'HubDoorWindowSensor',
     'HubThermostatValve',
     'HubWaterLeakSensor',
     'HubSmokeDetector'

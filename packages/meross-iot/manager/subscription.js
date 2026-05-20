@@ -79,20 +79,20 @@ class ManagerSubscription extends EventEmitter {
      * @param {boolean} [config.pushOnly=false] - Prefer push-driven updates and emit cached state immediately when available
      * @example
      * subscription.subscribe(device, { pushOnly: true });
-     * subscription.on(`deviceUpdate:${device.uuid}`, (update) => {
+     * subscription.on(`deviceUpdate:${device.subscriptionKey}`, (update) => {
      *     console.log('Device state:', update.state);
      *     console.log('Changes:', update.changes);
      * });
      */
     subscribe(device, config = {}) {
-        const deviceUuid = device.uuid;
-        const eventName = `deviceUpdate:${deviceUuid}`;
+        const subscriptionKey = device.subscriptionKey;
+        const eventName = `deviceUpdate:${subscriptionKey}`;
 
-        if (!this.subscriptions.has(deviceUuid)) {
+        if (!this.subscriptions.has(subscriptionKey)) {
             this._createSubscription(device);
         }
 
-        const subscription = this.subscriptions.get(deviceUuid);
+        const subscription = this.subscriptions.get(subscriptionKey);
         const isNewSubscription = !subscription.pollingStarted;
 
         if (isNewSubscription) {
@@ -117,7 +117,7 @@ class ManagerSubscription extends EventEmitter {
         }
 
         const listenerCount = this.listenerCount(eventName);
-        this.logger(`Subscribed to device ${device.name} (${deviceUuid}). Total listeners: ${listenerCount}`);
+        this.logger(`Subscribed to device ${device.name} (${subscriptionKey}). Total listeners: ${listenerCount}`);
     }
 
     /**
@@ -126,23 +126,23 @@ class ManagerSubscription extends EventEmitter {
      * Stops polling and cleans up resources when the last event listener is removed.
      * Call this after removing all listeners with `removeAllListeners()` or `off()`.
      *
-     * @param {string} deviceUuid - Device UUID to unsubscribe from
+     * @param {string} subscriptionKey - {@link MerossDevice#subscriptionKey} or hub UUID for base devices
      */
-    unsubscribe(deviceUuid) {
-        const subscription = this.subscriptions.get(deviceUuid);
+    unsubscribe(subscriptionKey) {
+        const subscription = this.subscriptions.get(subscriptionKey);
         if (!subscription) {
             return;
         }
 
-        const eventName = `deviceUpdate:${deviceUuid}`;
+        const eventName = `deviceUpdate:${subscriptionKey}`;
         const listenerCount = this.listenerCount(eventName);
 
         if (listenerCount === 0) {
-            this._stopPolling(deviceUuid);
-            this.subscriptions.delete(deviceUuid);
-            this.logger(`Unsubscribed from device ${deviceUuid}. No more listeners.`);
+            this._stopPolling(subscriptionKey);
+            this.subscriptions.delete(subscriptionKey);
+            this.logger(`Unsubscribed from device ${subscriptionKey}. No more listeners.`);
         } else {
-            this.logger(`Unsubscribed from device ${deviceUuid}. Remaining listeners: ${listenerCount}`);
+            this.logger(`Unsubscribed from device ${subscriptionKey}. Remaining listeners: ${listenerCount}`);
         }
     }
 
@@ -213,10 +213,10 @@ class ManagerSubscription extends EventEmitter {
             lastUpdate: null
         };
 
-        this.subscriptions.set(device.uuid, subscription);
+        this.subscriptions.set(device.subscriptionKey, subscription);
 
         device.on('stateChange', (event) => {
-            this._onStateEvent(device.uuid, event);
+            this._onStateEvent(device.subscriptionKey, event);
         });
     }
 
@@ -308,11 +308,11 @@ class ManagerSubscription extends EventEmitter {
      * Handles all state event types including incremental changes and full refreshes.
      *
      * @private
-     * @param {string} deviceUuid - Device UUID that changed state
+     * @param {string} subscriptionKey - {@link MerossDevice#subscriptionKey}
      * @param {Object} event - Unified state event from device
      */
-    _onStateEvent(deviceUuid, event) {
-        const subscription = this.subscriptions.get(deviceUuid);
+    _onStateEvent(subscriptionKey, event) {
+        const subscription = this.subscriptions.get(subscriptionKey);
         if (!subscription) {
             return;
         }
@@ -326,7 +326,7 @@ class ManagerSubscription extends EventEmitter {
                 changes: {}
             };
             subscription.lastUpdate = update;
-            this._distributeUpdate(deviceUuid, update);
+            this._distributeUpdate(subscriptionKey, update);
             return;
         }
 
@@ -351,7 +351,7 @@ class ManagerSubscription extends EventEmitter {
         };
 
         subscription.lastUpdate = unifiedUpdate;
-        this._distributeUpdate(deviceUuid, unifiedUpdate);
+        this._distributeUpdate(subscriptionKey, unifiedUpdate);
     }
 
     /**
@@ -361,20 +361,20 @@ class ManagerSubscription extends EventEmitter {
      * listener from blocking others.
      *
      * @private
-     * @param {string} deviceUuid - Device UUID to emit update for
+     * @param {string} subscriptionKey - {@link MerossDevice#subscriptionKey}
      * @param {Object} update - Update object containing state and changes
      */
-    _distributeUpdate(deviceUuid, update) {
-        const subscription = this.subscriptions.get(deviceUuid);
+    _distributeUpdate(subscriptionKey, update) {
+        const subscription = this.subscriptions.get(subscriptionKey);
         if (!subscription) {
             return;
         }
 
         try {
-            this.emit(`deviceUpdate:${deviceUuid}`, update);
+            this.emit(`deviceUpdate:${subscriptionKey}`, update);
         } catch (error) {
-            this.logger(`Error emitting deviceUpdate event for ${deviceUuid}: ${error.message}`);
-            this.emit('error', error, deviceUuid);
+            this.logger(`Error emitting deviceUpdate event for ${subscriptionKey}: ${error.message}`);
+            this.emit('error', error, subscriptionKey);
         }
     }
 
@@ -470,7 +470,7 @@ class ManagerSubscription extends EventEmitter {
         };
 
         subscription.lastUpdate = update;
-        this._distributeUpdate(device.uuid, update);
+        this._distributeUpdate(device.subscriptionKey, update);
     }
 
 }

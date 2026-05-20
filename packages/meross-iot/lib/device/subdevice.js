@@ -4,7 +4,9 @@ const { MerossDevice } = require('./device');
 const { OnlineStatus, SmokeAlarmStatus } = require('../enums');
 const DeviceRegistry = require('./registry');
 const { MerossDeviceError } = require('../exception');
-const { getMessageTimestamp, shouldApplyUpdate } = require('../utilities/state-ordering');
+const { shouldApplyUpdate } = require('../utilities/state-ordering');
+const { diffSubdeviceStateSlices } = require('../utilities/subdevice-state');
+const { dispatch, getNamespaceDescriptors } = require('../dispatcher');
 
 /**
  * Base class for all Meross subdevices.
@@ -15,6 +17,10 @@ const { getMessageTimestamp, shouldApplyUpdate } = require('../utilities/state-o
  *
  * Subdevices include sensors (temperature/humidity, water leak, smoke), thermostat
  * valves, and other devices that connect to hub devices rather than directly to WiFi.
+ *
+ * State updates follow the same subscription model as base devices: {@link MerossSubDevice#getState},
+ * `stateChange` events, and `meross.subscription.subscribe(subdevice)` (keyed by {@link MerossSubDevice#subscriptionKey}).
+ * Call {@link MerossSubDevice#refreshState} to refresh from the hub; sync getters read the latest cache.
  *
  * @class MerossSubDevice
  * @extends MerossDevice
@@ -62,6 +68,17 @@ class MerossSubDevice extends MerossDevice {
         this.lanIp = hub.lanIp;
 
         this._onlineStatus = OnlineStatus.UNKNOWN;
+        this._battery = null;
+        this._subscriptionStateSnapshot = null;
+    }
+
+    /**
+     * Subscription map key (distinct from hub {@link MerossSubDevice#uuid}).
+     *
+     * @returns {string} Internal registry id (`#SUB:hubUuid:subdeviceId`)
+     */
+    get subscriptionKey() {
+        return this.internalId;
     }
 
     /**
@@ -167,61 +184,93 @@ class MerossSubDevice extends MerossDevice {
      */
     async refreshState() {
         await this._hub.refreshState();
+        this.emit('stateChange', {
+            type: 'refresh',
+            timestamp: this.lastFullUpdateTimestamp || Date.now(),
+            value: this.getState(),
+            source: 'poll'
+        });
+        this._subscriptionStateSnapshot = this.getState();
     }
 
     /**
-     * Gets the cached battery level percentage for this subdevice.
+     * Snapshot of subdevice state for subscriptions (channel `0` per feature type).
      *
-     * Returns the last known battery value without fetching from the device.
-     * Use getBattery() to fetch fresh battery data.
-     *
-     * @returns {number|null} Cached battery level (0-100), or null if not available
-     * @example
-     * const battery = sensor.getCachedBattery();
-     * if (battery !== null) {
-     *     console.log(`Battery: ${battery}%`);
-     * }
+     * @returns {Object} State object aligned with {@link MerossDevice#getState} shape
      */
-    getCachedBattery() {
-        return this._battery !== undefined && this._battery !== null ? this._battery : null;
-    }
+    getState() {
+        const state = {
+            online: this.onlineStatus,
+            timestamp: this.lastFullUpdateTimestamp || Date.now(),
+            subdeviceId: this.subdeviceId,
+            hubUuid: this.uuid
+        };
 
-    /**
-     * Gets the battery level percentage for this subdevice by fetching from the device.
-     *
-     * Always fetches fresh battery data from the device and updates the cache.
-     * Use getCachedBattery() to get the last known value without making a request.
-     *
-     * @returns {Promise<number|null>} Promise that resolves with battery level (0-100), or null if not available
-     * @example
-     * const battery = await sensor.getBattery();
-     * if (battery !== null) {
-     *     console.log(`Battery: ${battery}%`);
-     * }
-     */
-    async getBattery() {
-        try {
-            if (!this._hub.hub || typeof this._hub.hub.getBattery !== 'function') {
-                return null;
-            }
-            const response = await this._hub.hub.getBattery();
-            if (response && response.battery && Array.isArray(response.battery)) {
-                const batteryData = response.battery.find(b => b.id === this._subdeviceId);
-                if (batteryData && batteryData.value !== undefined && batteryData.value !== null) {
-                    // 0xFFFFFFFF and -1 are sentinel values indicating battery reporting is unsupported
-                    if (batteryData.value === 0xFFFFFFFF || batteryData.value === -1) {
-                        return null;
-                    }
-                    this._battery = batteryData.value;
-                    return batteryData.value;
-                }
-            }
-            return null;
-        } catch (error) {
-            const logger = this.meross.options.logger || console.error;
-            logger(`Failed to get battery for subdevice ${this._subdeviceId}: ${error.message}`);
-            return null;
+        if (this._battery !== undefined && this._battery !== null) {
+            state.battery = { 0: this._battery };
         }
+
+        this._appendSubdeviceState(state);
+        return state;
+    }
+
+    /**
+     * @protected
+     * @param {Object} state - Mutable state object from {@link MerossSubDevice#getState}
+     * @returns {void}
+     */
+    _appendSubdeviceState(_state) {
+    }
+
+    /**
+     * @private
+     * @param {Object|undefined} header - Hub-forwarded MQTT header
+     * @returns {string} `stateChange` source label
+     */
+    _resolveHubMessageSource(header) {
+        const method = header?.method;
+        if (method === 'PUSH') {
+            return 'push';
+        }
+        if (method === 'GETACK' || method === 'SETACK') {
+            return 'response';
+        }
+        return 'hub';
+    }
+
+    /**
+     * @private
+     * @param {string} source - Provenance for `stateChange`
+     * @returns {void}
+     */
+    _publishSubdeviceStateChanges(source) {
+        const newState = this.getState();
+        const oldState = this._subscriptionStateSnapshot;
+        const slices = diffSubdeviceStateSlices(oldState, newState);
+
+        for (const slice of slices) {
+            const event = {
+                type: slice.type,
+                source,
+                timestamp: Date.now(),
+                value: slice.value
+            };
+            if (slice.channel !== undefined) {
+                event.channel = slice.channel;
+            }
+            this.emit('stateChange', event);
+        }
+
+        this._subscriptionStateSnapshot = newState;
+    }
+
+    /**
+     * Last known battery level (0–100) from the most recent refresh or PUSH.
+     *
+     * @returns {number|null} Battery percentage, or null if unknown / unsupported
+     */
+    getBattery() {
+        return this._battery !== undefined && this._battery !== null ? this._battery : null;
     }
 
     /**
@@ -308,6 +357,31 @@ class MerossSubDevice extends MerossDevice {
     }
 
     /**
+     * Handles Appliance.Hub.Battery and Appliance.Hub.Mts100.Battery namespaces.
+     *
+     * @private
+     * @param {Object} data - Notification data payload
+     */
+    _handleBattery(data) {
+        // Filter out sentinel values (0xFFFFFFFF, -1) indicating battery reporting is unsupported
+        if (data.value !== undefined && data.value !== null &&
+            data.value !== 0xFFFFFFFF && data.value !== -1) {
+            this._battery = data.value;
+        }
+    }
+
+    /**
+     * Handles Appliance.Hub.Online namespace.
+     *
+     * @private
+     * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
+     */
+    _handleOnline(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
+    }
+
+    /**
      * Applies a hub-forwarded message to this subdevice.
      *
      * Subdevices do not receive raw MQTT; the hub strips the envelope and
@@ -315,28 +389,32 @@ class MerossSubDevice extends MerossDevice {
      * a larger hub payload). This override intentionally shadows
      * {@link MerossDevice#handleMessage} — see JSDoc there for the MQTT-raw shape.
      *
-     * Ordering gate key is the handler method name, not the namespace. This
-     * means two namespaces that dispatch to the same handler (for example
-     * Hub.Sensor.All + Hub.Sensor.TempHum both mapping to `_handleSensorAll`)
-     * share one timestamp gate, so a stale broader push cannot clobber state
-     * set by a fresher targeted push.
+     * Routes through the shared namespace registry ({@link module:dispatcher}) like
+     * standalone devices via {@link MerossDevice#_routeMessageToAbility}. Descriptors
+     * are registered in hub ability modules (see requires at end of this file).
+     * Ordering gate keys
+     * match the former handler method names (e.g. `_handleSensorAll`) so namespaces
+     * that share a handler share one timestamp gate.
      *
      * @param {{ header?: object, namespace: string, payload: object }} message - Hub-forwarded envelope
      * @returns {Promise<void>}
      */
     async handleMessage({ header, namespace, payload }) {
         this.emit('message', { header, namespace, payload });
-        const handlers = this.constructor.NAMESPACE_HANDLERS || [];
-        const messageTs = getMessageTimestamp(header);
-        for (const { namespace: ns, handler } of handlers) {
-            if (ns !== namespace) {
-                continue;
+
+        const source = this._resolveHubMessageSource(header);
+
+        if (header === null || header === undefined) {
+            const descriptors = getNamespaceDescriptors(namespace);
+            for (const descriptor of descriptors) {
+                dispatch(this, descriptor, payload, source, null, undefined);
             }
-            if (!shouldApplyUpdate(this, handler, messageTs)) {
-                continue;
-            }
-            await this[handler](payload, messageTs);
+            this._publishSubdeviceStateChanges(source);
+            return;
         }
+
+        this._routeMessageToAbility({ ...header, namespace }, payload, source);
+        this._publishSubdeviceStateChanges(source);
     }
 }
 
@@ -379,35 +457,11 @@ class HubTempHumSensor extends MerossSubDevice {
 
         this._temperature = {};
         this._humidity = {};
-        this._battery = null;
         this._lux = null;
         this._samples = [];
         this._lastSampledTime = null;
-    }
-
-    /**
-     * Namespace handler registry for routing notifications
-     * @private
-     */
-    static get NAMESPACE_HANDLERS() {
-        return [
-            {
-                namespace: 'Appliance.Hub.Sensor.All',
-                handler: '_handleSensorAll'
-            },
-            {
-                namespace: 'Appliance.Hub.Sensor.TempHum',
-                handler: '_handleSensorAll'
-            },
-            {
-                namespace: 'Appliance.Control.Sensor.LatestX',
-                handler: '_handleLatestX'
-            },
-            {
-                namespace: 'Appliance.Hub.Battery',
-                handler: '_handleBattery'
-            }
-        ];
+        this._alert = {};
+        this._adjust = {};
     }
 
     /**
@@ -443,6 +497,56 @@ class HubTempHumSensor extends MerossSubDevice {
     }
 
     /**
+     * Handles Appliance.Hub.Sensor.Alert namespace.
+     *
+     * @private
+     * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} _messageTs - Message ordering time (unused; alert config is not time-series)
+     */
+    _handleAlert(data, _messageTs) {
+        if (data.temperature !== undefined) {
+            this._alert.temperature = data.temperature;
+        }
+        if (data.humidity !== undefined) {
+            this._alert.humidity = data.humidity;
+        }
+    }
+
+    /**
+     * Handles Appliance.Hub.Sensor.Adjust namespace.
+     *
+     * @private
+     * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} _messageTs - Message ordering time (unused; calibration is not time-series)
+     */
+    _handleAdjust(data, _messageTs) {
+        if (data.temperature !== undefined) {
+            this._adjust.temperature = data.temperature;
+        }
+        if (data.humidity !== undefined) {
+            this._adjust.humidity = data.humidity;
+        }
+    }
+
+    /**
+     * Alert threshold config from the last refresh or PUSH.
+     *
+     * @returns {Object} `temperature` / `humidity` segment arrays
+     */
+    getAlert() {
+        return { ...this._alert };
+    }
+
+    /**
+     * Temperature/humidity calibration offsets (firmware ×10 units).
+     *
+     * @returns {Object}
+     */
+    getAdjust() {
+        return { ...this._adjust };
+    }
+
+    /**
      * Handles Appliance.Control.Sensor.LatestX namespace.
      *
      * @private
@@ -473,20 +577,6 @@ class HubTempHumSensor extends MerossSubDevice {
         const lightReading = this._extractLatestReading(data.data, 'light');
         if (lightReading) {
             this._lux = lightReading.value;
-        }
-    }
-
-    /**
-     * Handles Appliance.Hub.Battery namespace.
-     *
-     * @private
-     * @param {Object} data - Notification data payload
-     */
-    _handleBattery(data) {
-        // Filter out sentinel values (0xFFFFFFFF, -1) indicating battery reporting is unsupported
-        if (data.value !== undefined && data.value !== null &&
-            data.value !== 0xFFFFFFFF && data.value !== -1) {
-            this._battery = data.value;
         }
     }
 
@@ -615,6 +705,154 @@ class HubTempHumSensor extends MerossSubDevice {
     getLux() {
         return this._lux !== undefined && this._lux !== null ? this._lux : null;
     }
+
+    /**
+     * @protected
+     * @param {Object} state
+     * @returns {void}
+     */
+    _appendSubdeviceState(state) {
+        const temp = this.getLastSampledTemperature();
+        const hum = this.getLastSampledHumidity();
+        if (temp !== null || this._temperature.latestSampleTime != null || this._temperature.min != null) {
+            state.temperature = {
+                0: {
+                    latest: temp,
+                    latestSampleTime: this._temperature.latestSampleTime ?? null,
+                    min: this.getMinSupportedTemperature(),
+                    max: this.getMaxSupportedTemperature()
+                }
+            };
+        }
+        if (hum !== null || this._humidity.latestSampleTime != null) {
+            state.humidity = {
+                0: {
+                    latest: hum,
+                    latestSampleTime: this._humidity.latestSampleTime ?? null
+                }
+            };
+        }
+        const lux = this.getLux();
+        if (lux !== null) {
+            state.lux = { 0: lux };
+        }
+        if (Object.keys(this._alert).length > 0) {
+            state.alert = { 0: this.getAlert() };
+        }
+        if (Object.keys(this._adjust).length > 0) {
+            state.adjust = { 0: this.getAdjust() };
+        }
+    }
+}
+
+/**
+ * Hub door/window contact sensor subdevice (MS200, etc.).
+ *
+ * @class HubDoorWindowSensor
+ * @extends MerossSubDevice
+ */
+class HubDoorWindowSensor extends MerossSubDevice {
+    /**
+     * @param {string} hubDeviceUuid - UUID of the hub device
+     * @param {string} subdeviceId - Subdevice ID
+     * @param {import('../meross')} manager - Root Meross instance
+     * @param {Object} [kwargs] - Additional subdevice information
+     */
+    constructor(hubDeviceUuid, subdeviceId, manager, kwargs = {}) {
+        super(hubDeviceUuid, subdeviceId, manager, kwargs);
+
+        this._doorWindowStatus = null;
+        this._lmTime = null;
+        this._syncedTime = null;
+        this._samples = [];
+    }
+
+    /**
+     * @private
+     * @param {Object} data - Door/window payload slice
+     * @param {number|null|undefined} messageTs - Hub envelope timestamp for ordering
+     */
+    _applyDoorWindowData(data, messageTs) {
+        if (data.status !== undefined && data.status !== null) {
+            if (shouldApplyUpdate(this, 'doorWindowStatus', messageTs)) {
+                this._doorWindowStatus = data.status;
+            }
+        }
+        if (data.lmTime !== undefined && data.lmTime !== null) {
+            if (shouldApplyUpdate(this, 'doorWindowLmTime', messageTs)) {
+                this._lmTime = data.lmTime;
+            }
+        }
+        if (data.syncedTime !== undefined && data.syncedTime !== null) {
+            this._syncedTime = data.syncedTime;
+        }
+        if (data.sample && Array.isArray(data.sample)) {
+            this._samples = data.sample.map(([status, ts]) => ({ status, timestamp: ts }));
+        }
+    }
+
+    /**
+     * @private
+     * @param {Object} data - Notification data payload
+     * @param {number|null|undefined} messageTs - Message ordering time
+     */
+    _handleDoorWindow(data, messageTs) {
+        this._applyDoorWindowData(data, messageTs);
+    }
+
+    /**
+     * @private
+     * @param {Object} data - Sensor.All item
+     * @param {number|null|undefined} messageTs - Message ordering time
+     */
+    _handleSensorAll(data, messageTs) {
+        this._updateOnlineStatus(data, messageTs);
+        if (data.doorWindow) {
+            this._applyDoorWindowData(data.doorWindow, messageTs);
+        }
+        if (data.battery !== undefined && data.battery !== null) {
+            this._battery = data.battery;
+        }
+    }
+
+    /**
+     * @returns {boolean|null} True when open, false when closed, null if unknown
+     */
+    isOpen() {
+        if (this._doorWindowStatus === null || this._doorWindowStatus === undefined) {
+            return null;
+        }
+        return this._doorWindowStatus === 1;
+    }
+
+    /**
+     * @returns {number|null} Unix timestamp of the latest door/window change
+     */
+    getLatestLmTime() {
+        return this._lmTime;
+    }
+
+    /**
+     * @returns {Array<{status: number, timestamp: number}>} Historical open/close samples
+     */
+    getDoorWindowSamples() {
+        return [...this._samples];
+    }
+
+    /**
+     * @protected
+     * @param {Object} state
+     * @returns {void}
+     */
+    _appendSubdeviceState(state) {
+        state.doorWindow = {
+            0: {
+                isOpen: this.isOpen(),
+                lmTime: this._lmTime,
+                syncedTime: this._syncedTime
+            }
+        };
+    }
 }
 
 /**
@@ -665,39 +903,10 @@ class HubThermostatValve extends MerossSubDevice {
         this._temperature = {};
         this._adjust = {};
         this._scheduleBMode = null;
+        this._scheduleB = null;
+        this._superCtl = null;
+        this._mts100Config = null;
         this._lastActiveTime = null;
-    }
-
-    /**
-     * Namespace handler registry for routing notifications.
-     *
-     * Maps namespace strings to handler methods for processing incoming notifications.
-     *
-     * @private
-     */
-    static get NAMESPACE_HANDLERS() {
-        return [
-            {
-                namespace: 'Appliance.Hub.Mts100.All',
-                handler: '_handleMts100All'
-            },
-            {
-                namespace: 'Appliance.Hub.ToggleX',
-                handler: '_handleToggleX'
-            },
-            {
-                namespace: 'Appliance.Hub.Mts100.Mode',
-                handler: '_handleMts100Mode'
-            },
-            {
-                namespace: 'Appliance.Hub.Mts100.Temperature',
-                handler: '_handleMts100Temperature'
-            },
-            {
-                namespace: 'Appliance.Hub.Online',
-                handler: '_handleOnline'
-            }
-        ];
     }
 
     /**
@@ -763,13 +972,60 @@ class HubThermostatValve extends MerossSubDevice {
     }
 
     /**
-     * Handles Appliance.Hub.Online namespace
      * @private
-     * @param {Object} data - Notification data payload
-     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
+     * @param {Object} data - Mts100.Adjust payload item
+     * @param {number|null|undefined} _messageTs - Message ordering time (unused)
      */
-    _handleOnline(data, messageTs) {
-        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
+    _handleMts100Adjust(data, _messageTs) {
+        if (data.temperature !== undefined) {
+            this._adjust = { ...this._adjust, temperature: data.temperature };
+            this._adjust.latestSampleTime = Date.now();
+        }
+    }
+
+    /**
+     * @private
+     * @param {Object} data - SuperCtl payload item
+     */
+    _handleMts100SuperCtl(data) {
+        this._superCtl = { ...(this._superCtl || {}), ...data };
+    }
+
+    /**
+     * @private
+     * @param {Object} data - ScheduleB payload item (`schedule` or per-day fields)
+     */
+    _handleMts100ScheduleB(data) {
+        this._scheduleB = { ...(this._scheduleB || {}), ...data };
+    }
+
+    /**
+     * @private
+     * @param {Object} data - Config payload item
+     */
+    _handleMts100Config(data) {
+        this._mts100Config = { ...(this._mts100Config || {}), ...data };
+    }
+
+    /**
+     * @returns {Object|null} Super Control settings from the last refresh or PUSH
+     */
+    getSuperCtl() {
+        return this._superCtl ? { ...this._superCtl } : null;
+    }
+
+    /**
+     * @returns {Object|null} Schedule B timetable from the last refresh or PUSH
+     */
+    getScheduleB() {
+        return this._scheduleB ? { ...this._scheduleB } : null;
+    }
+
+    /**
+     * @returns {Object|null} MTS100 PID/config from the last refresh or PUSH
+     */
+    getMts100Config() {
+        return this._mts100Config ? { ...this._mts100Config } : null;
     }
 
     /**
@@ -983,6 +1239,29 @@ class HubThermostatValve extends MerossSubDevice {
         this._adjust.temperature = adjustTemp;
         this._adjust.latestSampleTime = Date.now();
     }
+
+    /**
+     * @protected
+     * @param {Object} state
+     * @returns {void}
+     */
+    _appendSubdeviceState(state) {
+        state.thermostat = {
+            0: {
+                isOn: this.isOn(),
+                mode: this.getMode(),
+                targetTemp: this.getTargetTemperature(),
+                roomTemp: this.getLastSampledTemperature(),
+                heating: this.isHeating(),
+                windowOpen: this.isWindowOpen(),
+                adjust: this.getAdjust(),
+                scheduleBMode: this._scheduleBMode,
+                superCtl: this.getSuperCtl(),
+                scheduleB: this.getScheduleB(),
+                config: this.getMts100Config()
+            }
+        };
+    }
 }
 
 /**
@@ -1029,30 +1308,6 @@ class HubWaterLeakSensor extends MerossSubDevice {
     }
 
     /**
-     * Namespace handler registry for routing notifications.
-     *
-     * Maps namespace strings to handler methods for processing incoming notifications.
-     *
-     * @private
-     */
-    static get NAMESPACE_HANDLERS() {
-        return [
-            {
-                namespace: 'Appliance.Hub.Sensor.WaterLeak',
-                handler: '_handleWaterLeak'
-            },
-            {
-                namespace: 'Appliance.Hub.Sensor.All',
-                handler: '_handleSensorAll'
-            },
-            {
-                namespace: 'Appliance.Hub.Online',
-                handler: '_handleOnline'
-            }
-        ];
-    }
-
-    /**
      * Handles Appliance.Hub.Sensor.WaterLeak namespace
      * @private
      * @param {Object} data - Notification data payload
@@ -1084,16 +1339,6 @@ class HubWaterLeakSensor extends MerossSubDevice {
                 this._handleWaterLeakFreshData(latestWaterLeak === 1, latestSampleTime);
             }
         }
-    }
-
-    /**
-     * Handles Appliance.Hub.Online namespace
-     * @private
-     * @param {Object} data - Notification data payload
-     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
-     */
-    _handleOnline(data, messageTs) {
-        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
     }
 
     /**
@@ -1170,6 +1415,21 @@ class HubWaterLeakSensor extends MerossSubDevice {
             timestamp
         });
     }
+
+    /**
+     * @protected
+     * @param {Object} state
+     * @returns {void}
+     */
+    _appendSubdeviceState(state) {
+        state.waterLeak = {
+            0: {
+                isLeaking: this.isLeaking(),
+                latestSampleTime: this.getLatestSampleTime(),
+                latestDetectedTs: this.getLatestDetectedWaterLeakTs()
+            }
+        };
+    }
 }
 
 /**
@@ -1222,30 +1482,6 @@ class HubSmokeDetector extends MerossSubDevice {
     }
 
     /**
-     * Namespace handler registry for routing notifications.
-     *
-     * Maps namespace strings to handler methods for processing incoming notifications.
-     *
-     * @private
-     */
-    static get NAMESPACE_HANDLERS() {
-        return [
-            {
-                namespace: 'Appliance.Hub.Sensor.Smoke',
-                handler: '_handleSmoke'
-            },
-            {
-                namespace: 'Appliance.Hub.Sensor.All',
-                handler: '_handleSensorAll'
-            },
-            {
-                namespace: 'Appliance.Hub.Online',
-                handler: '_handleOnline'
-            }
-        ];
-    }
-
-    /**
      * Handles Appliance.Hub.Sensor.Smoke namespace
      * @private
      * @param {Object} data - Notification data payload
@@ -1267,16 +1503,6 @@ class HubSmokeDetector extends MerossSubDevice {
         if (data.smokeAlarm) {
             this._handleSmokeAlarmData(data.smokeAlarm);
         }
-    }
-
-    /**
-     * Handles Appliance.Hub.Online namespace
-     * @private
-     * @param {Object} data - Notification data payload
-     * @param {number|null|undefined} messageTs - Message ordering time from the hub envelope header
-     */
-    _handleOnline(data, messageTs) {
-        this._updateOnlineStatus(data, messageTs, { touchLastActiveTime: true });
     }
 
     /**
@@ -1439,6 +1665,21 @@ class HubSmokeDetector extends MerossSubDevice {
     }
 
     /**
+     * @protected
+     * @param {Object} state
+     * @returns {void}
+     */
+    _appendSubdeviceState(state) {
+        state.smoke = {
+            0: {
+                alarmStatus: this.getSmokeAlarmStatus(),
+                interConn: this.getInterConnStatus(),
+                lastStatusUpdate: this.getLastStatusUpdate()
+            }
+        };
+    }
+
+    /**
      * Refreshes the smoke alarm status from the device.
      *
      * @returns {Promise<Object>} Promise that resolves with the alarm status response
@@ -1462,9 +1703,19 @@ class HubSmokeDetector extends MerossSubDevice {
     }
 }
 
+require('../abilities/hub');
+require('../abilities/hub-temp-hum');
+require('../abilities/hub-alert');
+require('../abilities/hub-adjust');
+require('../abilities/hub-water-leak');
+require('../abilities/hub-smoke');
+require('../abilities/hub-door-window');
+require('../abilities/hub-mts100');
+
 module.exports = {
     MerossSubDevice,
     HubTempHumSensor,
+    HubDoorWindowSensor,
     HubThermostatValve,
     HubWaterLeakSensor,
     HubSmokeDetector

@@ -2,10 +2,10 @@
 
 const chalk = require('chalk');
 
-function displayWaterLeakSensorStatus(subdevice) {
+function display(subdevice) {
     const isLeaking = subdevice.isLeaking();
     const leakTime = subdevice.getLatestDetectedWaterLeakTs();
-    const battery = subdevice.getCachedBattery();
+    const battery = subdevice.getBattery();
 
     console.log(`\n    ${chalk.bold.underline('Sensors')}`);
 
@@ -23,5 +23,4 @@ function displayWaterLeakSensorStatus(subdevice) {
     return true;
 }
 
-module.exports = { displayWaterLeakSensorStatus };
-
+module.exports = { display };

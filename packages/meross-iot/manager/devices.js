@@ -561,7 +561,7 @@ class ManagerDevices extends Manager {
             this._removeHubSubdevices(device);
         }
 
-        this._cleanupSubscriptions(deviceUuid);
+        this._cleanupSubscriptions(device);
 
         if (device.disconnect) {
             device.disconnect();
@@ -623,17 +623,16 @@ class ManagerDevices extends Manager {
      * Handles subscription manager cleanup.
      *
      * Unsubscribes from device updates if the device has active subscriptions.
-     * Note: Subdevices share the hub's subscription, so we only need to unsubscribe the hub.
-     *
-     * @param {string} deviceUuid - Device UUID
+     * @param {MerossDevice|MerossHubDevice|MerossSubDevice} device - Device being removed
      * @private
      */
-    _cleanupSubscriptions(deviceUuid) {
+    _cleanupSubscriptions(device) {
         const subscription = this.meross._managers.subscription;
-        if (subscription && deviceUuid) {
-            const eventName = `deviceUpdate:${deviceUuid}`;
+        const subscriptionKey = device?.subscriptionKey;
+        if (subscription && subscriptionKey) {
+            const eventName = `deviceUpdate:${subscriptionKey}`;
             if (subscription.listenerCount(eventName) > 0) {
-                subscription.unsubscribe(deviceUuid);
+                subscription.unsubscribe(subscriptionKey);
             }
         }
     }
@@ -838,6 +837,7 @@ class ManagerDevices extends Manager {
 
             hubDevice.registerSubdevice(subdevice);
             this.register(subdevice);
+            this._bindDeviceEvents(subdevice);
 
             if (subdevice && subdevice.type) {
                 const subdeviceAbilities = getSubdeviceAbilities(subdevice.type, hubDevice.abilities);

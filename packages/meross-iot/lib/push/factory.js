@@ -37,6 +37,7 @@ const PUSH_NOTIFICATION_BINDING = {
     'Appliance.Hub.Online': HubOnlinePushNotification,
     'Appliance.Hub.ToggleX': HubToggleXPushNotification,
     'Appliance.Hub.Battery': HubBatteryPushNotification,
+    'Appliance.Hub.Mts100.Battery': HubBatteryPushNotification,
     'Appliance.Hub.Sensor.All': HubSensorAllPushNotification,
     'Appliance.Hub.Sensor.TempHum': HubSensorTempHumPushNotification,
     'Appliance.Hub.Sensor.Alert': HubSensorAlertPushNotification,
@@ -54,21 +55,28 @@ const PUSH_NOTIFICATION_BINDING = {
 /**
  * Maps hub notification namespaces to their corresponding data keys in raw payloads.
  *
- * Hub notifications use different top-level keys in their payloads (e.g., 'online', 'togglex', 'battery').
- * This mapping allows extraction of the correct data array for routing to subdevices.
+ * @private
+ * @type {Record<string, string>}
  */
 const HUB_NAMESPACE_DATA_KEY_MAP = {
     'Appliance.Hub.Online': 'online',
     'Appliance.Hub.ToggleX': 'togglex',
     'Appliance.Hub.Battery': 'battery',
+    'Appliance.Hub.Mts100.Battery': 'battery',
     'Appliance.Hub.Sensor.All': 'all',
     'Appliance.Hub.Sensor.TempHum': 'tempHum',
     'Appliance.Hub.Sensor.Alert': 'alert',
+    'Appliance.Hub.Sensor.Adjust': 'adjust',
+    'Appliance.Hub.Sensor.DoorWindow': 'doorWindow',
     'Appliance.Hub.Sensor.Smoke': 'smokeAlarm',
     'Appliance.Hub.Sensor.WaterLeak': 'waterLeak',
     'Appliance.Hub.Mts100.All': 'all',
     'Appliance.Hub.Mts100.Mode': 'mode',
     'Appliance.Hub.Mts100.Temperature': 'temperature',
+    'Appliance.Hub.Mts100.Adjust': 'adjust',
+    'Appliance.Hub.Mts100.SuperCtl': 'superCtl',
+    'Appliance.Hub.Mts100.ScheduleB': 'scheduleB',
+    'Appliance.Hub.Mts100.Config': 'config',
     'Appliance.Hub.SubdeviceList': 'subdeviceList',
     'Appliance.Control.Sensor.LatestX': 'latest'
 };
@@ -132,7 +140,7 @@ function parsePushNotification(namespace, messagePayload, deviceUuid, header) {
 
     if (NotificationClass) {
         try {
-            const notification = new NotificationClass(deviceUuid, messagePayload);
+            const notification = new NotificationClass(deviceUuid, messagePayload, namespace);
             notification.setMessageHeader(header);
             return notification;
         } catch (error) {
@@ -157,19 +165,28 @@ function parsePushNotification(namespace, messagePayload, deviceUuid, header) {
  * @private
  */
 function extractDataArray(namespace, rawData) {
-    // Check for custom extraction strategy first (handles non-standard structures)
     const extractionStrategy = DATA_EXTRACTION_STRATEGIES[namespace];
     if (extractionStrategy) {
-        return extractionStrategy(rawData);
+        const extracted = extractionStrategy(rawData);
+        if (extracted === null || extracted === undefined) {
+            return null;
+        }
+        return Array.isArray(extracted) ? extracted : [extracted];
     }
 
-    // Fall back to standard namespace-to-key mapping
     const dataKey = HUB_NAMESPACE_DATA_KEY_MAP[namespace];
     if (!dataKey) {
         return null;
     }
 
-    return rawData[dataKey];
+    let raw = rawData[dataKey];
+    if (!raw && namespace === 'Appliance.Hub.Mts100.ScheduleB' && rawData.schedule) {
+        raw = rawData.schedule;
+    }
+    if (raw === null || raw === undefined) {
+        return null;
+    }
+    return Array.isArray(raw) ? raw : [raw];
 }
 
 /**

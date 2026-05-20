@@ -2,10 +2,10 @@
 
 const chalk = require('chalk');
 
-function displayTempHumSensorStatus(subdevice) {
+function display(subdevice) {
     const temp = subdevice.getLastSampledTemperature();
     const humidity = subdevice.getLastSampledHumidity();
-    const battery = subdevice.getCachedBattery();
+    const battery = subdevice.getBattery();
     const lux = subdevice.getLux && subdevice.getLux();
     const sampleTime = subdevice.getLastSampledTime();
 
@@ -39,5 +39,4 @@ function displayTempHumSensorStatus(subdevice) {
     return hasReadings;
 }
 
-module.exports = { displayTempHumSensorStatus };
-
+module.exports = { display };
