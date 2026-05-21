@@ -65,8 +65,6 @@ function createTempUnitAbility(device) {
  * @returns {Object|null} Temp unit capability object or null if not supported
  */
 function getTempUnitCapabilities(device, _channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.TempUnit']) {return null;}
-
     return {
         supported: true
     };
@@ -74,3 +72,10 @@ function getTempUnitCapabilities(device, _channelIds) {
 
 module.exports = createTempUnitAbility;
 module.exports.getCapabilities = getTempUnitCapabilities;
+module.exports.ability = {
+    key: 'tempUnit',
+    namespaces: ['Appliance.Control.TempUnit'],
+    caches: [],
+    create: createTempUnitAbility,
+    getCapabilities: getTempUnitCapabilities
+};

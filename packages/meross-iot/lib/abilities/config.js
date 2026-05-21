@@ -66,8 +66,6 @@ function createConfigAbility(device) {
  * @returns {Object|null} Config capability object or null if not supported
  */
 function getConfigCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Config.OverTemp']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -76,3 +74,10 @@ function getConfigCapabilities(device, channelIds) {
 
 module.exports = createConfigAbility;
 module.exports.getCapabilities = getConfigCapabilities;
+module.exports.ability = {
+    key: 'config',
+    namespaces: ['Appliance.Config.OverTemp'],
+    caches: [],
+    create: createConfigAbility,
+    getCapabilities: getConfigCapabilities
+};

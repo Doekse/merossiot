@@ -357,8 +357,6 @@ function updateTriggerXState(device, triggerxData, source = 'response') {
  * @returns {Object|null} Trigger capability object or null if not supported
  */
 function getTriggerCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasTriggerX = !!device.abilities['Appliance.Control.TriggerX'];
     const hasTrigger = !!device.abilities['Appliance.Control.Trigger'];
 
@@ -388,4 +386,11 @@ module.exports = createTriggerAbility;
  * `test/trigger.test.js`.
  */
 module.exports.getCapabilities = getTriggerCapabilities;
+module.exports.ability = {
+    key: 'trigger',
+    namespaces: ['Appliance.Control.TriggerX', 'Appliance.Control.Trigger'],
+    caches: ['_triggerxStateByChannel'],
+    create: createTriggerAbility,
+    getCapabilities: getTriggerCapabilities
+};
 

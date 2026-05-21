@@ -795,8 +795,6 @@ class ManagerDevices extends Manager {
             const { buildDevice } = require('../lib/device/factory');
             const device = buildDevice(deviceInfo, abilities, this.meross, subDeviceList);
 
-            device._updateAbilities(abilities);
-
             this.register(device);
             await this.connect(device, deviceInfo);
 

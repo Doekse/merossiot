@@ -113,8 +113,6 @@ function createToggleAbility(device) {
  * @returns {Object|null} Toggle capability object or null if not supported
  */
 function getToggleCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasToggleX = !!device.abilities['Appliance.Control.ToggleX'];
     const hasToggle = !!device.abilities['Appliance.Control.Toggle'];
 
@@ -146,4 +144,11 @@ registerNamespaceDescriptor('Appliance.Control.Toggle', {
 
 module.exports = createToggleAbility;
 module.exports.getCapabilities = getToggleCapabilities;
+module.exports.ability = {
+    key: 'toggle',
+    namespaces: ['Appliance.Control.ToggleX', 'Appliance.Control.Toggle'],
+    caches: ['_toggleStateByChannel'],
+    create: createToggleAbility,
+    getCapabilities: getToggleCapabilities
+};
 

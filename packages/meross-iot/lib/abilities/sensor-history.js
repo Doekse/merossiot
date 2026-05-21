@@ -67,8 +67,6 @@ function createSensorHistoryAbility(device) {
  * @returns {Object|null} Sensor history capability object or null if not supported
  */
 function getSensorHistoryCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasHistory = !!device.abilities['Appliance.Control.Sensor.History'];
     const hasHistoryX = !!device.abilities['Appliance.Control.Sensor.HistoryX'];
 
@@ -82,3 +80,13 @@ function getSensorHistoryCapabilities(device, channelIds) {
 
 module.exports = createSensorHistoryAbility;
 module.exports.getCapabilities = getSensorHistoryCapabilities;
+module.exports.ability = {
+    key: 'sensorHistory',
+    namespaces: [
+        'Appliance.Control.Sensor.History',
+        'Appliance.Control.Sensor.HistoryX'
+    ],
+    caches: [],
+    create: createSensorHistoryAbility,
+    getCapabilities: getSensorHistoryCapabilities
+};

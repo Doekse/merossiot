@@ -73,8 +73,6 @@ function createSmokeConfigAbility(device) {
  * @returns {Object|null} Smoke config capability object or null if not supported
  */
 function getSmokeConfigCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Smoke.Config']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -83,3 +81,10 @@ function getSmokeConfigCapabilities(device, channelIds) {
 
 module.exports = createSmokeConfigAbility;
 module.exports.getCapabilities = getSmokeConfigCapabilities;
+module.exports.ability = {
+    key: 'smokeConfig',
+    namespaces: ['Appliance.Control.Smoke.Config'],
+    caches: [],
+    create: createSmokeConfigAbility,
+    getCapabilities: getSmokeConfigCapabilities
+};

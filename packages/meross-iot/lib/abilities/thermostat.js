@@ -630,8 +630,6 @@ function createThermostatAbility(device) {
  * @returns {Object|null} Thermostat capability object or null if not supported
  */
 function getThermostatCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasThermostatMode = !!device.abilities['Appliance.Control.Thermostat.Mode'];
     const hasThermostatModeB = !!device.abilities['Appliance.Control.Thermostat.ModeB'];
 
@@ -682,3 +680,13 @@ registerNamespaceDescriptor('Appliance.Control.Thermostat.ModeB', {
 
 module.exports = createThermostatAbility;
 module.exports.getCapabilities = getThermostatCapabilities;
+module.exports.ability = {
+    key: 'thermostat',
+    namespaces: [
+        'Appliance.Control.Thermostat.Mode',
+        'Appliance.Control.Thermostat.ModeB'
+    ],
+    caches: ['_thermostatStateByChannel'],
+    create: createThermostatAbility,
+    getCapabilities: getThermostatCapabilities
+};

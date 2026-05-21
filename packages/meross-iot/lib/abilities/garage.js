@@ -209,8 +209,6 @@ function updateGarageDoorConfig(device, configData) {
  * @returns {Object|null} Garage door capability object or null if not supported
  */
 function getGarageCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasGarageDoorState = !!device.abilities['Appliance.GarageDoor.State'];
     const hasGarageDoorConfig = !!device.abilities['Appliance.GarageDoor.Config'];
     const hasGarageDoorMultipleConfig = !!device.abilities['Appliance.GarageDoor.MultipleConfig'];
@@ -248,3 +246,10 @@ registerNamespaceDescriptor('Appliance.GarageDoor.MultipleConfig', {
 
 module.exports = createGarageAbility;
 module.exports.getCapabilities = getGarageCapabilities;
+module.exports.ability = {
+    key: 'garage',
+    namespaces: ['Appliance.GarageDoor.State'],
+    caches: ['_garageDoorStateByChannel', '_garageDoorConfigByChannel'],
+    create: createGarageAbility,
+    getCapabilities: getGarageCapabilities
+};

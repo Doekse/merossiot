@@ -149,8 +149,6 @@ function createDiffuserAbility(device) {
  * @returns {Object|null} Diffuser capability object or null if not supported
  */
 function getDiffuserCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasLight = !!device.abilities['Appliance.Control.Diffuser.Light'];
     const hasSpray = !!device.abilities['Appliance.Control.Diffuser.Spray'];
 
@@ -190,3 +188,13 @@ registerNamespaceDescriptor('Appliance.Control.Diffuser.Spray', {
 
 module.exports = createDiffuserAbility;
 module.exports.getCapabilities = getDiffuserCapabilities;
+module.exports.ability = {
+    key: 'diffuser',
+    namespaces: [
+        'Appliance.Control.Diffuser.Light',
+        'Appliance.Control.Diffuser.Spray'
+    ],
+    caches: ['_diffuserLightStateByChannel', '_diffuserSprayStateByChannel'],
+    create: createDiffuserAbility,
+    getCapabilities: getDiffuserCapabilities
+};

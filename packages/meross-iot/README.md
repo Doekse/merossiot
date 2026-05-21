@@ -117,33 +117,6 @@ await device.toggle.set({ channel: 0, on: true });
 meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST;
 ```
 
-## Receiving device updates
-
-Subscribe through **`meross.subscription`** — not `device.on('stateChange')` or `meross.on('deviceUpdate')` (those are internal wiring).
-
-```javascript
-const sub = meross.subscription;
-
-// Hub UUID covers the hub and all subdevices (shared MQTT connection).
-sub.subscribe(hub, { pushOnly: true });
-
-sub.on(`deviceUpdate:${hub.uuid}`, (update) => {
-  // update.device — hub or subdevice that changed
-  // update.source — 'push' | 'poll' | …
-  // update.state — full cached state of update.device
-  // update.changes — changed slices only
-});
-
-sub.subscribeToDeviceList();
-sub.on('deviceListUpdate', (diff) => {
-  // diff.added, diff.removed, diff.changed
-});
-```
-
-See `example/event-handling.js`, `example/subscription-manager.js`, and `example/hub-devices.js`.
-
-Manager lifecycle (`deviceReady`, `connected`, `disconnected`) stays on the root `meross` instance.
-
 ## Supported Devices
 
 This library should support al wifi based devices Meross currently has on the market. I've tested the code with the following devices: 

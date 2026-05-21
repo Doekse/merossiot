@@ -2,12 +2,24 @@
 
 const chalk = require('chalk');
 
+/**
+ * @param {import('meross-iot').MerossSubDevice} subdevice
+ * @returns {import('meross-iot').TempHumFeature}
+ */
+function getTempHum(subdevice) {
+    if (!subdevice.tempHum) {
+        throw new Error('Sensor has no tempHum ability');
+    }
+    return subdevice.tempHum;
+}
+
 function display(subdevice) {
-    const temp = subdevice.getLastSampledTemperature();
-    const humidity = subdevice.getLastSampledHumidity();
+    const tempHum = getTempHum(subdevice);
+    const temp = tempHum.getLastSampledTemperature();
+    const humidity = tempHum.getLastSampledHumidity();
     const battery = subdevice.getBattery();
-    const lux = subdevice.getLux && subdevice.getLux();
-    const sampleTime = subdevice.getLastSampledTime();
+    const lux = tempHum.getLux();
+    const sampleTime = tempHum.getLastSampledTime();
 
     let hasReadings = false;
 

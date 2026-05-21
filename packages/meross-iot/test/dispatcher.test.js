@@ -10,6 +10,7 @@ const EventEmitter = require('node:events');
 
 const {
     dispatch,
+    emitStateChangeFromSnapshot,
     registerNamespaceDescriptor,
     getNamespaceDescriptors
 } = require('../lib/dispatcher');
@@ -152,6 +153,49 @@ describe('dispatcher registry', () => {
         const list = getNamespaceDescriptors(REGISTRY_PROBE_NS);
         assert.ok(list.length >= n + 1);
         assert.ok(list.includes(probe) || list.some((d) => d.gateKey === REGISTRY_PROBE_NS));
+    });
+});
+
+describe('emitStateChangeFromSnapshot', () => {
+    it('emits diffed value and respects emitValue override', () => {
+        const device = new EventEmitter();
+        const events = [];
+        device.on('stateChange', (e) => events.push(e));
+
+        const descriptor = {
+            eventType: 'battery',
+            emitValue: (_old, n) => n.percent
+        };
+
+        emitStateChangeFromSnapshot(device, descriptor, 'push', 0, { percent: 50 }, { percent: 77 });
+
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].type, 'battery');
+        assert.strictEqual(events[0].channel, 0);
+        assert.strictEqual(events[0].value, 77);
+        assert.strictEqual(events[0].source, 'push');
+    });
+
+    it('skips emission when diff is empty', () => {
+        const device = new EventEmitter();
+        const events = [];
+        device.on('stateChange', (e) => events.push(e));
+
+        const descriptor = {
+            eventType: 'toggle',
+            snapshot: (s) => ({ isOn: s.isOn })
+        };
+
+        emitStateChangeFromSnapshot(
+            device,
+            descriptor,
+            'response',
+            0,
+            { isOn: true },
+            { isOn: true }
+        );
+
+        assert.strictEqual(events.length, 0);
     });
 });
 

@@ -313,13 +313,31 @@ function _displayCapabilities(device) {
                         if (feature.distance) {presenceFeatures.push('distance');}
                         featureInfo += ` ${chalk.gray(`[${presenceFeatures.join(', ')}]`)}`;
                     }
-                    if (featureKey === 'sensor' && (feature.temperature !== undefined || feature.humidity !== undefined || feature.lux !== undefined || feature.waterLeak !== undefined || feature.smoke !== undefined)) {
+                    if (featureKey === 'smokeAlarm' && feature.smokeAlarm) {
+                        featureInfo += ` ${chalk.gray('[smoke alarm]')}`;
+                    }
+                    if (featureKey === 'tempHum' && (feature.temperature || feature.humidity || feature.lux)) {
+                        const tempHumFeatures = [];
+                        if (feature.temperature) {tempHumFeatures.push('temperature');}
+                        if (feature.humidity) {tempHumFeatures.push('humidity');}
+                        if (feature.lux) {tempHumFeatures.push('LUX');}
+                        featureInfo += ` ${chalk.gray(`[${tempHumFeatures.join(', ')}]`)}`;
+                    }
+                    if (featureKey === 'waterLeak' && feature.waterLeak) {
+                        featureInfo += ` ${chalk.gray('[water leak]')}`;
+                    }
+                    if (featureKey === 'doorWindow' && feature.doorWindow) {
+                        featureInfo += ` ${chalk.gray('[door/window]')}`;
+                    }
+                    if (featureKey === 'mts100' && feature.mts100) {
+                        featureInfo += ` ${chalk.gray('[MTS100 valve]')}`;
+                    }
+                    if (featureKey === 'sensor' && (feature.temperature !== undefined || feature.humidity !== undefined || feature.lux !== undefined || feature.waterLeak !== undefined)) {
                         const sensorFeatures = [];
                         if (feature.temperature) {sensorFeatures.push('temperature');}
                         if (feature.humidity) {sensorFeatures.push('humidity');}
                         if (feature.lux) {sensorFeatures.push('LUX');}
                         if (feature.waterLeak) {sensorFeatures.push('water leak');}
-                        if (feature.smoke) {sensorFeatures.push('smoke');}
                         featureInfo += ` ${chalk.gray(`[${sensorFeatures.join(', ')}]`)}`;
                     }
                     console.log(featureInfo);
@@ -366,13 +384,28 @@ async function _displaySubdevices(device) {
                 subFeatureKeys.forEach(featureKey => {
                     const feature = subCaps[featureKey];
                     if (feature && feature.supported) {
-                        if (featureKey === 'sensor') {
+                        if (featureKey === 'smokeAlarm' && feature.smokeAlarm) {
+                            subFeatures.push('smoke alarm');
+                        } else if (featureKey === 'tempHum') {
+                            const sensorTypes = [];
+                            if (feature.temperature) {sensorTypes.push('temperature');}
+                            if (feature.humidity) {sensorTypes.push('humidity');}
+                            if (feature.lux) {sensorTypes.push('LUX');}
+                            if (sensorTypes.length > 0) {
+                                subFeatures.push(`temp/hum [${sensorTypes.join(', ')}]`);
+                            }
+                        } else if (featureKey === 'waterLeak' && feature.waterLeak) {
+                            subFeatures.push('water leak');
+                        } else if (featureKey === 'doorWindow' && feature.doorWindow) {
+                            subFeatures.push('door/window');
+                        } else if (featureKey === 'mts100' && feature.mts100) {
+                            subFeatures.push('MTS100 valve');
+                        } else if (featureKey === 'sensor') {
                             const sensorTypes = [];
                             if (feature.temperature) {sensorTypes.push('temperature');}
                             if (feature.humidity) {sensorTypes.push('humidity');}
                             if (feature.lux) {sensorTypes.push('LUX');}
                             if (feature.waterLeak) {sensorTypes.push('water leak');}
-                            if (feature.smoke) {sensorTypes.push('smoke');}
                             if (sensorTypes.length > 0) {
                                 subFeatures.push(`sensor [${sensorTypes.join(', ')}]`);
                             }

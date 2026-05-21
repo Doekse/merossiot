@@ -148,6 +148,34 @@ function dispatchCustomItems(device, descriptor, payload, source, messageTs, hea
 }
 
 /**
+ * Emits `stateChange` when snapshots differ, using the same diff rules as the generic
+ * stateful dispatch path. Hub `customApply` handlers call this after updating a map.
+ *
+ * @param {object} device
+ * @param {StateNamespaceDescriptor} descriptor
+ * @param {string} source
+ * @param {number} channel
+ * @param {object|undefined} oldSnap
+ * @param {object} newSnap
+ * @returns {void}
+ */
+function emitStateChangeFromSnapshot(device, descriptor, source, channel, oldSnap, newSnap) {
+    const value = descriptor.emitValue
+        ? descriptor.emitValue(oldSnap, newSnap)
+        : buildStateChanges(oldSnap, newSnap);
+
+    if (value !== undefined && (typeof value !== 'object' || Object.keys(value).length > 0)) {
+        device.emit('stateChange', {
+            type: descriptor.eventType,
+            channel,
+            value,
+            source,
+            timestamp: Date.now()
+        });
+    }
+}
+
+/**
  * Applies a single stateful item: writes through the device state map, runs optional
  * `afterApply`, and emits a diffed `stateChange` when the snapshot changed.
  *
@@ -180,19 +208,7 @@ function applyStatefulItem(device, descriptor, item, source) {
     }
 
     const newSnap = descriptor.snapshot(state);
-    const value = descriptor.emitValue
-        ? descriptor.emitValue(oldSnap, newSnap)
-        : buildStateChanges(oldSnap, newSnap);
-
-    if (value !== undefined && (typeof value !== 'object' || Object.keys(value).length > 0)) {
-        device.emit('stateChange', {
-            type: descriptor.eventType,
-            channel,
-            value,
-            source,
-            timestamp: Date.now()
-        });
-    }
+    emitStateChangeFromSnapshot(device, descriptor, source, channel, oldSnap, newSnap);
     return true;
 }
 
@@ -250,8 +266,41 @@ function dispatch(device, descriptor, payload, source, messageTs, header) {
     dispatchStateful(device, descriptor, payload, source, messageTs);
 }
 
+/**
+ * Mutates one channel in a descriptor state map and emits `stateChange` when the snapshot
+ * changes. Used by hub `customApply` handlers that receive a flat subdevice item instead of
+ * a wrapped `{ payloadKey: [...] }` array.
+ *
+ * @param {object} device
+ * @param {StateNamespaceDescriptor} descriptor
+ * @param {(state: object) => void} updateFn
+ * @param {string} source
+ * @param {number} [channel=0]
+ * @returns {void}
+ */
+function mutateChannelState(device, descriptor, updateFn, source, channel = 0) {
+    const map = device[descriptor.stateMap];
+    if (!map || !descriptor.StateClass) {
+        return;
+    }
+
+    let state = map.get(channel);
+    const oldSnap = state ? descriptor.snapshot(state) : undefined;
+    if (!state) {
+        state = new descriptor.StateClass();
+        map.set(channel, state);
+    }
+
+    updateFn(state);
+
+    const newSnap = descriptor.snapshot(state);
+    emitStateChangeFromSnapshot(device, descriptor, source, channel, oldSnap, newSnap);
+}
+
 module.exports = {
     dispatch,
+    emitStateChangeFromSnapshot,
     getNamespaceDescriptors,
+    mutateChannelState,
     registerNamespaceDescriptor
 };

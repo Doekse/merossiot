@@ -76,8 +76,6 @@ function createRuntimeAbility(device) {
  * @returns {Object|null} Runtime capability object or null if not supported
  */
 function getRuntimeCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Runtime']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -86,3 +84,10 @@ function getRuntimeCapabilities(device, channelIds) {
 
 module.exports = createRuntimeAbility;
 module.exports.getCapabilities = getRuntimeCapabilities;
+module.exports.ability = {
+    key: 'runtime',
+    namespaces: ['Appliance.System.Runtime', 'Appliance.Control.Runtime'],
+    caches: [],
+    create: createRuntimeAbility,
+    getCapabilities: getRuntimeCapabilities
+};

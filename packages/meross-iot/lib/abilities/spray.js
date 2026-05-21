@@ -101,8 +101,6 @@ function createSprayAbility(device) {
  * @returns {Object|null} Spray capability object or null if not supported
  */
 function getSprayCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Spray']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -120,3 +118,10 @@ registerNamespaceDescriptor('Appliance.Control.Spray', {
 
 module.exports = createSprayAbility;
 module.exports.getCapabilities = getSprayCapabilities;
+module.exports.ability = {
+    key: 'spray',
+    namespaces: ['Appliance.Control.Spray'],
+    caches: ['_sprayStateByChannel'],
+    create: createSprayAbility,
+    getCapabilities: getSprayCapabilities
+};

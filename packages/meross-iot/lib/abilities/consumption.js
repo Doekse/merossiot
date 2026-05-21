@@ -257,8 +257,6 @@ function updateConsumptionState(device, consumptionData, source = 'response') {
  * @returns {Object|null} Consumption capability object or null if not supported
  */
 function getConsumptionCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasConsumptionH = !!device.abilities['Appliance.Control.ConsumptionH'];
     const hasConsumptionX = !!device.abilities['Appliance.Control.ConsumptionX'];
     const hasConsumption = !!device.abilities['Appliance.Control.Consumption'];
@@ -273,3 +271,14 @@ function getConsumptionCapabilities(device, channelIds) {
 
 module.exports = createConsumptionAbility;
 module.exports.getCapabilities = getConsumptionCapabilities;
+module.exports.ability = {
+    key: 'consumption',
+    namespaces: [
+        'Appliance.Control.ConsumptionH',
+        'Appliance.Control.ConsumptionX',
+        'Appliance.Control.Consumption'
+    ],
+    caches: [],
+    create: createConsumptionAbility,
+    getCapabilities: getConsumptionCapabilities
+};

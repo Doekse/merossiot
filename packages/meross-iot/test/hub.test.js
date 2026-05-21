@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createHubAbility = require('../lib/abilities/hub');
+const createMts100Ability = require('../lib/abilities/hub-mts100');
 const { handlePushNotification } = require('../lib/abilities/hub');
 const { createPublishRecorder } = require('./helpers/mock-ability-device');
 
@@ -32,11 +33,11 @@ describe('hub ability (mocked device)', () => {
         assert.strictEqual(calls[0].namespace, 'Appliance.Hub.Online');
     });
 
-    it('setMts100Mode sends SET Appliance.Hub.Mts100.Mode', async () => {
+    it('mts100.setMode sends SET Appliance.Hub.Mts100.Mode from hub', async () => {
         const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
-        const hub = createHubAbility({ publishMessage });
+        const mts100 = createMts100Ability({ publishMessage });
 
-        await hub.setMts100Mode({ subId: 'v1', mode: 3 });
+        await mts100.setMode({ subId: 'v1', mode: 3 });
 
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Hub.Mts100.Mode');

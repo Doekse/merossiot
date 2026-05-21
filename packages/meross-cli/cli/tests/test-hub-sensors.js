@@ -172,7 +172,7 @@ async function runTests(context) {
                     device: deviceName
                 });
             } else {
-                const response = await hubApi.getTempHumSensor({ sensorIds });
+                const response = await testHub.tempHum.get({ sensorIds });
 
                 if (!response || !Array.isArray(response.tempHum)) {
                     results.push({
@@ -280,7 +280,7 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            const response = await hubApi.getWaterLeakSensor({ sensorIds: waterLeakSensors });
+            const response = await testHub.waterLeak.get({ sensorIds: waterLeakSensors });
 
             const wl = response && (response.waterLeak || response.waterleak);
             if (!response || !Array.isArray(wl)) {
@@ -331,8 +331,16 @@ async function runTests(context) {
                 error: 'Hub has no smoke sensors',
                 device: deviceName
             });
+        } else if (!testHub.smokeAlarm || typeof testHub.smokeAlarm.get !== 'function') {
+            results.push({
+                name: 'should get smoke alarm status',
+                passed: false,
+                skipped: true,
+                error: 'Hub does not support smokeAlarm.get',
+                device: deviceName
+            });
         } else {
-            const response = await hubApi.getSmokeAlarmStatus({ sensorIds: smokeSensors });
+            const response = await testHub.smokeAlarm.get({ sensorIds: smokeSensors });
 
             if (!response || !Array.isArray(response.smokeAlarm)) {
                 results.push({
@@ -419,7 +427,7 @@ async function runTests(context) {
         } else {
             const sensorIds = subdevices.map(sub => sub.subdeviceId).slice(0, 3);
 
-            const response = await hubApi.getSensorAdjust({ sensorIds });
+            const response = await testHub.sensorAdjust.get({ sensorIds });
 
             if (!response || !Array.isArray(response.adjust)) {
                 results.push({

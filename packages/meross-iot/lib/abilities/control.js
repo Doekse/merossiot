@@ -69,8 +69,6 @@ function createControlAbility(device) {
  * @returns {Object|null} Control capability object or null if not supported
  */
 function getControlCapabilities(device, _channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasMultiple = !!device.abilities['Appliance.Control.Multiple'];
     const hasUpgrade = !!device.abilities['Appliance.Control.Upgrade'];
 
@@ -85,3 +83,10 @@ function getControlCapabilities(device, _channelIds) {
 
 module.exports = createControlAbility;
 module.exports.getCapabilities = getControlCapabilities;
+module.exports.ability = {
+    key: 'control',
+    namespaces: ['Appliance.Control.Multiple', 'Appliance.Control.Upgrade'],
+    caches: [],
+    create: createControlAbility,
+    getCapabilities: getControlCapabilities
+};

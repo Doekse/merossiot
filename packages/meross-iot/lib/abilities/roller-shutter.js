@@ -169,8 +169,6 @@ function updateRollerShutterConfig(device, configData) {
  * @returns {Object|null} Roller shutter capability object or null if not supported
  */
 function getRollerShutterCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasRollerShutterState = !!device.abilities['Appliance.RollerShutter.State'];
     const hasRollerShutterPosition = !!device.abilities['Appliance.RollerShutter.Position'];
     const hasRollerShutterConfig = !!device.abilities['Appliance.RollerShutter.Config'];
@@ -234,3 +232,14 @@ module.exports = createRollerShutterAbility;
  * `test/roller-shutter.test.js`.
  */
 module.exports.getCapabilities = getRollerShutterCapabilities;
+module.exports.ability = {
+    key: 'rollerShutter',
+    namespaces: ['Appliance.RollerShutter.State', 'Appliance.RollerShutter.Position'],
+    caches: [
+        '_rollerShutterStateByChannel',
+        '_rollerShutterPositionByChannel',
+        '_rollerShutterConfigByChannel'
+    ],
+    create: createRollerShutterAbility,
+    getCapabilities: getRollerShutterCapabilities
+};

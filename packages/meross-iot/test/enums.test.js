@@ -68,13 +68,11 @@ describe('exported enums and status constants', () => {
         });
     });
 
-    it('SmokeAlarmStatus, TimerType, TriggerType match declaration', () => {
-        assert.deepStrictEqual(meross.SmokeAlarmStatus, {
-            NORMAL: 23,
-            MUTE_TEMPERATURE_ALARM: 26,
-            MUTE_SMOKE_ALARM: 27,
-            INTERCONNECTION_STATUS: 170
-        });
+    it('does not export SmokeAlarmStatus (use getCondition / getStatus on smokeAlarm)', () => {
+        assert.strictEqual(meross.SmokeAlarmStatus, undefined);
+    });
+
+    it('TimerType, TriggerType match declaration', () => {
         assert.deepStrictEqual(meross.TimerType, {
             SINGLE_POINT_WEEKLY_CYCLE: 1,
             SINGLE_POINT_SINGLE_SHOT: 2,

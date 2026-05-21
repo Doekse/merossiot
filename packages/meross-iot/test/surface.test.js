@@ -24,17 +24,11 @@ const EXPECTED_NAMED_EXPORTS = [
     'SprayMode',
     'DNDMode',
     'OnlineStatus',
-    'SmokeAlarmStatus',
     'TimerType',
     'TriggerType',
     'MerossDevice',
     'MerossHubDevice',
-    'MerossSubDevice',
-    'HubTempHumSensor',
-    'HubDoorWindowSensor',
-    'HubThermostatValve',
-    'HubWaterLeakSensor',
-    'HubSmokeDetector'
+    'MerossSubDevice'
 ];
 
 describe('meross-iot module surface', () => {

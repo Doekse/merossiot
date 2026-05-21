@@ -24,6 +24,7 @@ const ToggleXPushNotification = require('./togglex');
 const PresenceStudyPushNotification = require('./presence-study');
 const DiffuserLightPushNotification = require('./diffuser-light');
 const DiffuserSprayPushNotification = require('./diffuser-spray');
+const { extractHubItems } = require('../abilities/hub');
 
 const PUSH_NOTIFICATION_BINDING = {
     'Appliance.System.Online': OnlinePushNotification,
@@ -50,35 +51,6 @@ const PUSH_NOTIFICATION_BINDING = {
     'Appliance.Control.Presence.Study': PresenceStudyPushNotification,
     'Appliance.Control.Diffuser.Light': DiffuserLightPushNotification,
     'Appliance.Control.Diffuser.Spray': DiffuserSprayPushNotification
-};
-
-/**
- * Maps hub notification namespaces to their corresponding data keys in raw payloads.
- *
- * @private
- * @type {Record<string, string>}
- */
-const HUB_NAMESPACE_DATA_KEY_MAP = {
-    'Appliance.Hub.Online': 'online',
-    'Appliance.Hub.ToggleX': 'togglex',
-    'Appliance.Hub.Battery': 'battery',
-    'Appliance.Hub.Mts100.Battery': 'battery',
-    'Appliance.Hub.Sensor.All': 'all',
-    'Appliance.Hub.Sensor.TempHum': 'tempHum',
-    'Appliance.Hub.Sensor.Alert': 'alert',
-    'Appliance.Hub.Sensor.Adjust': 'adjust',
-    'Appliance.Hub.Sensor.DoorWindow': 'doorWindow',
-    'Appliance.Hub.Sensor.Smoke': 'smokeAlarm',
-    'Appliance.Hub.Sensor.WaterLeak': 'waterLeak',
-    'Appliance.Hub.Mts100.All': 'all',
-    'Appliance.Hub.Mts100.Mode': 'mode',
-    'Appliance.Hub.Mts100.Temperature': 'temperature',
-    'Appliance.Hub.Mts100.Adjust': 'adjust',
-    'Appliance.Hub.Mts100.SuperCtl': 'superCtl',
-    'Appliance.Hub.Mts100.ScheduleB': 'scheduleB',
-    'Appliance.Hub.Mts100.Config': 'config',
-    'Appliance.Hub.SubdeviceList': 'subdeviceList',
-    'Appliance.Control.Sensor.LatestX': 'latest'
 };
 
 /**
@@ -174,19 +146,7 @@ function extractDataArray(namespace, rawData) {
         return Array.isArray(extracted) ? extracted : [extracted];
     }
 
-    const dataKey = HUB_NAMESPACE_DATA_KEY_MAP[namespace];
-    if (!dataKey) {
-        return null;
-    }
-
-    let raw = rawData[dataKey];
-    if (!raw && namespace === 'Appliance.Hub.Mts100.ScheduleB' && rawData.schedule) {
-        raw = rawData.schedule;
-    }
-    if (raw === null || raw === undefined) {
-        return null;
-    }
-    return Array.isArray(raw) ? raw : [raw];
+    return extractHubItems(namespace, rawData);
 }
 
 /**

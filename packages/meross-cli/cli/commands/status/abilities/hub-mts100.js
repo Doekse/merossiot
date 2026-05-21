@@ -3,18 +3,30 @@
 const chalk = require('chalk');
 const { ThermostatMode } = require('meross-iot');
 
+/**
+ * @param {import('meross-iot').MerossSubDevice} subdevice
+ * @returns {import('meross-iot').Mts100Feature}
+ */
+function getMts100(subdevice) {
+    if (!subdevice.mts100) {
+        throw new Error('Valve has no mts100 ability');
+    }
+    return subdevice.mts100;
+}
+
 function display(subdevice) {
-    const temp = subdevice.getLastSampledTemperature();
-    const targetTemp = subdevice.getTargetTemperature();
-    const isHeating = subdevice.isHeating();
+    const mts100 = getMts100(subdevice);
+    const temp = mts100.getLastSampledTemperature();
+    const targetTemp = mts100.getTargetTemperature();
+    const isHeating = mts100.isHeating();
     const battery = subdevice.getBattery();
-    const mode = subdevice.getMode();
-    const isWindowOpen = subdevice.isWindowOpen();
-    const calibration = subdevice.getAdjust();
-    const comfortTemp = subdevice.getPresetTemperature('comfort');
-    const economyTemp = subdevice.getPresetTemperature('economy');
-    const awayTemp = subdevice.getPresetTemperature('away');
-    const customTemp = subdevice.getPresetTemperature('custom');
+    const mode = mts100.getMode();
+    const isWindowOpen = mts100.isWindowOpen();
+    const calibration = mts100.getAdjust();
+    const comfortTemp = mts100.getPresetTemperature('comfort');
+    const economyTemp = mts100.getPresetTemperature('economy');
+    const awayTemp = mts100.getPresetTemperature('away');
+    const customTemp = mts100.getPresetTemperature('custom');
 
     let hasReadings = false;
 
@@ -46,7 +58,7 @@ function display(subdevice) {
             [ThermostatMode.MANUAL]: 'Manual'
         };
         const modeName = modeNames[mode] || `Mode ${mode}`;
-        const onoffStatus = subdevice.isOn() ? 'On' : 'Off';
+        const onoffStatus = mts100.isOn() ? 'On' : 'Off';
         console.log(`      ${chalk.white.bold('Mode')}: ${chalk.italic(`${onoffStatus} - ${modeName}${targetTemp !== null ? ` ${targetTemp.toFixed(1)}°C` : ''}`)}`);
         hasReadings = true;
     } else if (targetTemp !== null) {

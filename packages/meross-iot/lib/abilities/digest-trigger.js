@@ -30,8 +30,6 @@ function createDigestTriggerAbility(device) {
  * @returns {Object|null} Digest trigger capability object or null if not supported
  */
 function getDigestTriggerCapabilities(device, _channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasDigestTriggerX = !!device.abilities['Appliance.Digest.TriggerX'];
     const hasDigestTrigger = !!device.abilities['Appliance.Digest.Trigger'];
 
@@ -44,3 +42,10 @@ function getDigestTriggerCapabilities(device, _channelIds) {
 
 module.exports = createDigestTriggerAbility;
 module.exports.getCapabilities = getDigestTriggerCapabilities;
+module.exports.ability = {
+    key: 'digestTrigger',
+    namespaces: ['Appliance.Digest.TriggerX', 'Appliance.Digest.Trigger'],
+    caches: [],
+    create: createDigestTriggerAbility,
+    getCapabilities: getDigestTriggerCapabilities
+};

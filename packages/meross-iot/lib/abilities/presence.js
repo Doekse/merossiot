@@ -336,16 +336,13 @@ registerNamespaceDescriptor('Appliance.Control.Sensor.LatestX', presenceLatestXD
  * @returns {Object|null} Presence sensor capability object or null if not supported
  */
 function getPresenceSensorCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
-    // Presence sensors are detected by Presence.Config or Presence.Study namespaces
     const hasPresenceConfig = !!device.abilities['Appliance.Control.Presence.Config'];
     const hasPresenceStudy = !!device.abilities['Appliance.Control.Presence.Study'];
-
-    if (!hasPresenceConfig && !hasPresenceStudy) {return null;}
-
-    // Check if device has Sensor.LatestX namespace which indicates data query capability including LUX
     const hasLatestX = !!device.abilities['Appliance.Control.Sensor.LatestX'];
+
+    if (!hasPresenceConfig && !hasPresenceStudy && !hasLatestX) {
+        return null;
+    }
 
     return {
         supported: true,
@@ -362,3 +359,14 @@ module.exports = createPresenceSensorAbility;
  * `test/presence.test.js`.
  */
 module.exports.getCapabilities = getPresenceSensorCapabilities;
+module.exports.ability = {
+    key: 'presence',
+    namespaces: [
+        'Appliance.Control.Sensor.LatestX',
+        'Appliance.Control.Presence.Config',
+        'Appliance.Control.Presence.Study'
+    ],
+    caches: ['_presenceSensorStateByChannel'],
+    create: createPresenceSensorAbility,
+    getCapabilities: getPresenceSensorCapabilities
+};

@@ -488,21 +488,75 @@ const OnlineStatus = {
  */
 const SmokeAlarmStatus = {
     /**
+     * Temperature sensor error (unmuted).
+     *
+     * @constant {number}
+     */
+    ERROR_TEMPERATURE: 17,
+
+    /**
+     * Smoke sensor error (unmuted).
+     *
+     * @constant {number}
+     */
+    ERROR_SMOKE: 18,
+
+    /**
+     * Battery error (unmuted).
+     *
+     * @constant {number}
+     */
+    ERROR_BATTERY: 19,
+
+    /**
+     * Temperature sensor error (muted).
+     *
+     * @constant {number}
+     */
+    ERROR_TEMPERATURE_MUTED: 20,
+
+    /**
+     * Smoke sensor error (muted).
+     *
+     * @constant {number}
+     */
+    ERROR_SMOKE_MUTED: 21,
+
+    /**
+     * Battery error (muted).
+     *
+     * @constant {number}
+     */
+    ERROR_BATTERY_MUTED: 22,
+
+    /**
      * Normal status.
      *
-     * No alarms detected and device is operating normally. All sensors
-     * are functioning within expected parameters.
+     * No alarms detected and device is operating normally.
      *
      * @constant {number}
      */
     NORMAL: 23,
 
     /**
+     * Active high-temperature alarm.
+     *
+     * @constant {number}
+     */
+    ALARM_TEMPERATURE: 24,
+
+    /**
+     * Active smoke alarm.
+     *
+     * @constant {number}
+     */
+    ALARM_SMOKE: 25,
+
+    /**
      * Temperature alarm muted.
      *
      * Temperature alarm has been silenced by user action. The alarm condition
-     * may still exist but audio alerts are suppressed. Visual indicators may
-     * still be active.
+     * may still exist but audio alerts are suppressed.
      *
      * @constant {number}
      */
@@ -512,8 +566,7 @@ const SmokeAlarmStatus = {
      * Smoke alarm muted.
      *
      * Smoke alarm has been silenced by user action. The alarm condition
-     * may still exist but audio alerts are suppressed. Visual indicators
-     * may still be active.
+     * may still exist but audio alerts are suppressed.
      *
      * @constant {number}
      */
@@ -522,14 +575,9 @@ const SmokeAlarmStatus = {
     /**
      * Interconnection status.
      *
-     * Indicates that interconnection/linkage status information is available.
      * When status is 170, the `interConn` field indicates:
      * - interConn = 0: Not interconnected (linkage not in progress)
      * - interConn = 1: Interconnected (linkage in progress)
-     *
-     * This is not an alarm state, but a status indicator for the
-     * interconnection system that allows multiple smoke detectors to
-     * communicate and trigger each other.
      *
      * @constant {number}
      */

@@ -2,10 +2,22 @@
 
 const chalk = require('chalk');
 
+/**
+ * @param {import('meross-iot').MerossSubDevice} subdevice
+ * @returns {import('meross-iot').DoorWindowFeature}
+ */
+function getDoorWindow(subdevice) {
+    if (!subdevice.doorWindow) {
+        throw new Error('Sensor has no doorWindow ability');
+    }
+    return subdevice.doorWindow;
+}
+
 function display(subdevice) {
-    const isOpen = subdevice.isOpen();
+    const doorWindow = getDoorWindow(subdevice);
+    const isOpen = doorWindow.isOpen();
     const battery = subdevice.getBattery();
-    const lastChange = subdevice.getLatestLmTime();
+    const lastChange = doorWindow.getLatestLmTime();
 
     let hasReadings = false;
 

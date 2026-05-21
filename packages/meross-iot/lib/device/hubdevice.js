@@ -77,7 +77,7 @@ class MerossHubDevice extends MerossDevice {
      * @example
      * const sensor = hub.getSubdevice('sensor123');
      * if (sensor) {
-     *     const temp = sensor.getLastSampledTemperature();
+     *     const temp = sensor.tempHum.getLastSampledTemperature();
      *     console.log(`Temperature: ${temp}°C`);
      * }
      */

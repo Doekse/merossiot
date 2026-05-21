@@ -182,10 +182,6 @@ function updateAlarmEvents(device, alarmData, source = 'push') {
  * @returns {Object|null} Alarm capability object or null if not supported
  */
 function getAlarmCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Alarm']) {
-        return null;
-    }
-
     return {
         supported: true,
         channels: channelIds
@@ -207,3 +203,10 @@ registerNamespaceDescriptor('Appliance.Control.Alarm', {
 
 module.exports = createAlarmAbility;
 module.exports.getCapabilities = getAlarmCapabilities;
+module.exports.ability = {
+    key: 'alarm',
+    namespaces: ['Appliance.Control.Alarm'],
+    caches: [],
+    create: createAlarmAbility,
+    getCapabilities: getAlarmCapabilities
+};

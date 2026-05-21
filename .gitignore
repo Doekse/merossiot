@@ -58,3 +58,6 @@ out/
 
 # Sniffer output directories
 meross-sniffer-*/
+
+# Local reference documentation
+docs/

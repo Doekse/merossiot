@@ -1,15 +1,16 @@
 'use strict';
 
-const { registerNamespaceDescriptor } = require('../dispatcher');
-const { getMessageTimestamp } = require('../utilities/state-ordering');
+const { registerNamespaceDescriptor, emitStateChangeFromSnapshot, mutateChannelState } = require('../dispatcher');
+const { OnlineStatus } = require('../enums');
+const HubBatteryState = require('../states/hub-battery-state');
+const { getMessageTimestamp, shouldApplyUpdate } = require('../utilities/state-ordering');
 
 /**
- * Maps hub MQTT namespaces to the payload array key on GETACK/PUSH (see push/factory.js).
+ * Maps hub MQTT namespaces to the payload array key on GETACK/PUSH.
  *
- * @private
  * @type {Record<string, string>}
  */
-const HUB_NAMESPACE_PAYLOAD_KEYS = {
+const HUB_NAMESPACE_KEYS = {
     'Appliance.Hub.Online': 'online',
     'Appliance.Hub.ToggleX': 'togglex',
     'Appliance.Hub.Battery': 'battery',
@@ -33,13 +34,14 @@ const HUB_NAMESPACE_PAYLOAD_KEYS = {
 };
 
 /**
- * @private
+ * Extracts hub namespace item arrays from GETACK/PUSH raw payloads.
+ *
  * @param {string} namespace
  * @param {Object} rawData
  * @returns {Array<Object>|null}
  */
-function extractHubPayloadItems(namespace, rawData) {
-    const dataKey = HUB_NAMESPACE_PAYLOAD_KEYS[namespace];
+function extractHubItems(namespace, rawData) {
+    const dataKey = HUB_NAMESPACE_KEYS[namespace];
     if (!dataKey || !rawData) {
         return null;
     }
@@ -55,8 +57,60 @@ function extractHubPayloadItems(namespace, rawData) {
 }
 
 /**
- * @private
- * @param {Object} device
+ * Hub subdevice model identifiers grouped by capability family.
+ *
+ * @type {Record<string, { models: string[] }>}
+ */
+const SUBDEVICE_FAMILIES = {
+    tempHum: { models: ['ms100', 'ms100f', 'ms130'] },
+    doorWindow: { models: ['ms200'] },
+    waterLeak: { models: ['ms400', 'ms405'] },
+    smoke: { models: ['ma151', 'gs559'] },
+    mts100: { models: ['mts100v3', 'mts100', 'mts150', 'mts150p'] }
+};
+
+/**
+ * Whether a subdevice matches a hub subdevice capability family.
+ *
+ * @param {Object} device - Hub or subdevice instance
+ * @param {keyof typeof SUBDEVICE_FAMILIES} family
+ * @returns {boolean}
+ */
+function subdeviceIs(device, family) {
+    if (!device?.subdeviceId) {
+        return false;
+    }
+    const entry = SUBDEVICE_FAMILIES[family];
+    if (!entry) {
+        return false;
+    }
+    const deviceType = ((device._type || device.type || device.deviceType || '')).toLowerCase();
+    return entry.models.includes(deviceType);
+}
+
+/**
+ * Resolves the {@link SUBDEVICE_FAMILIES} key for a subdevice model string.
+ *
+ * @param {Object} device - Subdevice instance
+ * @returns {keyof typeof SUBDEVICE_FAMILIES|undefined}
+ */
+function getSubdeviceCapability(device) {
+    if (!device?.subdeviceId) {
+        return undefined;
+    }
+    const deviceType = ((device._type || device.type || device.deviceType || '')).toLowerCase();
+    for (const [family, entry] of Object.entries(SUBDEVICE_FAMILIES)) {
+        if (entry.models.includes(deviceType)) {
+            return family;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Forwards hub GETACK/PUSH array items to matching subdevices by `id`.
+ *
+ * @param {Object} device - Hub device
  * @param {Object|undefined} header
  * @param {string} namespace
  * @param {Array<Object>|null|undefined} items
@@ -75,6 +129,140 @@ async function routeItemsToSubdevices(device, header, namespace, items) {
             await subdevice.handleMessage({ header, namespace, payload: item });
         }
     }
+}
+
+/**
+ * Builds a hub GET payload listing subdevice IDs under `payloadKey`.
+ *
+ * @param {string} payloadKey
+ * @param {string|string[]|undefined} ids
+ * @returns {Object}
+ */
+function buildHubGetPayload(payloadKey, ids) {
+    const payload = { [payloadKey]: [] };
+    if (Array.isArray(ids)) {
+        ids.forEach(id => payload[payloadKey].push({ id }));
+    } else if (ids != null) {
+        payload[payloadKey].push({ id: ids });
+    }
+    return payload;
+}
+
+/**
+ * Reads item array(s) from a GETACK payload, trying alternate response keys when needed.
+ *
+ * @param {Object|undefined} response
+ * @param {string} routeKey
+ * @param {string[]} [responseKeys]
+ * @returns {Array<Object>|null}
+ */
+function extractGetResponseItems(response, routeKey, responseKeys) {
+    const keys = responseKeys || [routeKey];
+    for (const key of keys) {
+        if (response && response[key] != null) {
+            const items = response[key];
+            return Array.isArray(items) ? items : [items];
+        }
+    }
+    return null;
+}
+
+/**
+ * Applies GETACK items to one subdevice's dispatcher state.
+ *
+ * @param {Object} device
+ * @param {Object} header
+ * @param {string} namespace
+ * @param {Array<Object>|Object} items
+ * @param {{ wholeArray?: boolean }} [options]
+ * @returns {Promise<void>}
+ */
+async function applyGetItemsToSubdevice(device, header, namespace, items, { wholeArray = false } = {}) {
+    if (!items) {
+        return;
+    }
+    if (wholeArray) {
+        await device.handleMessage({ header, namespace, payload: items });
+        return;
+    }
+    const list = Array.isArray(items) ? items : [items];
+    for (const item of list) {
+        if (item.id === device.subdeviceId || list.length === 1) {
+            await device.handleMessage({ header, namespace, payload: item });
+        }
+    }
+}
+
+/**
+ * Issues a hub GET and routes ACK items to subdevice state (single subdevice or hub fan-out).
+ *
+ * @param {Object} device - Hub or subdevice instance
+ * @param {Object} options
+ * @param {string} options.namespace - MQTT namespace
+ * @param {string} options.payloadKey - Request body array key
+ * @param {string|string[]|undefined} [options.ids] - Hub: subdevice ID(s); omitted with subdevice uses `device.subdeviceId`
+ * @param {string} [options.routeKey] - Response array key when it differs from `payloadKey`
+ * @param {string} [options.requestKey] - Request key when it differs from `payloadKey` (e.g. ScheduleB GET uses `schedule`)
+ * @param {string[]} [options.responseKeys] - Alternate response keys to try (e.g. `waterleak` / `waterLeak`)
+ * @param {boolean} [options.subdeviceWholeArray] - Pass the full response array as one payload on subdevices (smoke)
+ * @param {null|undefined} [options.transport] - Fourth argument to `publishMessage` when set to `null`
+ * @returns {Promise<Object|undefined>} GETACK payload
+ */
+async function publishHubGet(device, options) {
+    const {
+        namespace,
+        payloadKey,
+        ids,
+        routeKey = payloadKey,
+        requestKey = payloadKey,
+        responseKeys,
+        subdeviceWholeArray = false,
+        transport
+    } = options;
+
+    const payload = device.subdeviceId
+        ? { [requestKey]: [{ id: device.subdeviceId }] }
+        : buildHubGetPayload(requestKey, ids);
+
+    const publishArgs = transport === null
+        ? ['GET', namespace, payload, null]
+        : ['GET', namespace, payload];
+
+    const { header, payload: response } = await device.publishMessage(...publishArgs);
+    const items = extractGetResponseItems(response, routeKey, responseKeys);
+    if (!items) {
+        return response;
+    }
+
+    if (device.subdeviceId) {
+        await applyGetItemsToSubdevice(device, header, namespace, items, {
+            wholeArray: subdeviceWholeArray
+        });
+    } else {
+        await routeItemsToSubdevices(device, header, namespace, items);
+    }
+
+    return response;
+}
+
+/**
+ * Issues a hub SET with a keyed entry array.
+ *
+ * @param {Object} device
+ * @param {Object} options
+ * @param {string} options.namespace
+ * @param {string} options.payloadKey
+ * @param {Array<Object>} options.entries
+ * @param {null|undefined} [options.transport]
+ * @returns {Promise<Object|undefined>} SETACK payload
+ */
+async function publishHubSet(device, options) {
+    const { namespace, payloadKey, entries, transport } = options;
+    const publishArgs = transport === null
+        ? ['SET', namespace, { [payloadKey]: entries }, null]
+        : ['SET', namespace, { [payloadKey]: entries }];
+    const { payload: response } = await device.publishMessage(...publishArgs);
+    return response;
 }
 
 /** @param {Array<{type?: string, subdeviceId: string}>} subdevices */
@@ -96,13 +284,13 @@ function collectIdsByTypes(subdevices, types) {
  */
 function handlePushNotification(device, notification) {
     const namespace = notification?.namespace || '';
-    if (!HUB_NAMESPACE_PAYLOAD_KEYS[namespace]) {
+    if (!HUB_NAMESPACE_KEYS[namespace]) {
         return false;
     }
 
-    const items = extractHubPayloadItems(namespace, notification?.rawData || {});
+    const items = extractHubItems(namespace, notification?.rawData || {});
     if (!items || items.length === 0) {
-        const dataKey = HUB_NAMESPACE_PAYLOAD_KEYS[namespace];
+        const dataKey = HUB_NAMESPACE_KEYS[namespace];
         const logger = device.meross.options.logger || console.warn;
         logger(`${device.constructor.name} could not find ${dataKey} in push notification: ${JSON.stringify(notification?.rawData)}`);
         return false;
@@ -196,13 +384,17 @@ function createHubAbility(device) {
         const tempHumIds = collectIdsByTypes(subdevices, ['ms100', 'ms100f', 'ms130']);
         if (tempHumIds.length > 0) {
             try {
-                await hubFeature.getAlertSensor({ sensorIds: tempHumIds });
+                if (device.sensorAlert && typeof device.sensorAlert.get === 'function') {
+                    await device.sensorAlert.get({ sensorIds: tempHumIds });
+                }
             } catch (alertError) {
                 const logger = device.meross?.options?.logger || console.debug;
                 logger(`Failed to fetch sensor alert config: ${alertError.message}`);
             }
             try {
-                await hubFeature.getSensorAdjust({ sensorIds: tempHumIds });
+                if (device.sensorAdjust && typeof device.sensorAdjust.get === 'function') {
+                    await device.sensorAdjust.get({ sensorIds: tempHumIds });
+                }
             } catch (adjustError) {
                 const logger = device.meross?.options?.logger || console.debug;
                 logger(`Failed to fetch sensor adjust config: ${adjustError.message}`);
@@ -212,7 +404,9 @@ function createHubAbility(device) {
         const doorWindowIds = collectIdsByTypes(subdevices, ['ms200']);
         if (doorWindowIds.length > 0) {
             try {
-                await hubFeature.getSensorDoorWindow({ sensorIds: doorWindowIds });
+                if (device.doorWindow && typeof device.doorWindow.get === 'function') {
+                    await device.doorWindow.get({ sensorIds: doorWindowIds });
+                }
             } catch (doorError) {
                 const logger = device.meross?.options?.logger || console.debug;
                 logger(`Failed to fetch door/window sensor data: ${doorError.message}`);
@@ -232,31 +426,8 @@ function createHubAbility(device) {
             return;
         }
 
-        await hubFeature.getMts100All({ ids: mts100Ids });
-
-        try {
-            await hubFeature.getMts100Adjust({ ids: mts100Ids });
-        } catch (adjustError) {
-            const logger = device.meross?.options?.logger || console.debug;
-            logger(`Failed to fetch MTS100 adjust: ${adjustError.message}`);
-        }
-        try {
-            await hubFeature.getMts100SuperCtl({ ids: mts100Ids });
-        } catch (superCtlError) {
-            const logger = device.meross?.options?.logger || console.debug;
-            logger(`Failed to fetch MTS100 super control: ${superCtlError.message}`);
-        }
-        try {
-            await hubFeature.getMts100ScheduleB({ ids: mts100Ids });
-        } catch (scheduleError) {
-            const logger = device.meross?.options?.logger || console.debug;
-            logger(`Failed to fetch MTS100 schedule B: ${scheduleError.message}`);
-        }
-        try {
-            await hubFeature.getMts100Config({ ids: mts100Ids });
-        } catch (configError) {
-            const logger = device.meross?.options?.logger || console.debug;
-            logger(`Failed to fetch MTS100 config: ${configError.message}`);
+        if (device.mts100 && typeof device.mts100.get === 'function') {
+            await device.mts100.get({ ids: mts100Ids, complete: true });
         }
     }
 
@@ -498,319 +669,6 @@ function createHubAbility(device) {
             }
 
             return response;
-        },
-
-        /**
-         * Gets temperature and humidity sensor data for specified sensor IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {string|Array<string>} options.sensorIds - Single sensor ID or array of sensor IDs
-         * @returns {Promise<Object>} Promise that resolves with temperature/humidity data containing `tempHum` array
-         */
-        async getTempHumSensor(options) {
-            const { sensorIds } = options;
-            const payload = { 'tempHum': [] };
-            if (Array.isArray(sensorIds)) {
-                sensorIds.forEach(id => payload.tempHum.push({ id }));
-            } else {
-                payload.tempHum.push({ id: sensorIds });
-            }
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.TempHum', payload);
-            return out;
-        },
-
-        /**
-         * Gets alert sensor data for specified sensor IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {string|Array<string>} options.sensorIds - Single sensor ID or array of sensor IDs
-         * @returns {Promise<Object>} Promise that resolves with alert sensor data containing `alert` array
-         */
-        async getAlertSensor(options) {
-            const { sensorIds } = options;
-            const payload = { 'alert': [] };
-            if (Array.isArray(sensorIds)) {
-                sensorIds.forEach(id => payload.alert.push({ id }));
-            } else {
-                payload.alert.push({ id: sensorIds });
-            }
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Alert', payload);
-
-            if (response && response.alert && Array.isArray(response.alert)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Sensor.Alert', response.alert);
-            }
-
-            return response;
-        },
-
-        /**
-         * Gets smoke alarm status for specified smoke detector IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {string|Array<string>} options.sensorIds - Single sensor ID or array of sensor IDs
-         * @returns {Promise<Object>} Promise that resolves with smoke alarm status data containing `smokeAlarm` array
-         */
-        async getSmokeAlarmStatus(options) {
-            const { sensorIds } = options;
-            const payload = { 'smokeAlarm': [] };
-            if (Array.isArray(sensorIds)) {
-                sensorIds.forEach(id => payload.smokeAlarm.push({ id }));
-            } else {
-                payload.smokeAlarm.push({ id: sensorIds });
-            }
-
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Smoke', payload);
-
-            if (response && response.smokeAlarm && Array.isArray(response.smokeAlarm)) {
-                for (const smokeData of response.smokeAlarm) {
-                    const subdeviceId = smokeData.id;
-                    const subdevice = device.getSubdevice(subdeviceId);
-                    if (subdevice && typeof subdevice.handleMessage === 'function') {
-                        await subdevice.handleMessage({ header, namespace: 'Appliance.Hub.Sensor.Smoke', payload: smokeData });
-                    }
-                }
-            }
-
-            return response;
-        },
-
-        /**
-         * Gets water leak sensor data for specified sensor IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {string|Array<string>} options.sensorIds - Single sensor ID or array of sensor IDs
-         * @returns {Promise<Object>} Promise that resolves with water leak sensor data containing `waterleak` array
-         */
-        async getWaterLeakSensor(options) {
-            const { sensorIds } = options;
-            const payload = { 'waterleak': [] };
-            if (Array.isArray(sensorIds)) {
-                sensorIds.forEach(id => payload.waterleak.push({ id }));
-            } else {
-                payload.waterleak.push({ id: sensorIds });
-            }
-            const { payload: out } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.WaterLeak', payload);
-            return out;
-        },
-
-        /**
-         * Gets sensor adjustment (calibration) settings for specified sensor IDs.
-         *
-         * @param {Object} [options={}] - Get options
-         * @param {string|Array<string>} [options.sensorIds=[]] - Single sensor ID or array of sensor IDs, empty array gets all
-         * @returns {Promise<Object>} Promise that resolves with sensor adjustment data containing `adjust` array
-         */
-        async getSensorAdjust(options = {}) {
-            const { sensorIds = [] } = options;
-            const payload = { 'adjust': [] };
-            if (Array.isArray(sensorIds) && sensorIds.length > 0) {
-                sensorIds.forEach(id => payload.adjust.push({ id }));
-            }
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.Adjust', payload);
-
-            if (response && response.adjust && Array.isArray(response.adjust)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Sensor.Adjust', response.adjust);
-            }
-
-            return response;
-        },
-
-        /**
-         * Controls (sets) sensor adjustment (calibration) settings.
-         *
-         * @param {Object} options - Set options
-         * @param {Object|Array<Object>} options.adjustData - Sensor adjustment data
-         * @returns {Promise<Object>} Promise that resolves with response data
-         */
-        async setSensorAdjust(options) {
-            const { adjustData } = options;
-            const payload = { 'adjust': Array.isArray(adjustData) ? adjustData : [adjustData] };
-            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Sensor.Adjust', payload);
-            return out;
-        },
-
-        /**
-         * Gets door/window sensor data for specified sensor IDs.
-         *
-         * @param {Object} [options={}] - Get options
-         * @param {string|Array<string>} [options.sensorIds=[]] - Single sensor ID or array of sensor IDs, empty array gets all (max 16)
-         * @returns {Promise<Object>} Promise that resolves with door/window sensor data containing `doorWindow` array
-         */
-        async getSensorDoorWindow(options = {}) {
-            const { sensorIds = [] } = options;
-            const payload = { 'doorWindow': [] };
-            if (Array.isArray(sensorIds) && sensorIds.length > 0) {
-                sensorIds.forEach(id => payload.doorWindow.push({ id }));
-            }
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Sensor.DoorWindow', payload);
-
-            if (response && response.doorWindow && Array.isArray(response.doorWindow)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Sensor.DoorWindow', response.doorWindow);
-            }
-
-            return response;
-        },
-
-        /**
-         * Controls (sets) door/window sensor synchronization (if supported).
-         *
-         * @param {Object} options - Set options
-         * @param {Object|Array<Object>} options.doorWindowData - Door/window data
-         * @returns {Promise<Object>} Promise that resolves with response data
-         */
-        async setSensorDoorWindow(options) {
-            const { doorWindowData } = options;
-            const payload = { 'doorWindow': Array.isArray(doorWindowData) ? doorWindowData : [doorWindowData] };
-            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Sensor.DoorWindow', payload);
-            return out;
-        },
-
-        /**
-         * Gets MTS100 thermostat valve data for specified IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {Array<string>} options.ids - Array of MTS100 subdevice IDs
-         * @returns {Promise<Object>} Promise that resolves with MTS100 data containing `all` array
-         */
-        async getMts100All(options) {
-            const { ids } = options;
-            const payload = { 'all': [] };
-            ids.forEach(id => payload.all.push({ id }));
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.All', payload, null);
-
-            if (response && response.all && Array.isArray(response.all)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.All', response.all);
-            }
-
-            return response;
-        },
-
-        /**
-         * Controls MTS100 thermostat mode.
-         *
-         * @param {Object} options - Mode options
-         * @param {string} options.subId - MTS100 subdevice ID
-         * @param {number|import('../enums').ThermostatMode} options.mode - Mode value from ThermostatMode enum
-         * @returns {Promise<Object>} Promise that resolves with response data
-         */
-        async setMts100Mode(options) {
-            const { subId, mode } = options;
-            const payload = { 'mode': [{ 'id': subId, 'state': mode }] };
-            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Mode', payload);
-            return out;
-        },
-
-        /**
-         * Controls MTS100 thermostat temperature settings.
-         *
-         * @param {Object} options - Temperature options
-         * @param {string} options.subId - MTS100 subdevice ID
-         * @param {Object} options.temp - Temperature object (will be mutated with subId)
-         * @returns {Promise<Object>} Promise that resolves with response data
-         */
-        async setMts100Temperature(options) {
-            const { subId, temp } = options;
-            temp.id = subId;
-            const payload = { 'temperature': [temp] };
-            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Temperature', payload);
-            return out;
-        },
-
-        /**
-         * Controls MTS100 thermostat adjustment settings.
-         *
-         * @param {Object} options - Adjustment options
-         * @param {string} options.subId - MTS100 subdevice ID
-         * @param {Object} options.adjustData - Adjustment data object (will be mutated with subId)
-         * @returns {Promise<Object>} Promise that resolves with response data
-         */
-        async setMts100Adjust(options) {
-            const { subId, adjustData } = options;
-            adjustData.id = subId;
-            const payload = { 'adjust': [adjustData] };
-            const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Adjust', payload);
-            return out;
-        },
-
-        /**
-         * Gets MTS100 adjustment settings for specified IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {Array<string>} options.ids - Array of MTS100 subdevice IDs
-         * @returns {Promise<Object>} Promise that resolves with adjustment data containing `adjust` array
-         */
-        async getMts100Adjust(options) {
-            const { ids } = options;
-            const payload = { 'adjust': [] };
-            ids.forEach(id => payload.adjust.push({ id }));
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Adjust', payload);
-
-            if (response && response.adjust && Array.isArray(response.adjust)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.Adjust', response.adjust);
-            }
-
-            return response;
-        },
-
-        /**
-         * Gets MTS100 super control data for specified IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {Array<string>} options.ids - Array of MTS100 subdevice IDs
-         * @returns {Promise<Object>} Promise that resolves with super control data containing `superCtl` array
-         */
-        async getMts100SuperCtl(options) {
-            const { ids } = options;
-            const payload = { 'superCtl': [] };
-            ids.forEach(id => payload.superCtl.push({ id }));
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.SuperCtl', payload);
-
-            if (response && response.superCtl && Array.isArray(response.superCtl)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.SuperCtl', response.superCtl);
-            }
-
-            return response;
-        },
-
-        /**
-         * Gets MTS100 schedule B data for specified IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {Array<string>} options.ids - Array of MTS100 subdevice IDs
-         * @returns {Promise<Object>} Promise that resolves with schedule B data containing `scheduleB` array
-         */
-        async getMts100ScheduleB(options) {
-            const { ids } = options;
-            const payload = { 'scheduleB': [] };
-            ids.forEach(id => payload.scheduleB.push({ id }));
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.ScheduleB', payload);
-            const scheduleItems = response?.scheduleB || response?.schedule;
-
-            if (scheduleItems && Array.isArray(scheduleItems)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.ScheduleB', scheduleItems);
-            }
-
-            return response;
-        },
-
-        /**
-         * Gets MTS100 configuration for specified IDs.
-         *
-         * @param {Object} options - Get options
-         * @param {Array<string>} options.ids - Array of MTS100 subdevice IDs
-         * @returns {Promise<Object>} Promise that resolves with configuration data containing `config` array
-         */
-        async getMts100Config(options) {
-            const { ids } = options;
-            const payload = { 'config': [] };
-            ids.forEach(id => payload.config.push({ id }));
-            const { header, payload: response } = await device.publishMessage('GET', 'Appliance.Hub.Mts100.Config', payload);
-
-            if (response && response.config && Array.isArray(response.config)) {
-                await routeItemsToSubdevices(device, header, 'Appliance.Hub.Mts100.Config', response.config);
-            }
-
-            return response;
         }
     };
 
@@ -825,8 +683,6 @@ function createHubAbility(device) {
  * @returns {Object|null} Hub capability object or null if not supported
  */
 function getHubCapabilities(device, _channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasSubDeviceList = !!device.abilities['Appliance.Hub.SubDeviceList'];
     const hasBattery = !!device.abilities['Appliance.Hub.Battery'];
 
@@ -839,106 +695,146 @@ function getHubCapabilities(device, _channelIds) {
     };
 }
 
+const hubBatteryDescriptor = {
+    namespace: 'Appliance.Hub.Battery',
+    stateMap: '_batteryStateByChannel',
+    StateClass: HubBatteryState,
+    eventType: 'battery',
+    gateKey: '_handleBattery',
+    snapshot: (s) => s.toSnapshot(),
+    emitValue: (_old, newSnap) => newSnap
+};
+
+const hubOnlineDescriptor = {
+    namespace: 'Appliance.Hub.Online',
+    eventType: 'online',
+    gateKey: '_handleOnline',
+    emitValue: (oldVal, newVal) => (oldVal !== newVal ? newVal : undefined)
+};
+
 /**
- * Gets sensor capability information for hub subdevices.
+ * Maps numeric hub online status codes to {@link OnlineStatus} values.
  *
- * Detects hub sensor types and returns appropriate sensor data type capabilities.
- * This is for subdevices that connect through hubs (temperature/humidity sensors,
- * water leak sensors, smoke detectors).
- *
- * @param {Object} device - The device instance
- * @param {Array<number>} channelIds - Array of channel IDs
- * @returns {Object|null} Sensor capability object or null if not a hub sensor
+ * @param {number} statusValue
+ * @returns {number}
  */
-function getSensorCapabilities(device, channelIds) {
-    // Skip if not a subdevice (subdevices have a subdeviceId property)
-    if (!device.subdeviceId) {
-        return null;
+function mapOnlineStatus(statusValue) {
+    const statusMap = {
+        0: OnlineStatus.NOT_ONLINE,
+        1: OnlineStatus.ONLINE,
+        2: OnlineStatus.OFFLINE,
+        3: OnlineStatus.UPGRADING
+    };
+    return statusMap[statusValue] ?? OnlineStatus.UNKNOWN;
+}
+
+/**
+ * Applies hub online payloads with the shared `'online'` ordering gate.
+ *
+ * @param {object} device
+ * @param {Object} data
+ * @param {number|null|undefined} messageTs
+ * @param {string} source
+ * @param {Object} [options]
+ * @param {boolean} [options.touchLastActiveTime=false]
+ * @returns {void}
+ */
+function applySubdeviceOnline(device, data, messageTs, source, { touchLastActiveTime = false } = {}) {
+    let statusValue;
+    let lastActiveTime;
+
+    if (data.online && data.online.status !== undefined) {
+        statusValue = data.online.status;
+        lastActiveTime = data.online.lastActiveTime;
+    } else if (data.status !== undefined) {
+        statusValue = data.status;
+        lastActiveTime = data.lastActiveTime;
     }
 
-    // Get device type - subdevices store it in _type, regular devices use deviceType
-    const deviceType = ((device._type || device.type || device.deviceType || '').toLowerCase());
-
-    // Check if this is a hub temperature/humidity sensor
-    // Check constructor name first (most reliable), then device type
-    const isTempHumSensor = device.constructor.name === 'HubTempHumSensor' ||
-        ['ms100', 'ms100f', 'ms130'].includes(deviceType);
-    if (isTempHumSensor) {
-        return {
-            supported: true,
-            channels: channelIds,
-            temperature: true,
-            humidity: true,
-            lux: true
-        };
+    if (statusValue === undefined) {
+        return;
     }
 
-    // Check if this is a hub water leak sensor
-    const isWaterLeakSensor = device.constructor.name === 'HubWaterLeakSensor' ||
-        ['ms405', 'ms400'].includes(deviceType);
-    if (isWaterLeakSensor) {
-        return {
-            supported: true,
-            channels: channelIds,
-            waterLeak: true
-        };
+    if (!shouldApplyUpdate(device, 'online', messageTs)) {
+        return;
     }
 
-    // Check if this is a hub smoke detector
-    const isSmokeDetector = device.constructor.name === 'HubSmokeDetector' ||
-        ['ma151'].includes(deviceType);
-    if (isSmokeDetector) {
-        return {
-            supported: true,
-            channels: channelIds,
-            smoke: true
-        };
+    const oldOnline = device.onlineStatus;
+    device._onlineStatus = mapOnlineStatus(statusValue);
+    if (touchLastActiveTime) {
+        device._lastActiveTime = lastActiveTime;
     }
 
-    const isDoorWindowSensor = device.constructor.name === 'HubDoorWindowSensor' ||
-        ['ms200'].includes(deviceType);
-    if (isDoorWindowSensor) {
-        return {
-            supported: true,
-            channels: channelIds,
-            doorWindow: true
-        };
-    }
+    emitStateChangeFromSnapshot(
+        device,
+        hubOnlineDescriptor,
+        source,
+        0,
+        oldOnline,
+        device.onlineStatus
+    );
+}
 
-    return null;
+/**
+ * Updates channel-0 battery state and emits a scalar `stateChange` value.
+ *
+ * @param {object} device
+ * @param {Object|number|null} data
+ * @param {string} source
+ * @returns {void}
+ */
+function applySubdeviceBattery(device, data, source) {
+    mutateChannelState(device, hubBatteryDescriptor, (state) => {
+        state.update(data);
+    }, source);
 }
 
 registerNamespaceDescriptor('Appliance.Hub.Battery', {
-    namespace: 'Appliance.Hub.Battery',
-    gateKey: '_handleBattery',
-    customApply: (device, payload) => {
-        if (device.subdeviceId != null && typeof device._handleBattery === 'function') {
-            device._handleBattery(payload);
+    ...hubBatteryDescriptor,
+    customApply: (device, payload, source) => {
+        if (device.subdeviceId == null) {
+            return;
         }
+        applySubdeviceBattery(device, payload, source);
     }
 });
 
 registerNamespaceDescriptor('Appliance.Hub.Mts100.Battery', {
+    ...hubBatteryDescriptor,
     namespace: 'Appliance.Hub.Mts100.Battery',
-    gateKey: '_handleBattery',
-    customApply: (device, payload) => {
-        if (device.subdeviceId != null && typeof device._handleBattery === 'function') {
-            device._handleBattery(payload);
+    customApply: (device, payload, source) => {
+        if (device.subdeviceId == null) {
+            return;
         }
+        applySubdeviceBattery(device, payload, source);
     }
 });
 
 registerNamespaceDescriptor('Appliance.Hub.Online', {
-    namespace: 'Appliance.Hub.Online',
-    gateKey: '_handleOnline',
-    customApply: (device, payload, _source, header) => {
-        if (device.subdeviceId != null && typeof device._handleOnline === 'function') {
-            device._handleOnline(payload, getMessageTimestamp(header));
+    ...hubOnlineDescriptor,
+    customApply: (device, payload, source, header) => {
+        if (device.subdeviceId == null) {
+            return;
         }
+        applySubdeviceOnline(device, payload, getMessageTimestamp(header), source, {
+            touchLastActiveTime: true
+        });
     }
 });
 
 module.exports = createHubAbility;
+module.exports.extractHubItems = extractHubItems;
+module.exports.SUBDEVICE_FAMILIES = SUBDEVICE_FAMILIES;
+module.exports.subdeviceIs = subdeviceIs;
+module.exports.getSubdeviceCapability = getSubdeviceCapability;
+module.exports.applySubdeviceBattery = applySubdeviceBattery;
+module.exports.applySubdeviceOnline = applySubdeviceOnline;
 module.exports.handlePushNotification = handlePushNotification;
+module.exports.routeItemsToSubdevices = routeItemsToSubdevices;
+module.exports.publishHubGet = publishHubGet;
+module.exports.publishHubSet = publishHubSet;
 module.exports.getCapabilities = getHubCapabilities;
-module.exports.getSensorCapabilities = getSensorCapabilities;
+module.exports.ability = {
+    key: 'hub',
+    getCapabilities: getHubCapabilities
+};

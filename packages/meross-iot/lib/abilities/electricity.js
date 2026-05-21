@@ -135,8 +135,6 @@ function updateElectricityState(device, electricityData, source = 'response') {
  * @returns {Object|null} Electricity capability object or null if not supported
  */
 function getElectricityCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Electricity']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -145,3 +143,10 @@ function getElectricityCapabilities(device, channelIds) {
 
 module.exports = createElectricityAbility;
 module.exports.getCapabilities = getElectricityCapabilities;
+module.exports.ability = {
+    key: 'electricity',
+    namespaces: ['Appliance.Control.Electricity'],
+    caches: [],
+    create: createElectricityAbility,
+    getCapabilities: getElectricityCapabilities
+};

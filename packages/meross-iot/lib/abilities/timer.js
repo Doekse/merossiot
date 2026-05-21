@@ -560,8 +560,6 @@ function updateTimerXState(device, timerxData, source = 'response') {
  * @returns {Object|null} Timer capability object or null if not supported
  */
 function getTimerCapabilities(device, channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasTimerX = !!device.abilities['Appliance.Control.TimerX'];
     const hasTimer = !!device.abilities['Appliance.Control.Timer'];
 
@@ -592,4 +590,11 @@ module.exports = createTimerAbility;
  * `test/timer.test.js`.
  */
 module.exports.getCapabilities = getTimerCapabilities;
+module.exports.ability = {
+    key: 'timer',
+    namespaces: ['Appliance.Control.TimerX', 'Appliance.Control.Timer'],
+    caches: ['_timerxStateByChannel'],
+    create: createTimerAbility,
+    getCapabilities: getTimerCapabilities
+};
 

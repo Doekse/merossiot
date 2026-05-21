@@ -81,10 +81,6 @@ function createDNDAbility(device) {
  * @returns {Object|null} DND capability object or null if not supported
  */
 function getDNDCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.System.DNDMode']) {
-        return null;
-    }
-
     return {
         supported: true,
         channels: channelIds
@@ -93,3 +89,10 @@ function getDNDCapabilities(device, channelIds) {
 
 module.exports = createDNDAbility;
 module.exports.getCapabilities = getDNDCapabilities;
+module.exports.ability = {
+    key: 'dnd',
+    namespaces: ['Appliance.System.DNDMode'],
+    caches: [],
+    create: createDNDAbility,
+    getCapabilities: getDNDCapabilities
+};

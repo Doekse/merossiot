@@ -1,77 +1,140 @@
 'use strict';
 
 const chalk = require('chalk');
-const { SmokeAlarmStatus } = require('meross-iot');
 
+/**
+ * @param {import('meross-iot').MerossSubDevice} subdevice
+ * @returns {import('meross-iot').SmokeAlarmFeature}
+ */
+function getSmokeAlarm(subdevice) {
+    if (!subdevice.smokeAlarm) {
+        throw new Error('Smoke detector has no smokeAlarm ability');
+    }
+    return subdevice.smokeAlarm;
+}
+
+/**
+ * @param {import('meross-iot').SmokeAlarmFeature} smoke
+ * @returns {string}
+ */
+function formatConditionLabel(condition, channel, isMuted, status) {
+    if (condition === 'safe') {
+        return 'Safe';
+    }
+    if (condition === 'alarming') {
+        if (channel === 'smoke') {
+            return 'Smoke alarm';
+        }
+        if (channel === 'temperature') {
+            return 'Heat alarm';
+        }
+    }
+    if (condition === 'silenced') {
+        if (channel === 'smoke') {
+            return 'Smoke alarm (silenced)';
+        }
+        if (channel === 'temperature') {
+            return 'Heat alarm (silenced)';
+        }
+    }
+    if (condition === 'fault') {
+        const suffix = isMuted ? ' (silenced)' : '';
+        if (channel === 'battery') {
+            return `Battery fault${suffix}`;
+        }
+        if (channel === 'temperature') {
+            return `Temperature sensor fault${suffix}`;
+        }
+        if (channel === 'smoke') {
+            return `Smoke sensor fault${suffix}`;
+        }
+        return `Fault${suffix}`;
+    }
+    if (condition === 'unknown') {
+        if (status === null || status === undefined) {
+            return 'Unknown';
+        }
+        return `Unknown (code ${status})`;
+    }
+
+    return condition;
+}
+
+/**
+ * @param {import('meross-iot').SmokeAlarmInterconnect} interconnect
+ * @returns {string}
+ */
+function formatInterconnectLabel(interconnect) {
+    if (interconnect.linkActive) {
+        return 'Link active';
+    }
+    return 'Idle (no mesh event)';
+}
+
+/**
+ * CLI presentation labels from the meross-iot smokeAlarm API.
+ *
+ * @param {import('meross-iot').SmokeAlarmFeature} smoke
+ * @returns {{ condition: string, interconnect: string|null }}
+ */
+function deriveSmokeAlarmView(smoke) {
+    const interconnect = smoke.getInterconnect();
+    return {
+        condition: formatConditionLabel(
+            smoke.getCondition(),
+            smoke.getChannel(),
+            smoke.isMuted(),
+            smoke.getStatus()
+        ),
+        interconnect: interconnect !== null ? formatInterconnectLabel(interconnect) : null
+    };
+}
+
+/**
+ * @param {import('meross-iot').MerossSubDevice} subdevice
+ * @returns {boolean}
+ */
 function display(subdevice) {
-    const status = subdevice.getSmokeAlarmStatus();
-    const interConn = subdevice.getInterConnStatus();
+    const smoke = getSmokeAlarm(subdevice);
+    const view = deriveSmokeAlarmView(smoke);
     const battery = subdevice.getBattery();
 
     console.log(`\n    ${chalk.bold.underline('Sensors')}`);
+
+    console.log(`      ${chalk.white.bold('Condition')}: ${chalk.italic(view.condition)}`);
 
     if (battery !== null && battery !== undefined) {
         console.log(`      ${chalk.white.bold('Battery')}: ${chalk.italic(`${battery}%`)}`);
     }
 
-    let alarmStatus;
-    if (status === SmokeAlarmStatus.NORMAL ||
-        status === SmokeAlarmStatus.INTERCONNECTION_STATUS) {
-        alarmStatus = 'Safe';
-    } else if (status === SmokeAlarmStatus.MUTE_SMOKE_ALARM) {
-        alarmStatus = 'Smoke Alarm Muted';
-    } else if (status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM) {
-        alarmStatus = 'Temperature Alarm Muted';
-    } else {
-        alarmStatus = `Status: ${status}`;
-    }
-    console.log(`      ${chalk.white.bold('Alarm')}: ${chalk.italic(alarmStatus)}`);
-
-    console.log(`\n    ${chalk.bold.underline('Configuration')}`);
-
-    console.log(`      ${chalk.white.bold('Error')}: ${chalk.italic('OK')}`);
-
-    if (interConn !== null && interConn !== undefined) {
-        console.log(`      ${chalk.white.bold('Interconn')}: ${chalk.italic(interConn)}`);
+    if (view.interconnect !== null) {
+        console.log(`\n    ${chalk.bold.underline('Interconnect')}`);
+        console.log(`      ${chalk.white.bold('Mesh')}: ${chalk.italic(view.interconnect)}`);
     }
 
-    let mutedStatus = 'Off';
-    if (status === SmokeAlarmStatus.MUTE_SMOKE_ALARM) {
-        mutedStatus = 'Smoke Alarm';
-    } else if (status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM) {
-        mutedStatus = 'Temperature Alarm';
-    }
-    console.log(`      ${chalk.white.bold('Muted')}: ${chalk.italic(mutedStatus)}`);
+    const lastUpdate = smoke.getLastStatusUpdate();
+    const testEvents = smoke.getTestEvents();
+    const hasHistory = (lastUpdate !== null && lastUpdate !== undefined) ||
+        (testEvents && testEvents.length > 0);
 
-    let overallStatus;
-    if (status === SmokeAlarmStatus.NORMAL ||
-        status === SmokeAlarmStatus.INTERCONNECTION_STATUS) {
-        overallStatus = 'No issues';
-    } else if (status === SmokeAlarmStatus.MUTE_SMOKE_ALARM) {
-        overallStatus = 'Smoke alarm muted';
-    } else if (status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM) {
-        overallStatus = 'Temperature alarm muted';
-    } else {
-        overallStatus = `Status code: ${status}`;
-    }
-    console.log(`      ${chalk.white.bold('Status')}: ${chalk.italic(overallStatus)}`);
+    if (hasHistory) {
+        console.log(`\n    ${chalk.bold.underline('History')}`);
 
-    const lastUpdate = subdevice.getLastStatusUpdate();
-    if (lastUpdate !== null && lastUpdate !== undefined) {
-        const updateDate = new Date(lastUpdate * 1000);
-        console.log(`      ${chalk.white.bold('Last Update')}: ${chalk.italic(updateDate.toLocaleString())}`);
-    }
+        if (lastUpdate !== null && lastUpdate !== undefined) {
+            const updateDate = new Date(lastUpdate * 1000);
+            console.log(`      ${chalk.white.bold('Last update')}: ${chalk.italic(updateDate.toISOString())}`);
+        }
 
-    const testEvents = subdevice.getTestEvents();
-    if (testEvents && testEvents.length > 0) {
-        console.log(`      ${chalk.white.bold('Test Events')}: ${chalk.italic(testEvents.length)}`);
-        testEvents.slice(-3).forEach((event, idx) => {
-            const eventType = event.type === 1 ? 'Manual' : event.type === 2 ? 'Automatic' : `Type ${event.type}`;
-            const eventDate = event.timestamp ? new Date(event.timestamp * 1000).toLocaleString() : 'Unknown';
-            console.log(`        ${idx + 1}. ${eventType} - ${eventDate}`);
-        });
-        if (testEvents.length > 3) {
-            console.log(`        ... and ${testEvents.length - 3} more`);
+        if (testEvents && testEvents.length > 0) {
+            console.log(`      ${chalk.white.bold('Tests')}: ${chalk.italic(testEvents.length)} recorded`);
+            testEvents.slice(-3).forEach((event, idx) => {
+                const eventType = event.type === 1 ? 'Manual' : event.type === 2 ? 'Automatic' : `Type ${event.type}`;
+                const eventDate = event.timestamp ? new Date(event.timestamp * 1000).toISOString() : 'Unknown';
+                console.log(`        ${idx + 1}. ${eventType} — ${eventDate}`);
+            });
+            if (testEvents.length > 3) {
+                console.log(`        ... and ${testEvents.length - 3} more`);
+            }
         }
     }
 

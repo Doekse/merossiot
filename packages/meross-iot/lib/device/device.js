@@ -9,15 +9,17 @@ const ApiDeviceInfo = require('../api/device');
 const { MerossDeviceError } = require('../exception');
 
 const Heartbeat = require('../utilities/heartbeat');
+const { SUBDEVICE_FAMILIES } = require('../abilities/hub');
+
+const { dispatch, getNamespaceDescriptors } = require('../dispatcher');
 
 /**
- * Single registry of device abilities: factory wiring, optional state caches, and capability
- * reporters. Order places always-on abilities first so construction stays deterministic.
+ * Single registry of device abilities: factory wiring, optional state caches, capability
+ * reporters, and hub subdevice family tags for derived subdevice maps.
  *
  * @type {ReadonlyArray<Record<string, unknown>>}
  */
 const ABILITIES = [
-    // Always present on all device instances.
     {
         key: 'system',
         always: true,
@@ -28,211 +30,97 @@ const ABILITIES = [
         always: true,
         create: require('../abilities/encryption')
     },
-    // Namespace-gated abilities.
+    require('../abilities/toggle').ability,
+    require('../abilities/light').ability,
+    require('../abilities/thermostat').ability,
+    require('../abilities/roller-shutter').ability,
+    require('../abilities/garage').ability,
+    require('../abilities/diffuser').ability,
+    require('../abilities/spray').ability,
+    require('../abilities/consumption').ability,
+    require('../abilities/electricity').ability,
+    require('../abilities/timer').ability,
+    require('../abilities/trigger').ability,
+    require('../abilities/presence').ability,
+    require('../abilities/alarm').ability,
+    require('../abilities/child-lock').ability,
+    require('../abilities/screen').ability,
+    require('../abilities/runtime').ability,
+    require('../abilities/config').ability,
+    require('../abilities/dnd').ability,
+    require('../abilities/temp-unit').ability,
+    require('../abilities/smoke-config').ability,
+    require('../abilities/hub-smoke').ability,
+    require('../abilities/hub-temp-hum').ability,
     {
-        key: 'toggle',
-        namespaces: ['Appliance.Control.ToggleX', 'Appliance.Control.Toggle'],
-        caches: ['_toggleStateByChannel'],
-        create: require('../abilities/toggle'),
-        getCapabilities: require('../abilities/toggle').getCapabilities
+        key: 'sensorAll',
+        namespaces: ['Appliance.Hub.Sensor.All'],
+        family: ['tempHum', 'doorWindow', 'waterLeak', 'smoke']
     },
-    {
-        key: 'light',
-        namespaces: ['Appliance.Control.Light'],
-        caches: ['_lightStateByChannel'],
-        create: require('../abilities/light'),
-        getCapabilities: require('../abilities/light').getCapabilities
-    },
-    {
-        key: 'thermostat',
-        namespaces: [
-            'Appliance.Control.Thermostat.Mode',
-            'Appliance.Control.Thermostat.ModeB'
-        ],
-        caches: ['_thermostatStateByChannel'],
-        create: require('../abilities/thermostat'),
-        getCapabilities: require('../abilities/thermostat').getCapabilities
-    },
-    {
-        key: 'rollerShutter',
-        namespaces: ['Appliance.RollerShutter.State', 'Appliance.RollerShutter.Position'],
-        caches: [
-            '_rollerShutterStateByChannel',
-            '_rollerShutterPositionByChannel',
-            '_rollerShutterConfigByChannel'
-        ],
-        create: require('../abilities/roller-shutter'),
-        getCapabilities: require('../abilities/roller-shutter').getCapabilities
-    },
-    {
-        key: 'garage',
-        namespaces: ['Appliance.GarageDoor.State'],
-        caches: ['_garageDoorStateByChannel', '_garageDoorConfigByChannel'],
-        create: require('../abilities/garage'),
-        getCapabilities: require('../abilities/garage').getCapabilities
-    },
-    {
-        key: 'diffuser',
-        namespaces: [
-            'Appliance.Control.Diffuser.Light',
-            'Appliance.Control.Diffuser.Spray'
-        ],
-        caches: ['_diffuserLightStateByChannel', '_diffuserSprayStateByChannel'],
-        create: require('../abilities/diffuser'),
-        getCapabilities: require('../abilities/diffuser').getCapabilities
-    },
-    {
-        key: 'spray',
-        namespaces: ['Appliance.Control.Spray'],
-        caches: ['_sprayStateByChannel'],
-        create: require('../abilities/spray'),
-        getCapabilities: require('../abilities/spray').getCapabilities
-    },
-    {
-        key: 'consumption',
-        namespaces: [
-            'Appliance.Control.ConsumptionH',
-            'Appliance.Control.ConsumptionX',
-            'Appliance.Control.Consumption'
-        ],
-        caches: [],
-        create: require('../abilities/consumption'),
-        getCapabilities: require('../abilities/consumption').getCapabilities
-    },
-    {
-        key: 'electricity',
-        namespaces: ['Appliance.Control.Electricity'],
-        caches: [],
-        create: require('../abilities/electricity'),
-        getCapabilities: require('../abilities/electricity').getCapabilities
-    },
-    {
-        key: 'timer',
-        namespaces: ['Appliance.Control.TimerX', 'Appliance.Control.Timer'],
-        caches: ['_timerxStateByChannel'],
-        create: require('../abilities/timer'),
-        getCapabilities: require('../abilities/timer').getCapabilities
-    },
-    {
-        key: 'trigger',
-        namespaces: ['Appliance.Control.TriggerX', 'Appliance.Control.Trigger'],
-        caches: ['_triggerxStateByChannel'],
-        create: require('../abilities/trigger'),
-        getCapabilities: require('../abilities/trigger').getCapabilities
-    },
-    {
-        key: 'presence',
-        namespaces: [
-            'Appliance.Control.Sensor.LatestX',
-            'Appliance.Control.Presence.Config',
-            'Appliance.Control.Presence.Study'
-        ],
-        caches: ['_presenceSensorStateByChannel'],
-        create: require('../abilities/presence'),
-        getCapabilities: require('../abilities/presence').getCapabilities
-    },
-    {
-        key: 'alarm',
-        namespaces: ['Appliance.Control.Alarm'],
-        caches: [],
-        create: require('../abilities/alarm'),
-        getCapabilities: require('../abilities/alarm').getCapabilities
-    },
-    {
-        key: 'childLock',
-        namespaces: [
-            'Appliance.Control.PhysicalLock',
-            'Appliance.Control.ChildLock'
-        ],
-        caches: [],
-        create: require('../abilities/child-lock'),
-        getCapabilities: require('../abilities/child-lock').getCapabilities
-    },
-    {
-        key: 'screen',
-        namespaces: ['Appliance.Control.Screen.Brightness'],
-        caches: [],
-        create: require('../abilities/screen'),
-        getCapabilities: require('../abilities/screen').getCapabilities
-    },
-    {
-        key: 'runtime',
-        namespaces: ['Appliance.System.Runtime', 'Appliance.Control.Runtime'],
-        caches: [],
-        create: require('../abilities/runtime'),
-        getCapabilities: require('../abilities/runtime').getCapabilities
-    },
-    {
-        key: 'config',
-        namespaces: ['Appliance.Config.OverTemp'],
-        caches: [],
-        create: require('../abilities/config'),
-        getCapabilities: require('../abilities/config').getCapabilities
-    },
-    {
-        key: 'dnd',
-        namespaces: ['Appliance.System.DNDMode'],
-        caches: [],
-        create: require('../abilities/dnd'),
-        getCapabilities: require('../abilities/dnd').getCapabilities
-    },
-    {
-        key: 'tempUnit',
-        namespaces: ['Appliance.Control.TempUnit'],
-        caches: [],
-        create: require('../abilities/temp-unit'),
-        getCapabilities: require('../abilities/temp-unit').getCapabilities
-    },
-    {
-        key: 'smokeConfig',
-        namespaces: ['Appliance.Control.Smoke.Config'],
-        caches: [],
-        create: require('../abilities/smoke-config'),
-        getCapabilities: require('../abilities/smoke-config').getCapabilities
-    },
-    {
-        key: 'sensorHistory',
-        namespaces: [
-            'Appliance.Control.Sensor.History',
-            'Appliance.Control.Sensor.HistoryX'
-        ],
-        caches: [],
-        create: require('../abilities/sensor-history'),
-        getCapabilities: require('../abilities/sensor-history').getCapabilities
-    },
-    {
-        key: 'digestTimer',
-        namespaces: ['Appliance.Digest.TimerX', 'Appliance.Digest.Timer'],
-        caches: [],
-        create: require('../abilities/digest-timer'),
-        getCapabilities: require('../abilities/digest-timer').getCapabilities
-    },
-    {
-        key: 'digestTrigger',
-        namespaces: ['Appliance.Digest.TriggerX', 'Appliance.Digest.Trigger'],
-        caches: [],
-        create: require('../abilities/digest-trigger'),
-        getCapabilities: require('../abilities/digest-trigger').getCapabilities
-    },
-    {
-        key: 'control',
-        namespaces: ['Appliance.Control.Multiple', 'Appliance.Control.Upgrade'],
-        caches: [],
-        create: require('../abilities/control'),
-        getCapabilities: require('../abilities/control').getCapabilities
-    },
-    // Capability-only entries.
-    {
-        key: 'hub',
-        getCapabilities: require('../abilities/hub').getCapabilities
-    },
-    {
-        key: 'sensor',
-        getCapabilities: require('../abilities/hub').getSensorCapabilities
-    }
+    require('../abilities/hub-alert').ability,
+    require('../abilities/hub-adjust').ability,
+    require('../abilities/hub-water-leak').ability,
+    require('../abilities/hub-door-window').ability,
+    require('../abilities/hub-mts100').ability,
+    require('../abilities/sensor-history').ability,
+    require('../abilities/digest-timer').ability,
+    require('../abilities/digest-trigger').ability,
+    require('../abilities/control').ability,
+    require('../abilities/hub').ability
 ];
 
-const { dispatch, getNamespaceDescriptors } = require('../dispatcher');
+/**
+ * Returns ability registry rows tagged for a hub subdevice family.
+ *
+ * Places the shared {@link sensorAll} row after the family's primary ability so
+ * derived namespace lists match the former subdevice-types ordering.
+ *
+ * @param {keyof typeof SUBDEVICE_FAMILIES} family
+ * @returns {typeof ABILITIES}
+ */
+function abilitiesInFamily(family) {
+    const rows = ABILITIES.filter((a) => {
+        if (Array.isArray(a.family)) {
+            return a.family.includes(family);
+        }
+        return a.family === family;
+    });
+    const sensorAllRow = rows.find((a) => a.key === 'sensorAll');
+    if (!sensorAllRow) {
+        return rows;
+    }
+    const others = rows.filter((a) => a.key !== 'sensorAll');
+    if (family === 'tempHum') {
+        const tempHumIdx = others.findIndex((a) => a.key === 'tempHum');
+        if (tempHumIdx === -1) {
+            return rows;
+        }
+        return [
+            ...others.slice(0, tempHumIdx + 1),
+            sensorAllRow,
+            ...others.slice(tempHumIdx + 1)
+        ];
+    }
+    return [...others, sensorAllRow];
+}
+
+const SUBDEVICE_ABILITY_MAPPING = (() => {
+    const out = {};
+    for (const [family, { models }] of Object.entries(SUBDEVICE_FAMILIES)) {
+        const namespaces = abilitiesInFamily(family).flatMap((a) => a.namespaces || []);
+        for (const model of models) {
+            out[model] = namespaces;
+        }
+    }
+    return out;
+})();
+
+const SUBDEVICE_REFRESH_ABILITIES = Object.fromEntries(
+    Object.keys(SUBDEVICE_FAMILIES).map((family) => [
+        family,
+        abilitiesInFamily(family).filter((a) => a.create).map((a) => a.key)
+    ])
+);
 const { getMessageTimestamp } = require('../utilities/state-ordering');
 
 /**
@@ -287,7 +175,6 @@ class MerossDevice extends EventEmitter {
         }
 
         this._initializeCoreProperties(dev, domain, port);
-        this._initializeStateCaches();
         this._initializeConnectionState(meross);
         this._initializeApiInfo(dev);
 
@@ -361,31 +248,6 @@ class MerossDevice extends EventEmitter {
         this.iconType = null;
         this.region = null;
         this.devIconId = null;
-    }
-
-    /**
-     * Initializes per-channel state caches.
-     *
-     * Feature modules populate these caches to avoid redundant API calls when
-     * multiple consumers request the same channel state.
-     *
-     * @private
-     */
-    _initializeStateCaches() {
-        this._toggleStateByChannel = new Map();
-        this._thermostatStateByChannel = new Map();
-        this._lightStateByChannel = new Map();
-        this._diffuserLightStateByChannel = new Map();
-        this._diffuserSprayStateByChannel = new Map();
-        this._sprayStateByChannel = new Map();
-        this._rollerShutterStateByChannel = new Map();
-        this._rollerShutterPositionByChannel = new Map();
-        this._rollerShutterConfigByChannel = new Map();
-        this._garageDoorStateByChannel = new Map();
-        this._garageDoorConfigByChannel = new Map();
-        this._timerxStateByChannel = new Map();
-        this._triggerxStateByChannel = new Map();
-        this._presenceSensorStateByChannel = new Map();
     }
 
     /**
@@ -544,6 +406,25 @@ class MerossDevice extends EventEmitter {
     }
 
     /**
+     * Whether an {@link ABILITIES} entry applies to this device's current ability set.
+     *
+     * Entries without `namespaces` (e.g. hub) defer filtering to their `getCapabilities` reporter.
+     *
+     * @private
+     * @param {Record<string, unknown>} entry
+     * @returns {boolean}
+     */
+    _abilityEntryApplies(entry) {
+        if (!this.abilities) {
+            return false;
+        }
+        if (!entry.namespaces?.length) {
+            return true;
+        }
+        return entry.namespaces.some((ns) => ns in this.abilities);
+    }
+
+    /**
      * Builds the normalized capabilities map from device abilities and channels.
      *
      * Provides a user-friendly capability map that abstracts away Meross namespace strings,
@@ -568,7 +449,7 @@ class MerossDevice extends EventEmitter {
         };
 
         for (const entry of ABILITIES) {
-            if (!entry.getCapabilities) {
+            if (!entry.getCapabilities || !this._abilityEntryApplies(entry)) {
                 continue;
             }
             const featureCaps = entry.getCapabilities(this, channelIds);
@@ -672,7 +553,24 @@ class MerossDevice extends EventEmitter {
             timestamp: this.lastFullUpdateTimestamp || Date.now()
         };
 
+        Object.assign(state, this._collectDescriptorState());
+
+        this._collectElectricityState(state);
+        this._collectConsumptionState(state);
+
+        return state;
+    }
+
+    /**
+     * Builds per-`eventType` channel snapshots from registered namespace descriptors.
+     *
+     * @protected
+     * @returns {Record<string, Record<number, object>>}
+     */
+    _collectDescriptorState() {
+        const state = {};
         const seen = new Set();
+
         for (const namespace of Object.keys(this.abilities || {})) {
             const descriptors = getNamespaceDescriptors(namespace);
             for (const descriptor of descriptors) {
@@ -692,7 +590,10 @@ class MerossDevice extends EventEmitter {
 
                 const perChannel = {};
                 for (const [channel, channelState] of stateMap) {
-                    perChannel[channel] = descriptor.snapshot(channelState);
+                    const snap = descriptor.snapshot(channelState);
+                    if (snap !== null && snap !== undefined) {
+                        perChannel[channel] = snap;
+                    }
                 }
 
                 if (Object.keys(perChannel).length > 0) {
@@ -700,9 +601,6 @@ class MerossDevice extends EventEmitter {
                 }
             }
         }
-
-        this._collectElectricityState(state);
-        this._collectConsumptionState(state);
 
         return state;
     }
@@ -1617,5 +1515,11 @@ class MerossDevice extends EventEmitter {
  */
 
 
-module.exports = { MerossDevice };
+module.exports = {
+    MerossDevice,
+    ABILITIES,
+    abilitiesInFamily,
+    SUBDEVICE_ABILITY_MAPPING,
+    SUBDEVICE_REFRESH_ABILITIES
+};
 

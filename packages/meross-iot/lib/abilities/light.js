@@ -298,8 +298,6 @@ function createLightAbility(device) {
  * @returns {Object|null} Light capability object or null if not supported
  */
 function getLightCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Light']) {return null;}
-
     const lightFeature = device.light;
     if (!lightFeature) {return null;}
 
@@ -329,3 +327,10 @@ registerNamespaceDescriptor('Appliance.Control.Light', {
 
 module.exports = createLightAbility;
 module.exports.getCapabilities = getLightCapabilities;
+module.exports.ability = {
+    key: 'light',
+    namespaces: ['Appliance.Control.Light'],
+    caches: ['_lightStateByChannel'],
+    create: createLightAbility,
+    getCapabilities: getLightCapabilities
+};

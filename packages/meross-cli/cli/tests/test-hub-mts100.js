@@ -95,14 +95,14 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            const response = await hubApi.getMts100All({ ids: mts100Ids });
+            const response = await testHub.mts100.get({ ids: mts100Ids });
 
             if (!response) {
                 results.push({
                     name: 'should get MTS100 all data',
                     passed: false,
                     skipped: false,
-                    error: 'getMts100All returned null or undefined',
+                    error: 'mts100.get returned null or undefined',
                     device: deviceName
                 });
             } else if (!Array.isArray(response.all)) {
@@ -136,12 +136,12 @@ async function runTests(context) {
 
     // Test 2: MTS100 mode control API present (no state change)
     try {
-        if (typeof hubApi.setMts100Mode !== 'function') {
+        if (!testHub.mts100 || typeof testHub.mts100.setMode !== 'function') {
             results.push({
                 name: 'should control MTS100 mode',
                 passed: false,
                 skipped: true,
-                error: 'Hub does not support setMts100Mode',
+                error: 'Hub does not support mts100.setMode',
                 device: deviceName
             });
         } else {
@@ -157,7 +157,7 @@ async function runTests(context) {
                     device: deviceName
                 });
             } else {
-                await hubApi.getMts100All({ ids: [mts100Ids[0]] });
+                await testHub.mts100.get({ ids: [mts100Ids[0]] });
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 results.push({
@@ -166,7 +166,7 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { note: 'setMts100Mode available; not invoked to avoid changing heating mode' }
+                    details: { note: 'mts100.setMode available; not invoked to avoid changing heating mode' }
                 });
             }
         }
@@ -182,12 +182,12 @@ async function runTests(context) {
 
     // Test 3: MTS100 temperature control API present (no state change)
     try {
-        if (typeof hubApi.setMts100Temperature !== 'function') {
+        if (!testHub.mts100 || typeof testHub.mts100.setTargetTemperature !== 'function') {
             results.push({
                 name: 'should control MTS100 temperature',
                 passed: false,
                 skipped: true,
-                error: 'Hub does not support setMts100Temperature',
+                error: 'Hub does not support mts100.setTargetTemperature',
                 device: deviceName
             });
         } else {
@@ -203,7 +203,7 @@ async function runTests(context) {
                     device: deviceName
                 });
             } else {
-                await hubApi.getMts100All({ ids: [mts100Ids[0]] });
+                await testHub.mts100.get({ ids: [mts100Ids[0]] });
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 results.push({
@@ -212,7 +212,7 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { note: 'setMts100Temperature available; not invoked to avoid changing setpoint' }
+                    details: { note: 'mts100.setTargetTemperature available; not invoked to avoid changing setpoint' }
                 });
             }
         }
@@ -240,22 +240,16 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            const response = await hubApi.getMts100Adjust({ ids: mts100Ids });
+            await testHub.mts100.get({ ids: mts100Ids, complete: true });
+            const valve = testHub.getSubdevices().find(sub => sub.subdeviceId === mts100Ids[0]);
+            const adjust = valve?.mts100?.getAdjust?.();
 
-            if (!response) {
+            if (adjust === null || adjust === undefined) {
                 results.push({
                     name: 'should get MTS100 adjustment settings',
                     passed: false,
                     skipped: false,
-                    error: 'getMts100Adjust returned null or undefined',
-                    device: deviceName
-                });
-            } else if (!Array.isArray(response.adjust)) {
-                results.push({
-                    name: 'should get MTS100 adjustment settings',
-                    passed: false,
-                    skipped: false,
-                    error: 'Response adjust is not an array',
+                    error: 'mts100.getAdjust() returned null or undefined after refresh',
                     device: deviceName
                 });
             } else {
@@ -265,7 +259,7 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { adjustCount: response.adjust.length }
+                    details: { adjust }
                 });
             }
         }
@@ -293,22 +287,16 @@ async function runTests(context) {
                 device: deviceName
             });
         } else {
-            const response = await hubApi.getMts100Config({ ids: mts100Ids });
+            await testHub.mts100.get({ ids: mts100Ids, complete: true });
+            const valve = testHub.getSubdevices().find(sub => sub.subdeviceId === mts100Ids[0]);
+            const config = valve?.mts100?.getConfig?.();
 
-            if (!response) {
+            if (!config) {
                 results.push({
                     name: 'should get MTS100 config',
                     passed: false,
                     skipped: false,
-                    error: 'getMts100Config returned null or undefined',
-                    device: deviceName
-                });
-            } else if (!Array.isArray(response.config)) {
-                results.push({
-                    name: 'should get MTS100 config',
-                    passed: false,
-                    skipped: false,
-                    error: 'Response config is not an array',
+                    error: 'mts100.getConfig() returned null or undefined after refresh',
                     device: deviceName
                 });
             } else {
@@ -318,7 +306,7 @@ async function runTests(context) {
                     skipped: false,
                     error: null,
                     device: deviceName,
-                    details: { configCount: response.config.length }
+                    details: { config }
                 });
             }
         }

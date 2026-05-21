@@ -30,8 +30,6 @@ function createDigestTimerAbility(device) {
  * @returns {Object|null} Digest timer capability object or null if not supported
  */
 function getDigestTimerCapabilities(device, _channelIds) {
-    if (!device.abilities) {return null;}
-
     const hasDigestTimerX = !!device.abilities['Appliance.Digest.TimerX'];
     const hasDigestTimer = !!device.abilities['Appliance.Digest.Timer'];
 
@@ -44,3 +42,10 @@ function getDigestTimerCapabilities(device, _channelIds) {
 
 module.exports = createDigestTimerAbility;
 module.exports.getCapabilities = getDigestTimerCapabilities;
+module.exports.ability = {
+    key: 'digestTimer',
+    namespaces: ['Appliance.Digest.TimerX', 'Appliance.Digest.Timer'],
+    caches: [],
+    create: createDigestTimerAbility,
+    getCapabilities: getDigestTimerCapabilities
+};

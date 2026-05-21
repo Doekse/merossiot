@@ -20,7 +20,6 @@ module.exports.DiffuserSprayMode = enums.DiffuserSprayMode;
 module.exports.SprayMode = enums.SprayMode;
 module.exports.DNDMode = enums.DNDMode;
 module.exports.OnlineStatus = enums.OnlineStatus;
-module.exports.SmokeAlarmStatus = enums.SmokeAlarmStatus;
 module.exports.TimerType = enums.TimerType;
 module.exports.TriggerType = enums.TriggerType;
 
@@ -31,9 +30,4 @@ module.exports.MerossHubDevice = hubDevice.MerossHubDevice;
 
 const subdevice = require('./lib/device/subdevice');
 module.exports.MerossSubDevice = subdevice.MerossSubDevice;
-module.exports.HubTempHumSensor = subdevice.HubTempHumSensor;
-module.exports.HubDoorWindowSensor = subdevice.HubDoorWindowSensor;
-module.exports.HubThermostatValve = subdevice.HubThermostatValve;
-module.exports.HubWaterLeakSensor = subdevice.HubWaterLeakSensor;
-module.exports.HubSmokeDetector = subdevice.HubSmokeDetector;
 

@@ -21,6 +21,16 @@ const TimerState = require('./timer-state');
 const TriggerState = require('./trigger-state');
 const ToggleState = require('./toggle-state');
 const PresenceSensorState = require('./presence-sensor-state');
+const SmokeAlarmState = require('./smoke-alarm-state');
+const TemperatureState = require('./temperature-state');
+const HumidityState = require('./humidity-state');
+const LuxState = require('./lux-state');
+const SensorAlertState = require('./sensor-alert-state');
+const SensorAdjustState = require('./sensor-adjust-state');
+const WaterLeakState = require('./water-leak-state');
+const DoorWindowState = require('./door-window-state');
+const HubThermostatState = require('./hub-thermostat-state');
+const HubBatteryState = require('./hub-battery-state');
 
 module.exports = {
     LightState,
@@ -33,6 +43,15 @@ module.exports = {
     TimerState,
     TriggerState,
     ToggleState,
-    PresenceSensorState
+    PresenceSensorState,
+    SmokeAlarmState,
+    TemperatureState,
+    HumidityState,
+    LuxState,
+    SensorAlertState,
+    SensorAdjustState,
+    WaterLeakState,
+    DoorWindowState,
+    HubThermostatState,
+    HubBatteryState
 };
-

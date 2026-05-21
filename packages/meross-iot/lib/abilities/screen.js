@@ -75,8 +75,6 @@ function createScreenAbility(device) {
  * @returns {Object|null} Screen capability object or null if not supported
  */
 function getScreenCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.Screen.Brightness']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -85,3 +83,10 @@ function getScreenCapabilities(device, channelIds) {
 
 module.exports = createScreenAbility;
 module.exports.getCapabilities = getScreenCapabilities;
+module.exports.ability = {
+    key: 'screen',
+    namespaces: ['Appliance.Control.Screen.Brightness'],
+    caches: [],
+    create: createScreenAbility,
+    getCapabilities: getScreenCapabilities
+};

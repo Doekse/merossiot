@@ -1,7 +1,7 @@
 declare module 'meross-iot' {
     import { EventEmitter } from 'events';
 
-    export type Logger = (message: string, ...args: any[]) => void;
+    type Logger = (message: string, ...args: any[]) => void;
 
     export enum TransportMode {
         MQTT_ONLY = 0,
@@ -54,11 +54,29 @@ declare module 'meross-iot' {
         DND_ENABLED: 1;
     };
 
-    export enum SmokeAlarmStatus {
-        NORMAL = 23,
-        MUTE_TEMPERATURE_ALARM = 26,
-        MUTE_SMOKE_ALARM = 27,
-        INTERCONNECTION_STATUS = 170
+    type SmokeAlarmType =
+        | 'smoke'
+        | 'temperature'
+        | 'battery'
+        | 'normal'
+        | 'interconnection'
+        | 'unknown';
+
+    type SmokeAlarmCondition = 'safe' | 'alarming' | 'silenced' | 'fault' | 'unknown';
+
+    type SmokeAlarmChannel = 'smoke' | 'temperature' | 'battery';
+
+    interface SmokeAlarmInterconnect {
+        linkActive: boolean;
+        raw: number;
+    }
+
+    /** Snapshot shape for `getState().smokeAlarm[channel]` and subscription `state` / `changes`. */
+    interface SmokeAlarmState {
+        condition: SmokeAlarmCondition;
+        channel: SmokeAlarmChannel | null;
+        interconnect: SmokeAlarmInterconnect | null;
+        lastStatusUpdate: number | null;
     }
 
     export enum TimerType {
@@ -90,7 +108,7 @@ declare module 'meross-iot' {
     export class MerossApiError extends MerossError {}
     export class MerossNetworkError extends MerossError {}
 
-    export interface TokenData {
+    interface TokenData {
         token: string;
         key: string;
         userId: string;
@@ -100,7 +118,7 @@ declare module 'meross-iot' {
         issuedOn?: string;
     }
 
-    export interface DeviceDefinition {
+    interface DeviceDefinition {
         uuid: string;
         onlineStatus: number;
         devName: string;
@@ -110,7 +128,7 @@ declare module 'meross-iot' {
         [key: string]: any;
     }
 
-    export interface SubdeviceInfo {
+    interface SubdeviceInfo {
         hubUuid: string;
         hubName: string;
         hubDeviceType: string;
@@ -120,14 +138,14 @@ declare module 'meross-iot' {
         [key: string]: any;
     }
 
-    export interface ToggleFeature {
+    interface ToggleFeature {
         set(options: { on: boolean; channel?: number }): Promise<void>;
         get(options?: { channel?: number }): Promise<any>;
         isOn(options?: { channel?: number }): boolean | undefined;
         getAll(): Map<number, boolean>;
     }
 
-    export interface TimerFeature {
+    interface TimerFeature {
         get(options?: { channel?: number; timerId?: string }): Promise<any>;
         getAll(): Promise<any[]>;
         count(): Promise<number>;
@@ -145,7 +163,7 @@ declare module 'meross-iot' {
         createTimer(options?: Record<string, any>): Record<string, any>;
     }
 
-    export interface TriggerFeature {
+    interface TriggerFeature {
         get(options?: { channel?: number }): Promise<any>;
         getAll(): Promise<any[]>;
         count(): Promise<number>;
@@ -162,7 +180,7 @@ declare module 'meross-iot' {
         createTrigger(options?: Record<string, any>): Record<string, any>;
     }
 
-    export interface LightFeature {
+    interface LightFeature {
         set(options?: { channel?: number; on?: boolean; rgb?: number[] | number | { r: number; g: number; b: number }; luminance?: number; temperature?: number; gradual?: boolean | number }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         isOn(options?: { channel?: number }): boolean | undefined;
@@ -174,14 +192,14 @@ declare module 'meross-iot' {
         supportsTemperature(options?: { channel?: number }): boolean;
     }
 
-    export interface ThermostatFeature {
+    interface ThermostatFeature {
         set(options?: Record<string, any>): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         getSchedule(options?: { channel?: number }): Promise<any>;
         getTimer(options?: { channel?: number }): Promise<any>;
     }
 
-    export interface RollerShutterFeature {
+    interface RollerShutterFeature {
         set(options: { channel?: number; position: number }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         open(options?: { channel?: number }): Promise<any>;
@@ -192,7 +210,7 @@ declare module 'meross-iot' {
         setConfig(options: { config: any | any[] }): Promise<any>;
     }
 
-    export interface GarageFeature {
+    interface GarageFeature {
         set(options: { channel?: number; open: boolean }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         isOpen(options?: { channel?: number }): boolean | undefined;
@@ -204,23 +222,23 @@ declare module 'meross-iot' {
         setConfig(options?: Record<string, any>): Promise<any>;
     }
 
-    export interface ElectricityFeature {
+    interface ElectricityFeature {
         get(options?: { channel?: number }): Promise<any>;
         getRaw(options?: { channel?: number }): Promise<any>;
     }
 
-    export interface ConsumptionFeature {
+    interface ConsumptionFeature {
         get(options?: { channel?: number }): Promise<any>;
         getConfig(): Promise<any>;
     }
 
-    export interface SprayFeature {
+    interface SprayFeature {
         set(options: { channel?: number; mode: number }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         getMode(options?: { channel?: number }): number | null;
     }
 
-    export interface DiffuserFeature {
+    interface DiffuserFeature {
         set(options?: Record<string, any>): Promise<any>;
         get(options?: { channel?: number; type?: 'light' | 'spray' }): Promise<any>;
         getLight(options?: { channel?: number }): Promise<any>;
@@ -229,7 +247,7 @@ declare module 'meross-iot' {
         setSensor(options?: Record<string, any>): Promise<any>;
     }
 
-    export interface DeviceCapabilities {
+    interface DeviceCapabilities {
         channels?: {
             ids: number[];
             count: number;
@@ -237,57 +255,169 @@ declare module 'meross-iot' {
         [key: string]: any;
     }
 
-    export interface PresenceFeature {
+    interface PresenceFeature {
         get(options?: { channel?: number }): Promise<any>;
         getConfig(options?: { channel?: number }): Promise<any>;
         setConfig(options?: Record<string, any>): Promise<any>;
     }
 
-    export interface AlarmFeature {
+    interface AlarmFeature {
         get(options?: { channel?: number }): Promise<any>;
         getLastEvents(): any[];
     }
 
-    export interface RuntimeFeature {
+    interface RuntimeFeature {
         get(): Promise<any>;
         getCached(): any;
     }
 
-    export interface ScreenFeature {
+    interface ScreenFeature {
         set(options?: Record<string, any>): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
     }
 
-    export interface DNDFeature {
+    interface DNDFeature {
         set(options?: { mode?: number }): Promise<any>;
         get(options?: Record<string, any>): Promise<any>;
     }
 
-    export interface ChildLockFeature {
+    interface ChildLockFeature {
         set(options?: { channel?: number; lock?: number | boolean }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
     }
 
-    export interface ConfigFeature {
+    interface ConfigFeature {
         get(options?: Record<string, any>): Promise<any>;
         set(options?: Record<string, any>): Promise<any>;
     }
 
-    export interface TempUnitFeature {
+    interface TempUnitFeature {
         set(options?: { channel?: number; unit?: number }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
     }
 
-    export interface SmokeConfigFeature {
+    interface SmokeConfigFeature {
         get(options?: { channel?: number }): Promise<any>;
         set(options?: { channel?: number; status: number }): Promise<any>;
     }
 
-    export interface SensorHistoryFeature {
+    interface SmokeAlarmFeature {
+        get(options?: { sensorIds?: string | string[] }): Promise<any>;
+        set(options?: { muteSmoke?: boolean; status?: number }): Promise<any>;
+        mute(options?: { muteSmoke?: boolean }): Promise<any>;
+        test(): Promise<any>;
+        getStatus(): number | null;
+        /** @deprecated Prefer `getCondition` and `getChannel` */
+        getType(): SmokeAlarmType;
+        getCondition(): SmokeAlarmCondition;
+        getChannel(): SmokeAlarmChannel | null;
+        getInterconnect(): SmokeAlarmInterconnect | null;
+        isActive(): boolean;
+        isMuted(): boolean;
+        isError(): boolean;
+        getInterConn(): number | null;
+        getLastStatusUpdate(): number | null;
+        getTestEvents(): Array<{ type: number; timestamp: number }>;
+    }
+
+    interface TempHumFeature {
+        get(options?: { sensorIds?: string | string[] }): Promise<any>;
+        getLastSampledTemperature(): number | null;
+        getLastSampledHumidity(): number | null;
+        getLastSampledTime(): Date | null;
+        getMinSupportedTemperature(): number | null;
+        getMaxSupportedTemperature(): number | null;
+        getLux(): number | null;
+    }
+
+    interface SensorAlertFeature {
+        get(options?: { sensorIds?: string | string[] }): Promise<any>;
+        set(options?: {
+            alertData?: object | object[];
+            temperature?: Array<Array<number>>;
+            humidity?: Array<Array<number>>;
+        }): Promise<any>;
+        getAlert(): Record<string, any>;
+    }
+
+    interface SensorAdjustFeature {
+        get(options?: { sensorIds?: string | string[] }): Promise<any>;
+        set(options?: {
+            adjustData?: object | object[];
+            temperature?: number;
+            humidity?: number;
+            delta?: boolean;
+        }): Promise<any>;
+        getAdjust(): Record<string, any>;
+    }
+
+    interface WaterLeakFeature {
+        get(options?: { sensorIds?: string | string[] }): Promise<any>;
+        isLeaking(): boolean | null;
+        getLatestSampleTime(): number | null;
+        getLatestDetectedWaterLeakTs(): number | null;
+        getLastEvents(): Array<{ leaking: boolean; timestamp: number }>;
+    }
+
+    interface DoorWindowFeature {
+        get(options?: { sensorIds?: string | string[] }): Promise<any>;
+        isOpen(): boolean | null;
+        getLatestLmTime(): number | null;
+        getSamples(): Array<{ status: number; timestamp: number }>;
+    }
+
+    interface Mts100Feature {
+        get(options?: { ids?: string[]; complete?: boolean }): Promise<any>;
+        setSuperCtl(options: {
+            enable?: number;
+            level?: number;
+            alert?: number;
+            subId?: string;
+            superCtlData?: object;
+        }): Promise<any>;
+        setScheduleB(options: {
+            subId?: string;
+            scheduleData?: object;
+            mon?: Array<Array<number>>;
+            tue?: Array<Array<number>>;
+            wed?: Array<Array<number>>;
+            thu?: Array<Array<number>>;
+            fri?: Array<Array<number>>;
+            sat?: Array<Array<number>>;
+            sun?: Array<Array<number>>;
+        }): Promise<any>;
+        setConfig(options: {
+            subId?: string;
+            configData?: object;
+            pid?: object;
+        }): Promise<any>;
+        setToggle(options: { on: boolean }): Promise<void>;
+        toggle(): Promise<void>;
+        setMode(options: { mode: number; subId?: string }): Promise<any>;
+        setTargetTemperature(options: { temperature: number; subId?: string; temp?: object }): Promise<any>;
+        setPresetTemperature(options: { preset: string; temperature: number }): Promise<void>;
+        setAdjust(options: { temperature: number; subId?: string; adjustData?: object }): Promise<any>;
+        isOn(): boolean;
+        getMode(): number | undefined;
+        getTargetTemperature(): number | null;
+        getLastSampledTemperature(): number | null;
+        getMinSupportedTemperature(): number | null;
+        getMaxSupportedTemperature(): number | null;
+        isHeating(): boolean;
+        isWindowOpen(): boolean;
+        getSupportedPresets(): string[];
+        getPresetTemperature(preset: string): number | null;
+        getAdjust(): number | null;
+        getSuperCtl(): object | null;
+        getScheduleB(): object | null;
+        getConfig(): object | null;
+    }
+
+    interface SensorHistoryFeature {
         get(options?: { channel?: number }): Promise<any>;
     }
 
-    export interface SystemFeature {
+    interface SystemFeature {
         getAllData(): Promise<any>;
         getDebug(): Promise<any>;
         getAbilities(): Promise<any>;
@@ -332,6 +462,13 @@ declare module 'meross-iot' {
         readonly config?: ConfigFeature;
         readonly tempUnit?: TempUnitFeature;
         readonly smokeConfig?: SmokeConfigFeature;
+        readonly smokeAlarm?: SmokeAlarmFeature;
+        readonly tempHum?: TempHumFeature;
+        readonly sensorAlert?: SensorAlertFeature;
+        readonly sensorAdjust?: SensorAdjustFeature;
+        readonly waterLeak?: WaterLeakFeature;
+        readonly doorWindow?: DoorWindowFeature;
+        readonly mts100?: Mts100Feature;
         readonly sensorHistory?: SensorHistoryFeature;
         readonly system?: SystemFeature;
         readonly timer?: TimerFeature;
@@ -343,13 +480,8 @@ declare module 'meross-iot' {
     export class MerossHubDevice extends MerossDevice {
         getSubdevices(): MerossSubDevice[];
     }
-    export class HubTempHumSensor extends MerossSubDevice {}
-    export class HubDoorWindowSensor extends MerossSubDevice {}
-    export class HubThermostatValve extends MerossSubDevice {}
-    export class HubWaterLeakSensor extends MerossSubDevice {}
-    export class HubSmokeDetector extends MerossSubDevice {}
 
-    export class ManagerDevices {
+    interface ManagerDevices {
         get(identifier: string | { hubUuid: string; id: string }): MerossDevice | MerossHubDevice | MerossSubDevice | null;
         list(): Array<MerossDevice | MerossHubDevice | MerossSubDevice>;
         find(filters?: Record<string, any>): Array<MerossDevice | MerossHubDevice | MerossSubDevice>;
@@ -360,8 +492,7 @@ declare module 'meross-iot' {
         remove(identifier: string | { hubUuid: string; id: string }): Promise<boolean>;
     }
 
-    /** Subscribe with device/hub UUID; listen on `deviceUpdate:${uuid}` (`update.device` may be a subdevice). */
-    export interface ManagerSubscription extends EventEmitter {
+    interface ManagerSubscription extends EventEmitter {
         subscribe(device: MerossDevice, config?: Record<string, any>): void;
         unsubscribe(deviceUuid: string): void;
         subscribeToDeviceList(): void;
@@ -370,7 +501,7 @@ declare module 'meross-iot' {
     }
 
     /** HTTP/MQTT diagnostics counters; enable only when needed to limit overhead. */
-    export interface ManagerStatistics {
+    interface ManagerStatistics {
         enable(maxSamples?: number): void;
         disable(): void;
         isEnabled(): boolean;
@@ -381,7 +512,7 @@ declare module 'meross-iot' {
     }
 
     /** Public transport preferences on {@link Meross}. */
-    export interface ManagerTransport {
+    interface ManagerTransport {
         defaultMode: number;
         readonly errorBudgetMaxErrors: number;
         readonly errorBudgetTimeWindow: number;
@@ -390,7 +521,7 @@ declare module 'meross-iot' {
         isOutOfBudget(deviceUuid: string): boolean;
     }
 
-    export interface ManagerAuth {
+    interface ManagerAuth {
         readonly token: string | null;
         readonly key: string | null;
         readonly userId: string | null;
@@ -402,14 +533,14 @@ declare module 'meross-iot' {
         logout(): Promise<any>;
     }
 
-    export interface ManagerMqttConnection {
+    interface ManagerMqttConnection {
         client?: { connected?: boolean; reconnecting?: boolean; options?: Record<string, any> };
         deviceList?: string[];
         [key: string]: any;
     }
 
     /** MQTT broker clients keyed by domain. */
-    export interface ManagerMqtt {
+    interface ManagerMqtt {
         readonly connections: Record<string, ManagerMqttConnection>;
         readonly clientResponseTopic: string | null;
         readonly mqttDomain: string;

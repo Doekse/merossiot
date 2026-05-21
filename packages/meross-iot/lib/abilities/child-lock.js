@@ -71,8 +71,6 @@ function createChildLockAbility(device) {
  * @returns {Object|null} Child lock capability object or null if not supported
  */
 function getChildLockCapabilities(device, channelIds) {
-    if (!device.abilities || !device.abilities['Appliance.Control.ChildLock']) {return null;}
-
     return {
         supported: true,
         channels: channelIds
@@ -81,3 +79,13 @@ function getChildLockCapabilities(device, channelIds) {
 
 module.exports = createChildLockAbility;
 module.exports.getCapabilities = getChildLockCapabilities;
+module.exports.ability = {
+    key: 'childLock',
+    namespaces: [
+        'Appliance.Control.PhysicalLock',
+        'Appliance.Control.ChildLock'
+    ],
+    caches: [],
+    create: createChildLockAbility,
+    getCapabilities: getChildLockCapabilities
+};

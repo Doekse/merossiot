@@ -7,7 +7,7 @@
 const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
-const { buildDevice, getCachedDeviceClass, getTypeKey, HUB_DISCRIMINATING_ABILITY } = require('../lib/device/factory');
+const { buildDevice, HUB_DISCRIMINATING_ABILITY } = require('../lib/device/factory');
 const { MerossDevice } = require('../lib/device/device');
 const { MerossHubDevice } = require('../lib/device/hubdevice');
 
@@ -28,16 +28,10 @@ function baseDeviceInfo(suffix) {
 }
 
 describe('factory', () => {
-    it('getTypeKey formats type, hardware, and firmware', () => {
-        assert.strictEqual(getTypeKey('mss310', '1.0.0', '2.0.0'), 'mss310:1.0.0:2.0.0');
-        assert.strictEqual(getTypeKey('x'), 'x:unknown:unknown');
-    });
-
-    it('buildDevice + _updateAbilities exposes toggle when ToggleX is present', () => {
+    it('buildDevice wires toggle when ToggleX is present', () => {
         const info = baseDeviceInfo('00000001');
         const abilities = { 'Appliance.Control.ToggleX': { version: 1 } };
         const device = buildDevice(info, abilities, createStubManager());
-        device._updateAbilities(abilities);
         assert.ok(device instanceof MerossDevice);
         assert.ok(device.toggle);
         assert.strictEqual(typeof device.toggle.set, 'function');
@@ -51,29 +45,27 @@ describe('factory', () => {
             'Appliance.Hub.Online': {}
         };
         const device = buildDevice(info, abilities, createStubManager(), []);
-        device._updateAbilities(abilities);
         assert.ok(device instanceof MerossHubDevice);
         assert.ok(device.hub);
     });
 
-    it('caches dynamic class per type key', () => {
+    it('buildDevice returns MerossDevice instances (no dynamic class cache)', () => {
         const info = baseDeviceInfo('00000003');
         const abilities = { 'Appliance.Control.ToggleX': {} };
         const d1 = buildDevice(info, abilities, createStubManager());
-        const Ctor = getCachedDeviceClass(info.deviceType, info.hdwareVersion, info.fmwareVersion);
-        assert.strictEqual(d1.constructor, Ctor);
         const d2 = buildDevice(info, abilities, createStubManager());
-        assert.strictEqual(d1.constructor, d2.constructor);
+        assert.strictEqual(d1.constructor, MerossDevice);
+        assert.strictEqual(d2.constructor, MerossDevice);
+        assert.notStrictEqual(d1, d2);
     });
 
-    it('prefers ToggleX over Toggle when both abilities exist (non-X suppressed in matrix)', () => {
+    it('wires toggle when both Toggle and ToggleX abilities exist', () => {
         const info = baseDeviceInfo('00000004');
         const abilities = {
             'Appliance.Control.Toggle': {},
             'Appliance.Control.ToggleX': {}
         };
         const device = buildDevice(info, abilities, createStubManager());
-        device._updateAbilities(abilities);
         assert.ok(device.abilities['Appliance.Control.ToggleX']);
         assert.ok(device.toggle);
     });
