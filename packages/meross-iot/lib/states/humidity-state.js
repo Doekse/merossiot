@@ -53,7 +53,7 @@ class HumidityState {
      * @returns {boolean}
      */
     hasSnapshotData() {
-        return this.latest !== null || this._state.latestSampleTime != null;
+        return this.latest !== null || (this._state.latestSampleTime !== null && this._state.latestSampleTime !== undefined);
     }
 
     /**

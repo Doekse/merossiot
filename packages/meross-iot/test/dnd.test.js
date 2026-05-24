@@ -8,7 +8,6 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createDNDAbility = require('../lib/abilities/dnd');
-const { DNDMode } = require('../lib/enums');
 const { MerossDeviceError } = require('..');
 const { createPublishRecorder } = require('./helpers/mock-ability-device');
 
@@ -17,22 +16,22 @@ describe('DND ability (mocked device)', () => {
         const { calls, publishMessage } = createPublishRecorder();
         const dnd = createDNDAbility({ uuid: 'u1', publishMessage });
 
-        await dnd.set({ mode: true });
+        await dnd.set({ enabled: true });
 
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.System.DNDMode');
-        assert.strictEqual(calls[0].payload.DNDMode.mode, DNDMode.DND_ENABLED);
+        assert.strictEqual(calls[0].payload.DNDMode.mode, 1);
     });
 
-    it('throws when mode is missing', async () => {
+    it('throws when enabled is missing', async () => {
         const dnd = createDNDAbility({ uuid: 'u1', publishMessage: async () => ({ header: {}, payload: {} }) });
 
         await assert.rejects(() => dnd.set({}), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
 
-    it('throws for invalid mode value', async () => {
+    it('throws for non-boolean enabled value', async () => {
         const dnd = createDNDAbility({ uuid: 'u1', publishMessage: async () => ({ header: {}, payload: {} }) });
 
-        await assert.rejects(() => dnd.set({ mode: 99 }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
+        await assert.rejects(() => dnd.set({ enabled: 1 }), (err) => err instanceof MerossDeviceError && err.code === 'VALIDATION_ERROR');
     });
 });

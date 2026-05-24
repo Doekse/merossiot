@@ -8,7 +8,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createPresenceSensorAbility = require('../lib/abilities/presence');
-const { PresenceState } = require('../lib/enums');
+const { PresenceStateCodec } = require('../lib/enums');
 const { createDeviceEmitter, createDispatchStateShim, createPublishRecorder } = require('./helpers/mock-ability-device');
 
 const pushLatestX = createDispatchStateShim('Appliance.Control.Sensor.LatestX', 'latest');
@@ -74,14 +74,16 @@ describe('presence sensor ability (mocked device)', () => {
             {
                 channel: 0,
                 data: {
-                    presence: [{ value: PresenceState.PRESENCE, distance: 10, timestamp: 1, times: 0 }],
+                    presence: [{ value: PresenceStateCodec.toWire('present'), distance: 10, timestamp: 1, times: 0 }],
                     light: [{ value: 50, timestamp: 2 }]
                 }
             },
             'push'
         );
 
-        assert.strictEqual(device._presenceSensorStateByChannel.get(0).isPresent, true);
+        const presenceState = device._presenceSensorStateByChannel.get(0);
+        assert.strictEqual(presenceState.isPresent, true);
+        assert.strictEqual(presenceState.presence, 'present');
         assert.strictEqual(events.length, 1);
         assert.strictEqual(events[0].type, 'presence');
         assert.strictEqual(events[0].source, 'push');

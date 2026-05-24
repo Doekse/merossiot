@@ -1,60 +1,49 @@
 'use strict';
 
-const { SmokeAlarmStatus } = require('../enums');
+const { SmokeAlarmStatusCodec, SmokeInterConnCodec } = require('../enums');
 
 /**
- * Derives legacy subscription fields from a raw firmware status code.
+ * Derives alarm channel classification from a semantic status string.
  *
- * @param {number|null|undefined} status
- * @returns {{ alarmType: string, isActive: boolean, isMuted: boolean, isError: boolean }}
+ * @param {string|null|undefined} status - Semantic status string
+ * @returns {'smoke'|'temperature'|'battery'|'normal'|'interconnection'|'unknown'}
  */
-function deriveAlarmFields(status) {
-    if (status === null || status === undefined) {
-        return {
-            alarmType: 'unknown',
-            isActive: false,
-            isMuted: false,
-            isError: false
-        };
+function deriveAlarmCategory(status) {
+    if (!status || status === 'unknown') {
+        return 'unknown';
     }
-
-    const isError = status === SmokeAlarmStatus.ERROR_TEMPERATURE ||
-        status === SmokeAlarmStatus.ERROR_SMOKE ||
-        status === SmokeAlarmStatus.ERROR_BATTERY ||
-        status === SmokeAlarmStatus.ERROR_TEMPERATURE_MUTED ||
-        status === SmokeAlarmStatus.ERROR_SMOKE_MUTED ||
-        status === SmokeAlarmStatus.ERROR_BATTERY_MUTED;
-
-    const isMuted = status === SmokeAlarmStatus.ERROR_TEMPERATURE_MUTED ||
-        status === SmokeAlarmStatus.ERROR_SMOKE_MUTED ||
-        status === SmokeAlarmStatus.ERROR_BATTERY_MUTED ||
-        status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM ||
-        status === SmokeAlarmStatus.MUTE_SMOKE_ALARM;
-
-    const isActive = status === SmokeAlarmStatus.ALARM_TEMPERATURE ||
-        status === SmokeAlarmStatus.ALARM_SMOKE;
-
-    let alarmType = 'unknown';
-    if (status === SmokeAlarmStatus.NORMAL) {
-        alarmType = 'normal';
-    } else if (status === SmokeAlarmStatus.INTERCONNECTION_STATUS) {
-        alarmType = 'interconnection';
-    } else if (status === SmokeAlarmStatus.ERROR_BATTERY ||
-        status === SmokeAlarmStatus.ERROR_BATTERY_MUTED) {
-        alarmType = 'battery';
-    } else if (status === SmokeAlarmStatus.ERROR_TEMPERATURE ||
-        status === SmokeAlarmStatus.ERROR_TEMPERATURE_MUTED ||
-        status === SmokeAlarmStatus.ALARM_TEMPERATURE ||
-        status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM) {
-        alarmType = 'temperature';
-    } else if (status === SmokeAlarmStatus.ERROR_SMOKE ||
-        status === SmokeAlarmStatus.ERROR_SMOKE_MUTED ||
-        status === SmokeAlarmStatus.ALARM_SMOKE ||
-        status === SmokeAlarmStatus.MUTE_SMOKE_ALARM) {
-        alarmType = 'smoke';
+    if (status === 'normal') {
+        return 'normal';
     }
+    if (status === 'interconnection') {
+        return 'interconnection';
+    }
+    if (status.includes('battery')) {
+        return 'battery';
+    }
+    if (status.includes('temperature')) {
+        return 'temperature';
+    }
+    if (status.includes('smoke')) {
+        return 'smoke';
+    }
+    return 'unknown';
+}
 
-    return { alarmType, isActive, isMuted, isError };
+/**
+ * @param {string|null|undefined} status
+ * @returns {boolean}
+ */
+function isFaultStatus(status) {
+    return Boolean(status && status.startsWith('error-'));
+}
+
+/**
+ * @param {string|null|undefined} status
+ * @returns {boolean}
+ */
+function isAlarmingStatus(status) {
+    return status === 'alarm-temperature' || status === 'alarm-smoke';
 }
 
 /**
@@ -91,13 +80,14 @@ function resolveAlarmTimestamp(alarmData) {
 class SmokeAlarmState {
     /**
      * @param {Object} [state]
-     * @param {number|null} [state.status]
+     * @param {number|null} [state.status] - Wire status code from firmware
      * @param {number|null} [state.interConn]
      * @param {number|null} [state.lastStatusUpdate]
      */
     constructor(state = null) {
         const initial = state || {};
-        this._status = initial.status ?? null;
+        const raw = initial.status ?? null;
+        this._status = raw !== null ? SmokeAlarmStatusCodec.fromWire(raw) : null;
         this._interConn = initial.interConn ?? null;
         this._lastStatusUpdate = initial.lastStatusUpdate ?? null;
     }
@@ -126,7 +116,9 @@ class SmokeAlarmState {
 
         const { status, interConn } = alarmData;
         if (status !== undefined && status !== null) {
-            this._status = status;
+            this._status = typeof status === 'number'
+                ? SmokeAlarmStatusCodec.fromWire(status)
+                : status;
         }
         if (interConn !== undefined && interConn !== null) {
             this._interConn = interConn;
@@ -135,14 +127,24 @@ class SmokeAlarmState {
         return alarmData.event;
     }
 
-    /** @returns {number|null} Raw firmware status code */
+    /** @returns {string|null} Semantic status string, or null if not yet received */
     get status() {
         return this._status;
     }
 
-    /** @returns {number|null|undefined} Interconnection flag from firmware when reported */
+    /** @returns {number|null|undefined} Raw interconnection wire value from firmware */
     get interConn() {
         return this._interConn;
+    }
+
+    /**
+     * @returns {'inactive'|'active'|null}
+     */
+    get interConnStatus() {
+        if (this._interConn === null || this._interConn === undefined) {
+            return null;
+        }
+        return SmokeInterConnCodec.fromWire(this._interConn);
     }
 
     /** @returns {number|null} Last applied status timestamp */
@@ -156,27 +158,12 @@ class SmokeAlarmState {
      * @returns {'safe'|'alarming'|'silenced'|'fault'|'unknown'}
      */
     get condition() {
-        const status = this._status;
-        if (status === null || status === undefined) {
-            return 'unknown';
-        }
-        if (status === SmokeAlarmStatus.NORMAL ||
-            status === SmokeAlarmStatus.INTERCONNECTION_STATUS) {
-            return 'safe';
-        }
-
-        const derived = deriveAlarmFields(status);
-        if (derived.isError) {
-            return 'fault';
-        }
-        if (derived.isActive) {
-            return 'alarming';
-        }
-        if (status === SmokeAlarmStatus.MUTE_SMOKE_ALARM ||
-            status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM) {
-            return 'silenced';
-        }
-
+        const s = this._status;
+        if (!s || s === 'unknown') { return 'unknown'; }
+        if (s === 'normal' || s === 'interconnection') { return 'safe'; }
+        if (isFaultStatus(s)) { return 'fault'; }
+        if (isAlarmingStatus(s)) { return 'alarming'; }
+        if (s === 'mute-smoke' || s === 'mute-temperature') { return 'silenced'; }
         return 'unknown';
     }
 
@@ -186,76 +173,29 @@ class SmokeAlarmState {
      * @returns {'smoke'|'temperature'|'battery'|null}
      */
     get channel() {
-        const status = this._status;
-        if (status === null || status === undefined) {
-            return null;
-        }
-        if (status === SmokeAlarmStatus.MUTE_SMOKE_ALARM) {
-            return 'smoke';
-        }
-        if (status === SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM) {
-            return 'temperature';
-        }
-
-        const { alarmType, isError, isActive } = deriveAlarmFields(status);
-        if (!isError && !isActive) {
-            return null;
-        }
-        if (alarmType === 'smoke' || alarmType === 'temperature' || alarmType === 'battery') {
-            return alarmType;
-        }
-
-        return null;
+        const s = this._status;
+        if (!s || s === 'unknown') { return null; }
+        if (s === 'mute-smoke') { return 'smoke'; }
+        if (s === 'mute-temperature') { return 'temperature'; }
+        if (!isFaultStatus(s) && !isAlarmingStatus(s)) { return null; }
+        const category = deriveAlarmCategory(s);
+        return ['smoke', 'temperature', 'battery'].includes(category) ? category : null;
     }
 
     /**
-     * Mesh linkage when firmware `status` is {@link SmokeAlarmStatus.INTERCONNECTION_STATUS}.
+     * Mesh linkage when status is `'interconnection'`.
      *
      * @returns {{ linkActive: boolean, raw: number }|null}
      */
     get interconnect() {
-        if (this._status !== SmokeAlarmStatus.INTERCONNECTION_STATUS) {
-            return null;
-        }
-        if (this._interConn === null || this._interConn === undefined) {
-            return null;
-        }
-        return { linkActive: this._interConn === 1, raw: this._interConn };
+        if (this._status !== 'interconnection') { return null; }
+        if (this._interConn === null || this._interConn === undefined) { return null; }
+        return {
+            linkActive: SmokeInterConnCodec.fromWire(this._interConn) === 'active',
+            raw: this._interConn
+        };
     }
 
-    /** @returns {string} Legacy firmware category; prefer {@link condition} and {@link channel} */
-    get alarmType() {
-        return deriveAlarmFields(this._status).alarmType;
-    }
-
-    /** @returns {boolean} Whether an active temperature or smoke alarm is reported */
-    get isActive() {
-        return deriveAlarmFields(this._status).isActive;
-    }
-
-    /** @returns {boolean} Whether the detector is in a muted state */
-    get isMuted() {
-        return deriveAlarmFields(this._status).isMuted;
-    }
-
-    /** @returns {boolean} Whether the detector reports a fault condition */
-    get isError() {
-        return deriveAlarmFields(this._status).isError;
-    }
-
-    /**
-     * Subscription slice for channel 0 (`smokeAlarm` event type).
-     *
-     * Wire-format fields (`status`, `interConn`) stay on the state instance; use
-     * {@link module:abilities/hub-smoke} getters (`getStatus`, `getInterConn`, etc.).
-     *
-     * @returns {{
-     *   condition: 'safe'|'alarming'|'silenced'|'fault'|'unknown',
-     *   channel: 'smoke'|'temperature'|'battery'|null,
-     *   interconnect: { linkActive: boolean, raw: number }|null,
-     *   lastStatusUpdate: number|null
-     * }}
-     */
     toSnapshot() {
         return {
             condition: this.condition,
@@ -267,4 +207,3 @@ class SmokeAlarmState {
 }
 
 module.exports = SmokeAlarmState;
-module.exports.deriveAlarmFields = deriveAlarmFields;

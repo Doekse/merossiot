@@ -49,4 +49,20 @@ describe('control ability (mocked device)', () => {
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.Upgrade');
         assert.deepStrictEqual(calls[0].payload.upgrade, { foo: 1 });
     });
+
+    it('setUpgrade caches decoded upgradeInfo from response', async () => {
+        const device = {};
+        const { publishMessage } = createPublishRecorder({
+            responseFor: () => ({
+                upgradeInfo: { status: 1, subdev: [{ devid: 'x', status: 0 }] }
+            })
+        });
+        device.publishMessage = publishMessage;
+        const control = createControlAbility(device);
+
+        await control.setUpgrade({ upgradeData: { url: 'x' } });
+
+        assert.strictEqual(control.getLastUpgrade().status, 'start-download');
+        assert.strictEqual(control.getLastUpgrade().subdev[0].status, 'pending-transfer');
+    });
 });

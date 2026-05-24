@@ -13,7 +13,7 @@ const {
     getDeviceName,
     getPrimaryChannel,
     assertFeatureOrSkip,
-    OnlineStatus
+    REQUIRE_ONLINE
 } = require('./test-helper');
 
 const DEFAULT_OPEN_TIMER = 15;
@@ -34,7 +34,7 @@ async function runTests(context) {
     // If no devices provided, discover them
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.RollerShutter.State', OnlineStatus.ONLINE);
+        testDevices = await findDevicesByAbility(manager, 'Appliance.RollerShutter.State', REQUIRE_ONLINE);
     }
     
     if (testDevices.length === 0) {

@@ -1,7 +1,6 @@
 'use strict';
 
 const chalk = require('chalk');
-const { OnlineStatus } = require('meross-iot');
 const { getTransportModeName } = require('../helpers/client');
 
 /**
@@ -128,11 +127,17 @@ function _buildHttpInfoData(device) {
     if (device.bindTime) {
         httpInfoData.push(['Bind Time', device.bindTime.toLocaleString()]);
     }
-    if (device.onlineStatus !== undefined) {
-        const onlineStatusText = device.onlineStatus === OnlineStatus.ONLINE ? chalk.green('Online') :
-            device.onlineStatus === OnlineStatus.OFFLINE ? chalk.red('Offline') :
-                chalk.yellow('Unknown');
-        httpInfoData.push(['Online Status', onlineStatusText]);
+    if (device.connectivity !== undefined) {
+        const connectivityLabels = {
+            online: chalk.green('Online'),
+            offline: chalk.red('Offline'),
+            'not-online': chalk.yellow('Not online'),
+            upgrading: chalk.yellow('Upgrading'),
+            unknown: chalk.yellow('Unknown')
+        };
+        const onlineStatusText = connectivityLabels[device.connectivity] ||
+            chalk.yellow(device.connectivity);
+        httpInfoData.push(['Connectivity', onlineStatusText]);
     }
 
     return httpInfoData;

@@ -1,6 +1,6 @@
 'use strict';
 
-const TimerType = require('../enums').TimerType;
+const { TimerTypeCodec } = require('../enums');
 const { MerossDeviceError } = require('../exception');
 
 /**
@@ -248,7 +248,7 @@ function generateTimerId() {
  * @param {string|Date|number} [options.time='12:00'] - Time in HH:MM format, Date object, or minutes since midnight
  * @param {Array<string|number>|number} [options.days] - Days of week (array of names/numbers) or week bitmask
  * @param {boolean} [options.on=true] - Whether to turn device on (true) or off (false)
- * @param {number} [options.type=TimerType.SINGLE_POINT_WEEKLY_CYCLE] - Timer type
+ * @param {TimerType} [options.type='single-point-weekly'] - Timer type string
  * @param {number} [options.channel=0] - Channel number
  * @param {boolean} [options.enabled=true] - Whether timer is enabled
  * @param {boolean} [options.repeat=true] - Whether to set repeat bit (for days array input)
@@ -268,7 +268,7 @@ function createTimer(options = {}) {
         time = '12:00',
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
         on = true,
-        type = TimerType.SINGLE_POINT_WEEKLY_CYCLE,
+        type = 'single-point-weekly',
         channel = 0,
         enabled = true,
         repeat = true,
@@ -277,11 +277,12 @@ function createTimer(options = {}) {
 
     const timeMinutes = timeToMinutes(time);
     const week = normalizeWeekBitmask(days, repeat);
+    const typeWire = typeof type === 'string' ? (TimerTypeCodec.toWire(type) ?? 1) : type;
 
     const timerx = {
         id: id || generateTimerId(),
         channel,
-        type,
+        type: typeWire,
         time: timeMinutes,
         week,
         duration: 0,

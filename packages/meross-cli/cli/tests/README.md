@@ -124,7 +124,7 @@ Each test file follows this structure:
  * Brief description of what this test covers
  */
 
-const { findDevicesByAbility, getDeviceName, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, getDeviceName, REQUIRE_ONLINE } = require('./test-helper');
 
 // Export metadata object
 const metadata = {
@@ -144,7 +144,7 @@ async function runTests(context) {
     // If no devices provided, discover them
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Namespace', OnlineStatus.ONLINE);
+        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Namespace', REQUIRE_ONLINE);
     }
     
     if (testDevices.length === 0) {
@@ -237,13 +237,14 @@ module.exports = {
 The `test-helper.js` module provides pure utility functions:
 
 - `waitForDevices(manager, timeout)` - Wait for devices to be discovered
-- `findDevicesByAbility(manager, namespace, onlineStatus)` - Find devices by ability namespace
-- `findDevicesByType(manager, deviceType, onlineStatus)` - Find devices by device type
+- `findDevicesByAbility(manager, namespace, requireOnline)` - Find devices by ability namespace (`REQUIRE_ONLINE` or `true` for online only)
+- `findDevicesByType(manager, deviceType, requireOnline)` - Find devices by device type
 - `waitForDeviceConnection(device, timeout)` - Wait for device to connect
 - `waitForPushNotification(device, namespace, timeout)` - Wait for push notification
 - `getDeviceName(device)` - Get device display name
 - `deviceHasAbility(device, namespace)` - Check if device has specific ability
-- `getDeviceOnlineStatus(device)` - Get device online status
+- `getDeviceOnlineStatus(device)` - Whether the device is online (`boolean|null`)
+- `REQUIRE_ONLINE` - Pass to `findDevicesByAbility` / `findDevicesByType` to filter online devices only
 
 All functions accept explicit parameters - no globals or environment variables.
 
@@ -252,7 +253,7 @@ All functions accept explicit parameters - no globals or environment variables.
 ```javascript
 'use strict';
 
-const { findDevicesByAbility, getDeviceName, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, getDeviceName, REQUIRE_ONLINE } = require('./test-helper');
 
 const metadata = {
     name: 'simple-test',
@@ -267,7 +268,7 @@ async function runTests(context) {
     
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Simple', OnlineStatus.ONLINE);
+        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Simple', REQUIRE_ONLINE);
     }
     
     if (testDevices.length === 0) {

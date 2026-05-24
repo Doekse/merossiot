@@ -47,6 +47,10 @@ const Meross = require('meross-iot');
   const devices = meross.devices.list();
   if (devices.length > 0) {
     const device = devices[0];
+    if (!device.isOnline) {
+      console.log(`${device.name} is ${device.connectivity}`);
+      return;
+    }
     if (device.toggle) {
       await device.toggle.set({ channel: 0, on: true });
     }
@@ -114,7 +118,7 @@ const count = await meross.devices.initialize();
 await device.toggle.set({ channel: 0, on: true });
 
 // Transport mode (MQTT vs LAN-first)
-meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST;
+meross.transport.defaultMode = 'lan-http-first';
 ```
 
 ## Supported Devices

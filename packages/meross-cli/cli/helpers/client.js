@@ -1,7 +1,15 @@
 'use strict';
 
 const fs = require('fs');
-const { TransportMode } = require('meross-iot');
+
+/** @type {import('meross-iot').TransportMode} */
+const TRANSPORT_MQTT = 'mqtt';
+
+/** @type {import('meross-iot').TransportMode} */
+const TRANSPORT_LAN_HTTP_FIRST = 'lan-http-first';
+
+/** @type {import('meross-iot').TransportMode} */
+const TRANSPORT_LAN_HTTP_FIRST_ONLY_GET = 'lan-http-first-only-get';
 
 /**
  * Builds auth-only connect options plus runtime settings from CLI flags and env.
@@ -63,11 +71,11 @@ function processOptions(opts) {
     }
 
     const transportModeStr = opts.transportMode || 'mqtt_only';
-    let transportMode = TransportMode.MQTT_ONLY;
+    let transportMode = TRANSPORT_MQTT;
     if (transportModeStr === 'lan_http_first') {
-        transportMode = TransportMode.LAN_HTTP_FIRST;
+        transportMode = TRANSPORT_LAN_HTTP_FIRST;
     } else if (transportModeStr === 'lan_http_first_only_get') {
-        transportMode = TransportMode.LAN_HTTP_FIRST_ONLY_GET;
+        transportMode = TRANSPORT_LAN_HTTP_FIRST_ONLY_GET;
     }
 
     return {
@@ -81,16 +89,23 @@ function processOptions(opts) {
     };
 }
 
+/**
+ * @param {import('meross-iot').TransportMode} mode
+ * @returns {string}
+ */
 function getTransportModeName(mode) {
     const modeMap = {
-        [TransportMode.MQTT_ONLY]: 'MQTT Only',
-        [TransportMode.LAN_HTTP_FIRST]: 'LAN HTTP First',
-        [TransportMode.LAN_HTTP_FIRST_ONLY_GET]: 'LAN HTTP First (GET only)'
+        [TRANSPORT_MQTT]: 'MQTT Only',
+        [TRANSPORT_LAN_HTTP_FIRST]: 'LAN HTTP First',
+        [TRANSPORT_LAN_HTTP_FIRST_ONLY_GET]: 'LAN HTTP First (GET only)'
     };
     return modeMap[mode] || `Unknown (${mode})`;
 }
 
 module.exports = {
     processOptions,
-    getTransportModeName
+    getTransportModeName,
+    TRANSPORT_MQTT,
+    TRANSPORT_LAN_HTTP_FIRST,
+    TRANSPORT_LAN_HTTP_FIRST_ONLY_GET
 };

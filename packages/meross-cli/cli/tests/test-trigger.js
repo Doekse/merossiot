@@ -9,10 +9,10 @@ const {
     waitForDeviceConnection,
     getDeviceName,
     getPrimaryChannel,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
-const { TriggerType } = require('meross-iot');
+
 
 const metadata = {
     name: 'trigger',
@@ -56,8 +56,8 @@ async function runTests(context) {
 
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        const control = await findDevicesByAbility(manager, 'Appliance.Control.TriggerX', OnlineStatus.ONLINE);
-        const digest = await findDevicesByAbility(manager, 'Appliance.Digest.TriggerX', OnlineStatus.ONLINE);
+        const control = await findDevicesByAbility(manager, 'Appliance.Control.TriggerX', REQUIRE_ONLINE);
+        const digest = await findDevicesByAbility(manager, 'Appliance.Digest.TriggerX', REQUIRE_ONLINE);
         testDevices = mergeDevicesByUuid(control, digest);
     }
 
@@ -100,7 +100,7 @@ async function runTests(context) {
             alias: TEST_ALIAS,
             duration: '30m',
             days: ['weekday'],
-            type: TriggerType.SINGLE_POINT_WEEKLY_CYCLE,
+            type: 'single-point-weekly',
             channel,
             enabled: true
         });

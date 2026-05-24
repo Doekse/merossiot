@@ -129,7 +129,7 @@ describe('thermostat ability (mocked device)', () => {
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.Thermostat.ModeB');
         assert.deepStrictEqual(calls[0].payload, { modeB: [{ channel: 0, state: 1 }] });
-        assert.strictEqual(device._thermostatStateByChannel.get(0).rawState, 1);
+        assert.strictEqual(device._thermostatStateByChannel.get(0).state, 'working');
     });
 
     it('push-shaped mode array updates thermostat cache and emits stateChange', () => {

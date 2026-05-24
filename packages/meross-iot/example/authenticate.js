@@ -30,7 +30,7 @@ const { getCredentials, shutdown } = require('./shared.js');
             console.log(`  … and ${candidates.length - 5} more`);
         }
 
-        meross.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
+        meross.transport.defaultMode = 'mqtt';
         meross.timeout = 15000;
 
         console.log('\nConnecting (initialize devices)…');

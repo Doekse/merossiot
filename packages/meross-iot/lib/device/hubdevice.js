@@ -36,15 +36,13 @@ class MerossHubDevice extends MerossDevice {
      *
      * @param {import('../meross')} merossInstance - Root Meross instance
      * @param {Object} dev - Device information object from the API (contains deviceType, uuid, etc.)
-     * @param {Array<Object>} [subDeviceList] - Initial list of subdevices.
-     *                                         Subdevices should be registered using {@link MerossHubDevice#registerSubdevice} instead.
+     * @param {Array<Object>} [initialSubdeviceInfos] - Initial list of subdevices from HTTP discovery.
+     *                                         Subdevices should be registered using {@link MerossHubDevice#registerSubdevice}.
      */
-    constructor(merossInstance, dev, subDeviceList) {
+    constructor(merossInstance, dev, initialSubdeviceInfos) {
         super(merossInstance, dev);
-        // Map provides O(1) lookup by subdevice ID
         this._subDevices = new Map();
-        // Array format for discovery code compatibility
-        this.subDeviceList = subDeviceList || [];
+        this._initialSubdeviceInfos = initialSubdeviceInfos || [];
 
         // Initialize hub feature
         this.hub = createHubAbility(this);

@@ -5,8 +5,8 @@
  * Tests spray mode control for spray devices
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
-const { SprayMode } = require('meross-iot');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, REQUIRE_ONLINE } = require('./test-helper');
+
 
 const metadata = {
     name: 'spray',
@@ -23,7 +23,7 @@ async function runTests(context) {
     // If no devices provided, discover them
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Spray', OnlineStatus.ONLINE);
+        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Spray', REQUIRE_ONLINE);
     }
     
     // Wait for devices to be connected
@@ -58,48 +58,48 @@ async function runTests(context) {
     // Test: Set different spray modes
     try {
         // Set CONTINUOUS mode
-        await testDevice.spray.set({ channel, mode: SprayMode.CONTINUOUS });
+        await testDevice.spray.set({ channel, mode: 'continuous' });
         await new Promise(resolve => setTimeout(resolve, 1000));
         await testDevice.spray.get({ channel });
         const mode1 = testDevice.spray.getMode({ channel });
-        if (mode1 !== SprayMode.CONTINUOUS) {
+        if (mode1 !== 'continuous') {
             results.push({
                 name: 'should set different spray modes',
                 passed: false,
                 skipped: false,
-                error: `Failed to set CONTINUOUS mode. Expected ${SprayMode.CONTINUOUS}, got ${mode1}`,
+                error: `Failed to set CONTINUOUS mode. Expected ${'continuous'}, got ${mode1}`,
                 device: deviceName
             });
             return results;
         }
         
         // Set INTERMITTENT mode
-        await testDevice.spray.set({ channel, mode: SprayMode.INTERMITTENT });
+        await testDevice.spray.set({ channel, mode: 'intermittent' });
         await new Promise(resolve => setTimeout(resolve, 1000));
         await testDevice.spray.get({ channel });
         const mode2 = testDevice.spray.getMode({ channel });
-        if (mode2 !== SprayMode.INTERMITTENT) {
+        if (mode2 !== 'intermittent') {
             results.push({
                 name: 'should set different spray modes',
                 passed: false,
                 skipped: false,
-                error: `Failed to set INTERMITTENT mode. Expected ${SprayMode.INTERMITTENT}, got ${mode2}`,
+                error: `Failed to set INTERMITTENT mode. Expected ${'intermittent'}, got ${mode2}`,
                 device: deviceName
             });
             return results;
         }
         
         // Set OFF mode
-        await testDevice.spray.set({ channel, mode: SprayMode.OFF });
+        await testDevice.spray.set({ channel, mode: 'off' });
         await new Promise(resolve => setTimeout(resolve, 1000));
         await testDevice.spray.get({ channel });
         const mode3 = testDevice.spray.getMode({ channel });
-        if (mode3 !== SprayMode.OFF) {
+        if (mode3 !== 'off') {
             results.push({
                 name: 'should set different spray modes',
                 passed: false,
                 skipped: false,
-                error: `Failed to set OFF mode. Expected ${SprayMode.OFF}, got ${mode3}`,
+                error: `Failed to set OFF mode. Expected ${'off'}, got ${mode3}`,
                 device: deviceName
             });
             return results;

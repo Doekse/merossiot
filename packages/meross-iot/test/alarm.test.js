@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createAlarmAbility = require('../lib/abilities/alarm');
+const { updateAlarmEvents } = require('../lib/abilities/alarm');
 const { MerossDeviceError } = require('..');
 const { createPublishRecorder } = require('./helpers/mock-ability-device');
 
@@ -57,5 +58,27 @@ describe('alarm ability (mocked device)', () => {
         assert.strictEqual(calls[0].method, 'GET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.Alarm');
         assert.deepStrictEqual(calls[0].payload, { alarm: [{ channel: 2 }] });
+    });
+
+    it('getLastEvents stores decoded alarm event fields', () => {
+        const events = [];
+        const device = {
+            _lastAlarmEvents: [],
+            emit(_type, payload) {
+                events.push(payload);
+            }
+        };
+        updateAlarmEvents(device, {
+            channel: 0,
+            event: {
+                interConn: { value: 2, type: 3, timestamp: 5 }
+            }
+        }, 'push');
+
+        const stored = device._lastAlarmEvents[0];
+        assert.strictEqual(stored.event.interConn.action, 'normal');
+        assert.strictEqual(stored.event.interConn.scope, 'all-including-source');
+        assert.strictEqual(stored.event.interConn.value, undefined);
+        assert.strictEqual(events[0].value.event.interConn.action, 'normal');
     });
 });

@@ -16,7 +16,7 @@ const {
     waitForDeviceConnection,
     getDeviceName,
     getPrimaryChannel,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
 
@@ -54,7 +54,7 @@ async function runTests(context) {
     let testDevices = devices || [];
     if (testDevices.length === 0) {
         for (const ability of ABILITY_FALLBACK_ORDER) {
-            testDevices = await findDevicesByAbility(manager, ability, OnlineStatus.ONLINE);
+            testDevices = await findDevicesByAbility(manager, ability, REQUIRE_ONLINE);
             if (testDevices.length > 0) {
                 break;
             }

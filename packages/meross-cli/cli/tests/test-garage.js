@@ -13,7 +13,7 @@ const {
     getDeviceName,
     getPrimaryChannel,
     hasFeature,
-    OnlineStatus
+    REQUIRE_ONLINE
 } = require('./test-helper');
 
 const metadata = {
@@ -31,10 +31,10 @@ async function runTests(context) {
     // If no devices provided, discover them
     let garageDevices = devices || [];
     if (garageDevices.length === 0) {
-        garageDevices = await findDevicesByAbility(manager, 'Appliance.GarageDoor.State', OnlineStatus.ONLINE);
+        garageDevices = await findDevicesByAbility(manager, 'Appliance.GarageDoor.State', REQUIRE_ONLINE);
 
         if (garageDevices.length === 0) {
-            garageDevices = await findDevicesByType(manager, 'msg100', OnlineStatus.ONLINE);
+            garageDevices = await findDevicesByType(manager, 'msg100', REQUIRE_ONLINE);
         }
     }
 

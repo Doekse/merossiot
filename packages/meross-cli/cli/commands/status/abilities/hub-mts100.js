@@ -1,7 +1,14 @@
 'use strict';
 
 const chalk = require('chalk');
-const { ThermostatMode } = require('meross-iot');
+
+const THERMOSTAT_MODE_LABELS = {
+    heat: 'Heat',
+    cool: 'Cool',
+    economy: 'Economy',
+    auto: 'Auto',
+    manual: 'Manual'
+};
 
 /**
  * @param {import('meross-iot').MerossSubDevice} subdevice
@@ -50,14 +57,7 @@ function display(subdevice) {
     console.log(`\n    ${chalk.bold.underline('Configuration')}`);
 
     if (mode !== undefined && mode !== null) {
-        const modeNames = {
-            [ThermostatMode.HEAT]: 'Heat',
-            [ThermostatMode.COOL]: 'Cool',
-            [ThermostatMode.ECONOMY]: 'Economy',
-            [ThermostatMode.AUTO]: 'Auto',
-            [ThermostatMode.MANUAL]: 'Manual'
-        };
-        const modeName = modeNames[mode] || `Mode ${mode}`;
+        const modeName = THERMOSTAT_MODE_LABELS[mode] || `Mode ${mode}`;
         const onoffStatus = mts100.isOn() ? 'On' : 'Off';
         console.log(`      ${chalk.white.bold('Mode')}: ${chalk.italic(`${onoffStatus} - ${modeName}${targetTemp !== null ? ` ${targetTemp.toFixed(1)}°C` : ''}`)}`);
         hasReadings = true;

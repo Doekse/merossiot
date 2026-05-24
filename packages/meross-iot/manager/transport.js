@@ -2,8 +2,45 @@
 
 const Manager = require('./base');
 const RequestQueue = require('../lib/utilities/request-queue');
-const { TransportMode } = require('../lib/enums');
+const { TransportModeCodec } = require('../lib/enums');
 const { MerossNetworkError, MerossApiError } = require('../lib/exception');
+
+/** @type {readonly string[]} */
+const TRANSPORT_MODE_STRINGS = ['mqtt', 'lan-http-first', 'lan-http-first-only-get'];
+
+/** @type {ReadonlySet<number>} */
+const TRANSPORT_MODE_WIRES = new Set(
+    TRANSPORT_MODE_STRINGS.map((mode) => TransportModeCodec.toWire(mode))
+);
+
+/**
+ * Normalizes a public transport mode (string) or internal wire code (number) to a wire value.
+ *
+ * @param {string|number} value
+ * @returns {number}
+ * @private
+ */
+function coerceTransportModeToWire(value) {
+    if (typeof value === 'string') {
+        const wire = TransportModeCodec.toWire(value);
+        if (wire === undefined) {
+            throw new MerossNetworkError(
+                `Invalid transport mode: ${value}. Must be one of: ${TRANSPORT_MODE_STRINGS.join(', ')}`,
+                'MQTT_ERROR'
+            );
+        }
+        return wire;
+    }
+
+    if (typeof value === 'number' && TRANSPORT_MODE_WIRES.has(value)) {
+        return value;
+    }
+
+    throw new MerossNetworkError(
+        `Invalid transport mode: ${value}. Must be one of: ${TRANSPORT_MODE_STRINGS.join(', ')}`,
+        'MQTT_ERROR'
+    );
+}
 
 /**
  * Manages transport mode selection and message routing.
@@ -20,8 +57,8 @@ class ManagerTransport extends Manager {
         const options = meross.options;
 
         this._defaultTransportMode = options.transportMode !== undefined
-            ? options.transportMode
-            : TransportMode.MQTT_ONLY;
+            ? coerceTransportModeToWire(options.transportMode)
+            : 0;
 
         this._errorBudgets = new Map();
         this.errorBudgetMaxErrors = options.maxErrors !== undefined ? options.maxErrors : 1;
@@ -39,18 +76,18 @@ class ManagerTransport extends Manager {
         }) : null;
     }
 
+    /**
+     * @returns {'mqtt'|'lan-http-first'|'lan-http-first-only-get'}
+     */
     get defaultMode() {
-        return this._defaultTransportMode;
+        return TransportModeCodec.fromWire(this._defaultTransportMode);
     }
 
+    /**
+     * @param {'mqtt'|'lan-http-first'|'lan-http-first-only-get'} value
+     */
     set defaultMode(value) {
-        if (!Object.values(TransportMode).includes(value)) {
-            throw new MerossNetworkError(
-                `Invalid transport mode: ${value}. Must be one of: ${Object.values(TransportMode).join(', ')}`,
-                'MQTT_ERROR'
-            );
-        }
-        this._defaultTransportMode = value;
+        this._defaultTransportMode = coerceTransportModeToWire(value);
     }
 
     /**
@@ -112,8 +149,7 @@ class ManagerTransport extends Manager {
      * @private
      */
     _canFallback(transportMode) {
-        return transportMode === TransportMode.LAN_HTTP_FIRST ||
-               transportMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET;
+        return transportMode === 1 || transportMode === 2;
     }
 
     /**
@@ -128,11 +164,11 @@ class ManagerTransport extends Manager {
             return false;
         }
 
-        if (transportMode === TransportMode.LAN_HTTP_FIRST) {
+        if (transportMode === 1) {
             return true;
         }
 
-        if (transportMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET) {
+        if (transportMode === 2) {
             return method === 'GET';
         }
 

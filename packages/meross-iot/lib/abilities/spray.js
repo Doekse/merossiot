@@ -1,7 +1,7 @@
 'use strict';
 
 const SprayState = require('../states/spray-state');
-const { SprayMode } = require('../enums');
+const { SprayModeCodec } = require('../enums');
 const { getCachedOrFetch } = require('../utilities/cache');
 const { normalizeChannel } = require('../utilities/options');
 const { MerossDeviceError } = require('../exception');
@@ -22,7 +22,7 @@ function createSprayAbility(device) {
          *
          * @param {Object} options - Spray options
          * @param {number} [options.channel=0] - Channel to control (default: 0)
-         * @param {number|import('../enums').SprayMode} options.mode - Spray mode value or SprayMode enum
+         * @param {'off'|'continuous'|'intermittent'} options.mode - Spray mode
          * @returns {Promise<Object>} Response from the device
          * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
          */
@@ -31,7 +31,14 @@ function createSprayAbility(device) {
                 throw new MerossDeviceError('mode is required', 'VALIDATION_ERROR', { field: 'mode' });
             }
             const channel = normalizeChannel(options);
-            const modeValue = options.mode || 0;
+            const modeValue = SprayModeCodec.toWire(options.mode);
+            if (modeValue === undefined) {
+                throw new MerossDeviceError(
+                    'Invalid spray mode. Expected off, continuous, or intermittent.',
+                    'VALIDATION_ERROR',
+                    { field: 'mode', mode: options.mode, deviceUuid: device.uuid }
+                );
+            }
 
             const payload = { 'spray': { channel, 'mode': modeValue } };
             const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.Control.Spray', payload);
@@ -63,32 +70,12 @@ function createSprayAbility(device) {
          *
          * @param {Object} [options={}] - Options
          * @param {number} [options.channel=0] - Channel to get mode for (default: 0)
-         * @returns {import('../enums').SprayMode|undefined} SprayMode enum object or undefined if not available
+         * @returns {'off'|'continuous'|'intermittent'|undefined} Spray mode or undefined if not available
          */
         getMode(options = {}) {
             const channel = normalizeChannel(options);
             const sprayState = device._sprayStateByChannel.get(channel);
-            if (sprayState && sprayState.mode !== undefined && sprayState.mode !== null) {
-                const enumKey = Object.keys(SprayMode).find(key => SprayMode[key] === sprayState.mode);
-                return enumKey ? SprayMode[enumKey] : undefined;
-            }
-            return undefined;
-        },
-
-        /**
-         * Gets the raw numeric spray mode value for the specified channel (cached).
-         *
-         * @param {Object} [options={}] - Options
-         * @param {number} [options.channel=0] - Channel to get mode for (default: 0)
-         * @returns {number|undefined} Raw numeric mode value or undefined if not available
-         */
-        getRawMode(options = {}) {
-            const channel = normalizeChannel(options);
-            const sprayState = device._sprayStateByChannel.get(channel);
-            if (sprayState) {
-                return sprayState.mode;
-            }
-            return undefined;
+            return sprayState?.mode;
         }
     };
 }

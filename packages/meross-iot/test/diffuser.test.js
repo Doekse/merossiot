@@ -38,7 +38,7 @@ describe('diffuser ability (mocked device)', () => {
         };
         const diffuser = createDiffuserAbility(device);
 
-        await diffuser.set({ channel: 0, mode: 1 });
+        await diffuser.set({ channel: 0, mode: 'strong' });
 
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.Diffuser.Spray');
     });

@@ -20,7 +20,6 @@ const createSensorAdjustAbility = require('../lib/abilities/hub-adjust');
 const createWaterLeakAbility = require('../lib/abilities/hub-water-leak');
 const createDoorWindowAbility = require('../lib/abilities/hub-door-window');
 const createMts100Ability = require('../lib/abilities/hub-mts100');
-const { OnlineStatus, SmokeAlarmStatus } = require('../lib/enums');
 const SmokeAlarmState = require('../lib/states/smoke-alarm-state');
 
 /** Default `_type` per capability kind (matches {@link SUBDEVICE_TYPES} models). */
@@ -117,8 +116,17 @@ function createStub(kind) {
     EventEmitter.call(subdev);
     subdev._subdeviceId = 'sub-1';
     subdev._type = SUBDEVICE_TYPE_BY_KIND[kind];
-    subdev._hub = { uuid: 'hub-uuid', onlineStatus: OnlineStatus.ONLINE };
-    subdev._onlineStatus = OnlineStatus.UNKNOWN;
+    subdev._hub = {
+        uuid: 'hub-uuid',
+        _connectivityWire: 1,
+        get isOnline() {
+            return true;
+        },
+        get connectivity() {
+            return 'online';
+        }
+    };
+    subdev._connectivityWire = -1;
     subdev.emit = EventEmitter.prototype.emit.bind(subdev);
     subdev.on = EventEmitter.prototype.on.bind(subdev);
 
@@ -167,7 +175,7 @@ describe('MerossSubDevice.handleMessage header-timestamp ordering', () => {
         );
     });
 
-    it('stale Hub.Sensor.All cannot overwrite _onlineStatus set by fresh Hub.Online', async () => {
+    it('stale Hub.Sensor.All cannot overwrite _connectivityWire set by fresh Hub.Online', async () => {
         const sensor = createStub('waterLeak');
 
         await sensor.handleMessage({
@@ -175,7 +183,9 @@ describe('MerossSubDevice.handleMessage header-timestamp ordering', () => {
             namespace: 'Appliance.Hub.Online',
             payload: { id: 'sub-1', status: 1 }
         });
-        assert.strictEqual(sensor._onlineStatus, OnlineStatus.ONLINE);
+        assert.strictEqual(sensor._connectivityWire, 1);
+        assert.strictEqual(sensor.connectivity, 'online');
+        assert.strictEqual(sensor.isOnline, true);
 
         await sensor.handleMessage({
             header: headerAt(100),
@@ -183,9 +193,9 @@ describe('MerossSubDevice.handleMessage header-timestamp ordering', () => {
             payload: { id: 'sub-1', online: { status: 2 } }
         });
         assert.strictEqual(
-            sensor._onlineStatus,
-            OnlineStatus.ONLINE,
-            'stale Sensor.All must not flip _onlineStatus under the shared "online" gate'
+            sensor._connectivityWire,
+            1,
+            'stale Sensor.All must not flip _connectivityWire under the shared "online" gate'
         );
     });
 
@@ -344,7 +354,8 @@ describe('MerossSubDevice.handleMessage header-timestamp ordering', () => {
             payload: { id: 'sub-1', status: 1, lastActiveTime: 12345 }
         });
 
-        assert.strictEqual(sensor._onlineStatus, OnlineStatus.ONLINE);
+        assert.strictEqual(sensor._connectivityWire, 1);
+        assert.strictEqual(sensor.connectivity, 'online');
         assert.strictEqual(sensor._lastActiveTime, 12345);
     });
 });
@@ -380,47 +391,44 @@ describe('HubSmokeDetector smokeAlarm.get routes through handleMessage', () => {
 
         pendingResponse = {
             header: headerAt(200),
-            payload: { smokeAlarm: [{ id: 'sub-1', status: SmokeAlarmStatus.MUTE_SMOKE_ALARM, timestamp: 999 }] }
+            payload: { smokeAlarm: [{ id: 'sub-1', status: 27, timestamp: 999 }] }
         };
         await detector.smokeAlarm.get();
-        assert.strictEqual(detector.smokeAlarm.getStatus(), SmokeAlarmStatus.MUTE_SMOKE_ALARM);
+        assert.strictEqual(detector.smokeAlarm.getStatus(), 'mute-smoke');
 
         pendingResponse = {
             header: headerAt(100),
-            payload: { smokeAlarm: [{ id: 'sub-1', status: SmokeAlarmStatus.NORMAL, timestamp: 1000 }] }
+            payload: { smokeAlarm: [{ id: 'sub-1', status: 23, timestamp: 1000 }] }
         };
         await detector.smokeAlarm.get();
         assert.strictEqual(
             detector.smokeAlarm.getStatus(),
-            SmokeAlarmStatus.MUTE_SMOKE_ALARM,
+            'mute-smoke',
             'stale response header must not overwrite alarm state'
         );
     });
 });
 
 describe('HubSmokeDetector smokeAlarm state slice', () => {
-    it('derives alarm fields from status codes', () => {
+    it('derives condition and channel from status codes', () => {
         const detector = createStub('smoke');
 
-        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: SmokeAlarmStatus.ALARM_SMOKE }));
-        assert.strictEqual(detector.smokeAlarm.getType(), 'smoke');
-        assert.strictEqual(detector.smokeAlarm.isActive(), true);
-        assert.strictEqual(detector.smokeAlarm.isMuted(), false);
-        assert.strictEqual(detector.smokeAlarm.isError(), false);
+        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: 25 }));
+        assert.strictEqual(detector.smokeAlarm.getCondition(), 'alarming');
+        assert.strictEqual(detector.smokeAlarm.getChannel(), 'smoke');
 
-        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: SmokeAlarmStatus.ALARM_TEMPERATURE }));
-        assert.strictEqual(detector.smokeAlarm.getType(), 'temperature');
-        assert.strictEqual(detector.smokeAlarm.isActive(), true);
+        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: 24 }));
+        assert.strictEqual(detector.smokeAlarm.getCondition(), 'alarming');
+        assert.strictEqual(detector.smokeAlarm.getChannel(), 'temperature');
 
-        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: SmokeAlarmStatus.ERROR_BATTERY }));
-        assert.strictEqual(detector.smokeAlarm.getType(), 'battery');
-        assert.strictEqual(detector.smokeAlarm.isError(), true);
+        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: 19 }));
+        assert.strictEqual(detector.smokeAlarm.getCondition(), 'fault');
+        assert.strictEqual(detector.smokeAlarm.getChannel(), 'battery');
 
         detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({
-            status: SmokeAlarmStatus.INTERCONNECTION_STATUS,
+            status: 170,
             interConn: 0
         }));
-        assert.strictEqual(detector.smokeAlarm.getType(), 'interconnection');
         assert.strictEqual(detector.smokeAlarm.getCondition(), 'safe');
         assert.deepStrictEqual(detector.smokeAlarm.getInterconnect(), { linkActive: false, raw: 0 });
     });
@@ -436,16 +444,16 @@ describe('HubSmokeDetector smokeAlarm state slice', () => {
             payload: {
                 id: 'sub-1',
                 smokeAlarm: {
-                    status: SmokeAlarmStatus.ALARM_TEMPERATURE,
+                    status: 24,
                     lmTime: 1681997644,
                     interConn: 0
                 }
             }
         });
 
-        assert.strictEqual(detector.smokeAlarm.getStatus(), SmokeAlarmStatus.ALARM_TEMPERATURE);
-        assert.strictEqual(detector.smokeAlarm.getType(), 'temperature');
-        assert.strictEqual(detector.smokeAlarm.isActive(), true);
+        assert.strictEqual(detector.smokeAlarm.getStatus(), 'alarm-temperature');
+        assert.strictEqual(detector.smokeAlarm.getCondition(), 'alarming');
+        assert.strictEqual(detector.smokeAlarm.getChannel(), 'temperature');
         assert.strictEqual(detector.smokeAlarm.getLastStatusUpdate(), 1681997644);
 
         const smokeEvent = events.find((event) => event.type === 'smokeAlarm');

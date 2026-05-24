@@ -15,7 +15,7 @@
  * - Use getPrimaryChannel(device) for channel-scoped calls instead of hardcoding 0
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, REQUIRE_ONLINE } = require('./test-helper');
 const { runSingleTest } = require('./test-runner');
 
 /**
@@ -47,8 +47,8 @@ async function runTests(context) {
     let testDevices = devices || [];
     if (testDevices.length === 0) {
         // Find devices with required abilities
-        const toggleXDevices = await findDevicesByAbility(manager, 'Appliance.Control.ToggleX', OnlineStatus.ONLINE);
-        const toggleDevices = await findDevicesByAbility(manager, 'Appliance.Control.Toggle', OnlineStatus.ONLINE);
+        const toggleXDevices = await findDevicesByAbility(manager, 'Appliance.Control.ToggleX', REQUIRE_ONLINE);
+        const toggleDevices = await findDevicesByAbility(manager, 'Appliance.Control.Toggle', REQUIRE_ONLINE);
         
         // Combine and deduplicate
         testDevices = [...toggleXDevices];

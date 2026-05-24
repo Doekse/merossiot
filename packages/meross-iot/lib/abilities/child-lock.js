@@ -1,5 +1,7 @@
 'use strict';
 
+const { PhysicalLockCodec } = require('../enums');
+const { MerossDeviceError } = require('../exception');
 const { normalizeChannel } = require('../utilities/options');
 
 /**
@@ -41,7 +43,9 @@ function createChildLockAbility(device) {
          * @param {Object|Array<Object>} [options.lockData] - Lock data object or array (if provided, used directly)
          * @param {number} [options.channel] - Channel to control
          * @param {string} [options.subId] - Optional subdevice ID
-         * @param {number} [options.onoff] - Lock on (1) or off (0)
+         * @param {number} [options.onoff] - Lock wire value (0 = unlocked, 1 = locked)
+         * @param {'unlocked'|'locked'} [options.lockState] - Semantic lock state (alternative to `onoff`)
+         * @param {boolean} [options.locked] - Shorthand for `lockState` locked/unlocked
          * @returns {Promise<Object>} Response from the device
          */
         async set(options = {}) {
@@ -50,10 +54,23 @@ function createChildLockAbility(device) {
                 lockData = Array.isArray(options.lockData) ? options.lockData : [options.lockData];
             } else {
                 const channel = normalizeChannel(options);
+                let onoff = options.onoff;
+                if (options.lockState !== undefined && options.lockState !== null) {
+                    onoff = PhysicalLockCodec.toWire(options.lockState);
+                    if (onoff === undefined) {
+                        throw new MerossDeviceError(
+                            'Invalid lock state. Expected "unlocked" or "locked".',
+                            'VALIDATION_ERROR',
+                            { field: 'lockState', lockState: options.lockState }
+                        );
+                    }
+                } else if (options.locked !== undefined) {
+                    onoff = PhysicalLockCodec.toWire(options.locked ? 'locked' : 'unlocked');
+                }
                 lockData = [{
                     channel,
                     subId: options.subId,
-                    onoff: options.onoff
+                    onoff
                 }];
             }
             const payload = { lock: lockData };

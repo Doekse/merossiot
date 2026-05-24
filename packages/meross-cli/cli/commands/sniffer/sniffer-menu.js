@@ -485,7 +485,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
             clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
             console.log(chalk.red('No devices found. Please connect devices first.'));
-            await question(rl, '\nPress Enter to return to menu...');
+            await question( '\nPress Enter to return to menu...');
             return;
         }
 
@@ -522,7 +522,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
 
             console.log(chalk.red('Error: Could not get device MAC address or MQTT host.'));
             console.log('Please ensure the device is online and try again.');
-            await question(rl, '\nPress Enter to return to menu...');
+            await question( '\nPress Enter to return to menu...');
             return;
         }
 
@@ -542,7 +542,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
             clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
             console.log(chalk.yellow('Sniffing cancelled.'));
-            await question(rl, '\nPress Enter to return to menu...');
+            await question( '\nPress Enter to return to menu...');
             return;
         }
 
@@ -556,7 +556,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
             clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
             console.log(chalk.red('Error: Missing authentication credentials.'));
-            await question(rl, '\nPress Enter to return to menu...');
+            await question( '\nPress Enter to return to menu...');
             return;
         }
 
@@ -616,7 +616,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
             clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
             console.log(chalk.yellow('No messages were captured.'));
-            await question(rl, '\nPress Enter to return to menu...');
+            await question( '\nPress Enter to return to menu...');
             return;
         }
 
@@ -644,7 +644,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
         clearMenuArea(SIMPLE_CONTENT_START_LINE);
 
         console.log(chalk.green('✓ Sniffing session completed successfully!'));
-        await question(rl, '\nPress Enter to return to menu...');
+        await question( '\nPress Enter to return to menu...');
 
     } catch (error) {
         clearScreen();
@@ -664,7 +664,7 @@ async function snifferMenu(manager, rl, currentUser = null) {
             await appSniffer.stop().catch(() => {});
         }
 
-        await question(rl, '\nPress Enter to return to menu...');
+        await question( '\nPress Enter to return to menu...');
     } finally {
         if (logStream && !logStream.destroyed) {
             logStream.end();

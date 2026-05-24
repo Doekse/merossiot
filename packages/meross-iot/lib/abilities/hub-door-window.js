@@ -115,6 +115,15 @@ function createDoorWindowAbility(device) {
         },
 
         /**
+         * Decoded contact state from cached state.
+         *
+         * @returns {'closed'|'open'|null}
+         */
+        getContactState() {
+            return getDoorWindowState(device)?.contactState ?? null;
+        },
+
+        /**
          * Unix timestamp of the latest door/window change from cached state.
          *
          * @returns {number|null}

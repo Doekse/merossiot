@@ -17,7 +17,10 @@ function getSmokeAlarm(subdevice) {
  * @param {import('meross-iot').SmokeAlarmFeature} smoke
  * @returns {string}
  */
-function formatConditionLabel(condition, channel, isMuted, status) {
+function formatConditionLabel(condition, channel, status) {
+    const isMuted = Boolean(
+        status && (status.endsWith('-muted') || status.startsWith('mute-'))
+    );
     if (condition === 'safe') {
         return 'Safe';
     }
@@ -83,7 +86,6 @@ function deriveSmokeAlarmView(smoke) {
         condition: formatConditionLabel(
             smoke.getCondition(),
             smoke.getChannel(),
-            smoke.isMuted(),
             smoke.getStatus()
         ),
         interconnect: interconnect !== null ? formatInterconnectLabel(interconnect) : null

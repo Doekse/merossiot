@@ -202,6 +202,7 @@ describe('hub subdevice abilities (mocked device)', () => {
         const doorWindow = createDoorWindowAbility(sensor);
 
         assert.strictEqual(doorWindow.isOpen(), true);
+        assert.strictEqual(doorWindow.getContactState(), 'open');
         assert.strictEqual(doorWindow.getLatestLmTime(), 100);
     });
 });

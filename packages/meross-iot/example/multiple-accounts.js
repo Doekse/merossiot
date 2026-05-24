@@ -30,8 +30,8 @@ const ACCOUNT_B = {
             })
         ]);
 
-        account1.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
-        account2.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
+        account1.transport.defaultMode = 'mqtt';
+        account2.transport.defaultMode = 'mqtt';
 
         onEachDevice(account1, (d) => console.log(`A1: ${d.name}`));
         onEachDevice(account2, (d) => console.log(`A2: ${d.name}`));

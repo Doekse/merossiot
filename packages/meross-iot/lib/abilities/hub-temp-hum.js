@@ -115,13 +115,13 @@ function getLuxState(device) {
 function getLastSampledTimestamp(device) {
     const tempTs = getTemperatureState(device)?.latestSampleTime;
     const humTs = getHumidityState(device)?.latestSampleTime;
-    if (tempTs == null && humTs == null) {
+    if ((tempTs === null || tempTs === undefined) && (humTs === null || humTs === undefined)) {
         return null;
     }
-    if (tempTs == null) {
+    if (tempTs === null || tempTs === undefined) {
         return humTs;
     }
-    if (humTs == null) {
+    if (humTs === null || humTs === undefined) {
         return tempTs;
     }
     return Math.max(tempTs, humTs);
@@ -285,7 +285,7 @@ function createTempHumAbility(device) {
          */
         getLastSampledTime() {
             const ts = getLastSampledTimestamp(device);
-            return ts != null ? new Date(ts * 1000) : null;
+            return ts !== null && ts !== undefined ? new Date(ts * 1000) : null;
         },
 
         /**

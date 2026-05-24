@@ -1,6 +1,8 @@
 'use strict';
 
 const { MerossDeviceError } = require('../exception');
+const { OverTempTypeCodec } = require('../enums');
+const { normalizeOverTemp } = require('../utilities/normalize-payload');
 
 /**
  * Creates a configuration feature object for a device.
@@ -16,10 +18,16 @@ function createConfigAbility(device) {
          * Gets the over-temperature protection configuration from the device.
          *
          * @param {Object} [options={}] - Get options
-         * @returns {Promise<Object>} Response containing over-temperature protection config
+         * @returns {Promise<Object>} Response with decoded `overTemp.type`
          */
         async get(_options = {}) {
             const { payload } = await device.publishMessage('GET', 'Appliance.Config.OverTemp', {});
+            if (payload?.overTemp) {
+                return {
+                    ...payload,
+                    overTemp: normalizeOverTemp(payload.overTemp, { decodeValue: false })
+                };
+            }
             return payload;
         },
 
@@ -28,7 +36,7 @@ function createConfigAbility(device) {
          *
          * @param {Object} options - Over-temperature config options
          * @param {boolean} options.enable - Enable state (true = on, false = off)
-         * @param {number} [options.type] - Protection type (1 = early warning, 2 = early warning and shutdown)
+         * @param {'early-warning'|'shutoff-relay'|number} [options.type] - Protection type
          * @returns {Promise<Object>} Response from the device
          */
         async set(options = {}) {
@@ -37,22 +45,39 @@ function createConfigAbility(device) {
             }
 
             const enableValue = options.enable ? 1 : 2;
-            let overTempData;
+            let typeWire;
 
             if (options.type !== undefined) {
-                overTempData = { enable: enableValue, type: options.type };
+                typeWire = typeof options.type === 'string'
+                    ? OverTempTypeCodec.toWire(options.type)
+                    : options.type;
+                if (typeWire === undefined) {
+                    throw new MerossDeviceError('Invalid over-temperature type', 'VALIDATION_ERROR', { field: 'type', value: options.type });
+                }
             } else {
                 try {
                     const currentConfig = await this.get();
                     const currentType = currentConfig?.overTemp?.type;
-                    overTempData = { enable: enableValue, type: currentType !== undefined ? currentType : 1 };
+                    if (typeof currentType === 'string') {
+                        typeWire = OverTempTypeCodec.toWire(currentType) ?? 1;
+                    } else {
+                        typeWire = currentType !== undefined ? currentType : 1;
+                    }
                 } catch (e) {
-                    overTempData = { enable: enableValue, type: 1 };
+                    typeWire = 1;
                 }
             }
 
-            const payload = { overTemp: overTempData };
+            const payload = {
+                overTemp: { enable: enableValue, type: typeWire }
+            };
             const { payload: out } = await device.publishMessage('SET', 'Appliance.Config.OverTemp', payload);
+            if (out?.overTemp) {
+                return {
+                    ...out,
+                    overTemp: normalizeOverTemp(out.overTemp, { decodeValue: false })
+                };
+            }
             return out;
         }
     };

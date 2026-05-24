@@ -2,7 +2,7 @@
 
 const chalk = require('chalk');
 const ora = require('ora');
-const { MerossHubDevice, MerossSubDevice, OnlineStatus } = require('meross-iot');
+const { MerossHubDevice, MerossSubDevice } = require('meross-iot');
 const { formatDevice } = require('../utils/display');
 
 async function listDevices(manager) {
@@ -12,7 +12,7 @@ async function listDevices(manager) {
         // Refresh hub state to update subdevice online status
         // This queries the hub for current subdevice status
         const refreshPromises = hubs
-            .filter(hub => hub.onlineStatus === OnlineStatus.ONLINE)
+            .filter(hub => hub.isOnline)
             .map(async hub => {
                 try {
                     // Refresh state (queries sensors/MTS100 which may include online status)
@@ -95,7 +95,7 @@ async function listDevices(manager) {
                     const subName = subdevice.name || subdevice.subdeviceId;
                     const subType = subdevice.type || 'unknown';
                     const subId = subdevice.subdeviceId;
-                    const subOnline = subdevice.onlineStatus === OnlineStatus.ONLINE ? 'online' : 'offline';
+                    const subOnline = subdevice.isOnline ? 'online' : 'offline';
                     const subOnlineColor = subOnline === 'online' ? chalk.green('Online') : chalk.red('Offline');
                     console.log(`    ${chalk.bold(subName)} (${subType}) - ID: ${chalk.cyan(subId)} [${subOnlineColor}]`);
                 });

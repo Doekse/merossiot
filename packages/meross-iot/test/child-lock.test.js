@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createChildLockAbility = require('../lib/abilities/child-lock');
+const { PhysicalLockCodec } = require('../lib/enums');
 const { createPublishRecorder } = require('./helpers/mock-ability-device');
 
 describe('child lock ability (mocked device)', () => {
@@ -31,5 +32,14 @@ describe('child lock ability (mocked device)', () => {
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.PhysicalLock');
         assert.strictEqual(calls[0].payload.lock[0].onoff, 1);
+    });
+
+    it('set accepts semantic lockState', async () => {
+        const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
+        const lock = createChildLockAbility({ publishMessage });
+
+        await lock.set({ channel: 0, lockState: 'locked' });
+
+        assert.strictEqual(calls[0].payload.lock[0].onoff, PhysicalLockCodec.toWire('locked'));
     });
 });

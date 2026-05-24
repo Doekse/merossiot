@@ -4,7 +4,7 @@ const { registerNamespaceDescriptor, mutateChannelState } = require('../dispatch
 const { getMessageTimestamp } = require('../utilities/state-ordering');
 const { applySubdeviceOnline, publishHubGet, publishHubSet, subdeviceIs } = require('./hub');
 const SmokeAlarmState = require('../states/smoke-alarm-state');
-const { SmokeAlarmStatus } = require('../enums');
+const { SmokeAlarmStatusCodec, SmokeTestTypeCodec } = require('../enums');
 
 /**
  * Dispatcher descriptors for hub smoke detector subdevices (MA151, etc.).
@@ -42,7 +42,10 @@ function processSmokeTestEvent(device, testEvent) {
     if (device._testEvents.length >= device._maxTestEvents) {
         device._testEvents.shift();
     }
-    device._testEvents.push({ type, timestamp });
+    const typeLabel = typeof type === 'number'
+        ? SmokeTestTypeCodec.fromWire(type)
+        : type;
+    device._testEvents.push({ type: typeLabel, typeWire: type, timestamp });
 }
 
 /**
@@ -140,7 +143,7 @@ function createSmokeAlarmAbility(device) {
          *
          * @param {Object} [options={}] - Set options
          * @param {boolean} [options.muteSmoke] - If true, mute smoke alarm; if false, mute temperature alarm
-         * @param {number} [options.status] - Raw firmware status code (see `lib/enums` SmokeAlarmStatus)
+         * @param {string} [options.status] - Semantic status string (e.g. `'normal'`, `'mute-smoke'`)
          * @returns {Promise<Object>} Response from the device
          */
         async set(options = {}) {
@@ -148,28 +151,27 @@ function createSmokeAlarmAbility(device) {
                 throw new Error('smokeAlarm.set() is only supported on smoke detector subdevices');
             }
 
-            let status;
+            let statusStr;
             if (options.status !== undefined && options.status !== null) {
-                status = options.status;
+                statusStr = options.status;
             } else {
                 const muteSmoke = options.muteSmoke !== false;
-                status = muteSmoke
-                    ? SmokeAlarmStatus.MUTE_SMOKE_ALARM
-                    : SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM;
+                statusStr = muteSmoke ? 'mute-smoke' : 'mute-temperature';
             }
 
+            const statusWire = SmokeAlarmStatusCodec.toWire(statusStr);
             const response = await publishHubSet(device, {
                 namespace: 'Appliance.Hub.Sensor.Smoke',
                 payloadKey: 'smokeAlarm',
                 entries: [{
                     id: device.subdeviceId,
-                    status
+                    status: statusWire
                 }],
                 transport: null
             });
 
             if (response) {
-                ensureSmokeAlarmState(device).update({ status });
+                ensureSmokeAlarmState(device).update({ status: statusWire });
             }
 
             return response;
@@ -192,26 +194,16 @@ function createSmokeAlarmAbility(device) {
          * @returns {Promise<Object>}
          */
         async test() {
-            return this.set({ status: SmokeAlarmStatus.NORMAL });
+            return this.set({ status: 'normal' });
         },
 
         /**
-         * Raw alarm status code from cached state.
+         * Semantic alarm status string from cached state.
          *
-         * @returns {number|null}
+         * @returns {string|null}
          */
         getStatus() {
             return getSmokeAlarmState(device)?.status ?? null;
-        },
-
-        /**
-         * Derived alarm category for the current status.
-         *
-         * @deprecated Prefer {@link getCondition} and {@link getChannel}; mixes heartbeat, fault, and alarm semantics.
-         * @returns {string}
-         */
-        getType() {
-            return getSmokeAlarmState(device)?.alarmType ?? 'unknown';
         },
 
         /**
@@ -244,39 +236,21 @@ function createSmokeAlarmAbility(device) {
         },
 
         /**
-         * Whether an unmuted smoke or temperature alarm is active.
-         *
-         * @returns {boolean}
-         */
-        isActive() {
-            return getSmokeAlarmState(device)?.isActive ?? false;
-        },
-
-        /**
-         * Whether the current status is a muted alarm or muted error.
-         *
-         * @returns {boolean}
-         */
-        isMuted() {
-            return getSmokeAlarmState(device)?.isMuted ?? false;
-        },
-
-        /**
-         * Whether the current status is a sensor or battery error.
-         *
-         * @returns {boolean}
-         */
-        isError() {
-            return getSmokeAlarmState(device)?.isError ?? false;
-        },
-
-        /**
-         * Interconnection status from cached state.
+         * Raw interconnection wire value from cached state.
          *
          * @returns {number|null}
          */
         getInterConn() {
             return getSmokeAlarmState(device)?.interConn ?? null;
+        },
+
+        /**
+         * Decoded interconnection link status from cached state.
+         *
+         * @returns {'inactive'|'active'|null}
+         */
+        getInterConnStatus() {
+            return getSmokeAlarmState(device)?.interConnStatus ?? null;
         },
 
         /**

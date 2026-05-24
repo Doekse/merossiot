@@ -10,7 +10,7 @@ const {
     findDevicesByAbility,
     waitForDeviceConnection,
     getDeviceName,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     deviceHasAbility
 } = require('./test-helper');
 
@@ -38,12 +38,12 @@ async function runTests(context) {
         const ecdhe = await findDevicesByAbility(
             manager,
             'Appliance.Encrypt.ECDHE',
-            OnlineStatus.ONLINE
+            REQUIRE_ONLINE
         );
         const suite = await findDevicesByAbility(
             manager,
             'Appliance.Encrypt.Suite',
-            OnlineStatus.ONLINE
+            REQUIRE_ONLINE
         );
         const seen = new Set();
         testDevices = [];

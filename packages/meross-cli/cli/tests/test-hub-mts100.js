@@ -12,7 +12,7 @@ const {
     findDevicesByAbility,
     waitForDeviceConnection,
     getDeviceName,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
 
@@ -52,7 +52,7 @@ async function runTests(context) {
     if (devices && devices.length > 0) {
         testHub = devices[0];
     } else {
-        const mts100Hubs = await findDevicesByAbility(manager, 'Appliance.Hub.Mts100.All', OnlineStatus.ONLINE);
+        const mts100Hubs = await findDevicesByAbility(manager, 'Appliance.Hub.Mts100.All', REQUIRE_ONLINE);
 
         if (mts100Hubs.length > 0) {
             testHub = mts100Hubs[0];

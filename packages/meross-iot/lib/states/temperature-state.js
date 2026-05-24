@@ -121,8 +121,8 @@ class TemperatureState {
      */
     hasSnapshotData() {
         return this.latest !== null ||
-            this._state.latestSampleTime != null ||
-            this._state.min != null;
+            (this._state.latestSampleTime !== null && this._state.latestSampleTime !== undefined) ||
+            (this._state.min !== null && this._state.min !== undefined);
     }
 
     /**

@@ -13,6 +13,8 @@ const {
     GenericPushNotification,
     OnlinePushNotification,
     AlarmPushNotification,
+    UpgradePushNotification,
+    OverTempPushNotification,
     BindPushNotification,
     UnbindPushNotification,
     WaterLeakPushNotification,
@@ -39,7 +41,7 @@ const {
     TimeInfo,
     parsePushNotification
 } = require('../lib/push');
-const { PresenceState } = require('../lib/enums');
+const { PresenceStateCodec, DiffuserLightModeCodec, DiffuserSprayModeCodec } = require('../lib/enums');
 
 const UUID = 'push-test-uuid';
 
@@ -82,6 +84,8 @@ describe('push notification models', () => {
     const PARSE_CASES = [
         ['Appliance.System.Online', OnlinePushNotification],
         ['Appliance.Control.Alarm', AlarmPushNotification],
+        ['Appliance.Control.Upgrade', UpgradePushNotification],
+        ['Appliance.Control.OverTemp', OverTempPushNotification],
         ['Appliance.Control.Bind', BindPushNotification],
         ['Appliance.Control.Unbind', UnbindPushNotification],
         ['Appliance.Control.ToggleX', ToggleXPushNotification],
@@ -162,12 +166,13 @@ describe('push notification models', () => {
         assert.deepStrictEqual(n.extractChanges(), {});
     });
 
-    it('AlarmPushNotification normalizes alarm array and reads first alarm interConn', () => {
+    it('AlarmPushNotification normalizes alarm array and decodes interConn action/scope', () => {
         const item = {
             channel: 2,
             event: {
                 interConn: {
-                    value: 99,
+                    value: 1,
+                    type: 2,
                     timestamp: 1000,
                     source: { subId: 'sub-1' }
                 }
@@ -176,10 +181,33 @@ describe('push notification models', () => {
         assertSingleAndArrayPayloadMatch(AlarmPushNotification, 'alarm', item, (n) => n.rawData.alarm);
         const n = new AlarmPushNotification(UUID, { alarm: item });
         assert.strictEqual(n.channel, 2);
-        assert.strictEqual(n.value, 99);
+        assert.strictEqual(n.action, 'execute');
+        assert.strictEqual(n.scope, 'all-except-source');
         assert.strictEqual(n.timestamp, 1000);
         assert.strictEqual(n.subdeviceId, 'sub-1');
         assert.deepStrictEqual(n.extractChanges(), {});
+    });
+
+    it('UpgradePushNotification decodes upgradeInfo status and subdev transfer', () => {
+        const n = new UpgradePushNotification(UUID, {
+            upgradeInfo: {
+                status: 2,
+                percent: 50,
+                subdev: [{ devid: '130012345678', status: 1 }]
+            }
+        });
+        assert.strictEqual(n.status, 'success');
+        assert.strictEqual(n.percent, 50);
+        assert.strictEqual(n.subdev[0].status, 'transferring');
+    });
+
+    it('OverTempPushNotification decodes overTemp value and type', () => {
+        const n = new OverTempPushNotification(UUID, {
+            overTemp: { value: 1, type: 2, timestamp: 99 }
+        });
+        assert.strictEqual(n.value, 'over-temp');
+        assert.strictEqual(n.type, 'shutoff-relay');
+        assert.strictEqual(n.timestamp, 99);
     });
 
     it('BindPushNotification exposes TimeInfo, HardwareInfo, and FirmwareInfo', () => {
@@ -343,7 +371,7 @@ describe('push notification models', () => {
         const latestItem = {
             channel: 0,
             data: {
-                presence: [{ value: PresenceState.PRESENCE, distance: 5, timestamp: 1, times: 2 }],
+                presence: [{ value: PresenceStateCodec.toWire('present'), distance: 5, timestamp: 1, times: 2 }],
                 light: [{ value: 400, timestamp: 3 }]
             }
         };
@@ -361,21 +389,23 @@ describe('push notification models', () => {
     });
 
     it('DiffuserLightPushNotification normalizes light and extractChanges maps diffuserLight', () => {
-        const item = { channel: 0, onoff: 1, mode: 2, rgb: 0xff00, luminance: 50 };
+        const wireMode = DiffuserLightModeCodec.toWire('fixed-luminance');
+        const item = { channel: 0, onoff: 1, mode: wireMode, rgb: 0xff00, luminance: 50 };
         assertSingleAndArrayPayloadMatch(DiffuserLightPushNotification, 'light', item, (n) => n.lightData);
         const n = new DiffuserLightPushNotification(UUID, { light: item });
         assert.deepStrictEqual(n.extractChanges().diffuserLight[0], {
             isOn: true,
-            mode: 2,
+            mode: wireMode,
             rgb: 0xff00,
             luminance: 50
         });
     });
 
     it('DiffuserSprayPushNotification normalizes spray and extractChanges maps diffuserSpray', () => {
-        const item = { channel: 0, mode: 2 };
+        const wireMode = DiffuserSprayModeCodec.toWire('off');
+        const item = { channel: 0, mode: wireMode };
         assertSingleAndArrayPayloadMatch(DiffuserSprayPushNotification, 'spray', item, (n) => n.sprayData);
         const n = new DiffuserSprayPushNotification(UUID, { spray: item });
-        assert.deepStrictEqual(n.extractChanges().diffuserSpray[0], { mode: 2 });
+        assert.deepStrictEqual(n.extractChanges().diffuserSpray[0], { mode: wireMode });
     });
 });

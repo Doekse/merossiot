@@ -2,8 +2,15 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { ThermostatMode } = require('meross-iot');
 const { resolveControlChannel } = require('../../../utils/device');
+
+const THERMOSTAT_MODE_LABELS = {
+    heat: 'Heat',
+    cool: 'Cool',
+    economy: 'Economy',
+    auto: 'Auto',
+    manual: 'Manual'
+};
 
 /**
  * Collects parameters for thermostat.set interactively.
@@ -26,14 +33,8 @@ async function collectThermostatModeParams(methodMetadata, device) {
             if (thermostatState) {
                 console.log(chalk.cyan('\nCurrent Thermostat State:'));
                 if (thermostatState.mode !== undefined) {
-                    const modeNames = {
-                        [ThermostatMode.HEAT]: 'Heat',
-                        [ThermostatMode.COOL]: 'Cool',
-                        [ThermostatMode.ECONOMY]: 'Economy',
-                        [ThermostatMode.AUTO]: 'Auto',
-                        [ThermostatMode.MANUAL]: 'Manual'
-                    };
-                    const modeName = modeNames[thermostatState.mode] || `Mode ${thermostatState.mode}`;
+                    const modeName = THERMOSTAT_MODE_LABELS[thermostatState.mode] ||
+                        `Mode ${thermostatState.mode}`;
                     console.log(chalk.dim(`  Mode: ${modeName}`));
                 }
                 if (thermostatState.isOn !== undefined) {
@@ -88,11 +89,11 @@ async function collectThermostatModeParams(methodMetadata, device) {
                 name: 'mode',
                 message: 'Thermostat Mode',
                 choices: [
-                    { name: 'Heat', value: ThermostatMode.HEAT },
-                    { name: 'Cool', value: ThermostatMode.COOL },
-                    { name: 'Economy', value: ThermostatMode.ECONOMY },
-                    { name: 'Auto', value: ThermostatMode.AUTO },
-                    { name: 'Manual', value: ThermostatMode.MANUAL }
+                    { name: 'Heat', value: 'heat' },
+                    { name: 'Cool', value: 'cool' },
+                    { name: 'Economy', value: 'economy' },
+                    { name: 'Auto', value: 'auto' },
+                    { name: 'Manual', value: 'manual' }
                 ]
             }]);
             params.mode = answer.mode;

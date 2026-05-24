@@ -1,5 +1,7 @@
 'use strict';
 
+const { ContactStateCodec } = require('../enums');
+
 /**
  * Hub door/window contact sensor channel state (MS200, etc.).
  *
@@ -55,12 +57,23 @@ class DoorWindowState {
         return this._status;
     }
 
-    /** @returns {boolean|null} Whether the contact reports open */
-    get isOpen() {
+    /**
+     * @returns {'closed'|'open'|null}
+     */
+    get contactState() {
         if (this._status === null || this._status === undefined) {
             return null;
         }
-        return this._status === 1;
+        return ContactStateCodec.fromWire(this._status);
+    }
+
+    /** @returns {boolean|null} Whether the contact reports open */
+    get isOpen() {
+        const state = this.contactState;
+        if (state === null) {
+            return null;
+        }
+        return state === 'open';
     }
 
     /** @returns {number|null} Last modification time from hub */
@@ -78,6 +91,7 @@ class DoorWindowState {
      */
     toSnapshot() {
         return {
+            contactState: this.contactState,
             isOpen: this.isOpen,
             lmTime: this._lmTime,
             syncedTime: this._syncedTime

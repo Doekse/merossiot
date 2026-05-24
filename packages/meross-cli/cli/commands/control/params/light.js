@@ -1,6 +1,7 @@
 'use strict';
 
 const inquirer = require('inquirer');
+const { resolveControlChannel } = require('../../../utils/device');
 
 /**
  * Validates RGB color input format for inquirer prompts.
@@ -160,14 +161,11 @@ async function collectSetLightColorParams(methodMetadata, device) {
     let supportsTemperature = false;
     let supportsLuminance = false;
 
-    if (device.light && device.abilities && device.abilities['Appliance.Control.Light']) {
-        const lightAbility = device.abilities['Appliance.Control.Light'];
-        if (lightAbility && lightAbility.capacity) {
-            const { LightMode } = require('meross-iot');
-            supportsRgb = (lightAbility.capacity & LightMode.MODE_RGB) === LightMode.MODE_RGB;
-            supportsTemperature = (lightAbility.capacity & LightMode.MODE_TEMPERATURE) === LightMode.MODE_TEMPERATURE;
-            supportsLuminance = (lightAbility.capacity & LightMode.MODE_LUMINANCE) === LightMode.MODE_LUMINANCE;
-        }
+    if (device.light) {
+        const channel = resolveControlChannel(methodMetadata, device);
+        supportsRgb = device.light.supportsRgb({ channel });
+        supportsTemperature = device.light.supportsTemperature({ channel });
+        supportsLuminance = device.light.supportsLuminance({ channel });
     }
 
     const channelParam = methodMetadata.params.find(p => p.name === 'channel');

@@ -98,8 +98,7 @@ function createRL() {
     });
 }
 
-async function question(rl, query) {
-    // For backward compatibility, use inquirer for better UX
+async function question(query) {
     const result = await inquirer.prompt([{
         type: 'input',
         name: 'value',

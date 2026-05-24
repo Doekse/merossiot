@@ -3,6 +3,8 @@
 const { MerossDeviceError } = require('../exception');
 const { normalizeChannel, validateRequired } = require('../utilities/options');
 const { registerNamespaceDescriptor } = require('../dispatcher');
+const { AlarmActionCodec } = require('../enums');
+const { normalizeAlarmItem } = require('../utilities/normalize-payload');
 
 const MAX_ALARM_EVENTS_MEMORY = 10;
 
@@ -31,24 +33,28 @@ function createAlarmAbility(device) {
         /**
          * Sets the alarm state (on/off) for a channel.
          *
-         * Controls alarm devices like MSH450 Internal Siren using the security field.
-         * Value 1 = Execute (ON), Value 2 = Normal (OFF).
-         *
          * @param {Object} options - Alarm control options
          * @param {number} [options.channel=0] - Channel to control (default: 0)
-         * @param {boolean} options.on - True to turn alarm on, false to turn off
+         * @param {boolean} [options.on] - True to turn alarm on, false to turn off
+         * @param {'execute'|'normal'} [options.action] - Explicit alarm action (overrides `on`)
          * @param {number} [options.duration] - Optional duration in seconds
          * @returns {Promise<Object>} Promise that resolves with the response
          * @throws {MerossDeviceError} If required options are missing, device is not connected, or command times out
          */
         async set(options = {}) {
-            validateRequired(options, ['on']);
+            if (options.action === undefined && options.on === undefined) {
+                throw new MerossDeviceError('on or action is required', 'VALIDATION_ERROR', { field: 'on' });
+            }
             const channel = normalizeChannel(options);
-            const value = options.on ? 1 : 2;
+            const actionStr = options.action !== undefined
+                ? options.action
+                : (options.on ? 'execute' : 'normal');
+            const value = AlarmActionCodec.toWire(actionStr);
+            if (value === undefined) {
+                throw new MerossDeviceError('Invalid alarm action', 'VALIDATION_ERROR', { field: 'action', value: actionStr });
+            }
 
-            const securityEvent = {
-                value
-            };
+            const securityEvent = { value };
 
             if (options.duration !== undefined) {
                 securityEvent.time = options.duration;
@@ -75,16 +81,12 @@ function createAlarmAbility(device) {
         /**
          * Sets alarm configuration (volume, tone, enable) for a channel.
          *
-         * Requires Appliance.Config.Alarm capability. Used for configuring alarm devices
-         * like MSH450 Internal Siren with volume and ringtone settings.
-         *
          * @param {Object} options - Alarm configuration options
          * @param {number} [options.channel=0] - Channel to configure (default: 0)
          * @param {number} options.enable - Enable state (typically 1 for enabled)
          * @param {number} options.volume - Volume level (0-100)
          * @param {number} options.song - Ringtone/song selection (typically 1-7)
          * @returns {Promise<Object>} Promise that resolves with the response
-         * @throws {MerossDeviceError} If required options are missing, alarm namespace unsupported, device is not connected, or command times out
          */
         async setConfig(options = {}) {
             if (!device.abilities || !device.abilities['Appliance.Config.Alarm']) {
@@ -116,13 +118,13 @@ function createAlarmAbility(device) {
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
-            const payload = { 'alarm': [{ channel }] };
+            const payload = { alarm: [{ channel }] };
             const { payload: out } = await device.publishMessage('GET', 'Appliance.Control.Alarm', payload);
             return out;
         },
 
         /**
-         * Gets a copy of the most recent alarm events.
+         * Gets a copy of the most recent alarm events with decoded `event` fields.
          *
          * @returns {Array<Object>} Copy of the alarm events array (most recent first)
          */
@@ -135,9 +137,6 @@ function createAlarmAbility(device) {
 
 /**
  * Updates the alarm events buffer from push notification or response data.
- *
- * Maintains a rolling buffer of recent alarm events for querying without
- * requiring device communication.
  *
  * @param {Object} device - The device instance
  * @param {Object|Array} alarmData - Alarm data (single object or array)
@@ -154,7 +153,8 @@ function updateAlarmEvents(device, alarmData, source = 'push') {
 
     const alarmArray = Array.isArray(alarmData) ? alarmData : [alarmData];
 
-    for (const alarmEvent of alarmArray) {
+    for (const raw of alarmArray) {
+        const alarmEvent = normalizeAlarmItem(raw);
         device._lastAlarmEvents.unshift(alarmEvent);
 
         if (device._lastAlarmEvents.length > MAX_ALARM_EVENTS_MEMORY) {
@@ -175,8 +175,6 @@ function updateAlarmEvents(device, alarmData, source = 'push') {
 /**
  * Gets alarm capability information for a device.
  *
- * Determines which channels support alarm functionality based on device abilities.
- *
  * @param {Object} device - The device instance
  * @param {Array<number>} channelIds - Array of channel IDs
  * @returns {Object|null} Alarm capability object or null if not supported
@@ -188,11 +186,6 @@ function getAlarmCapabilities(device, channelIds) {
     };
 }
 
-/**
- * Alarm events append to a rolling buffer and emit once per item; iterating with
- * `customApplyItem` gates each incoming channel independently so an older PUSH for one
- * channel cannot be masked by a newer SETACK for another.
- */
 registerNamespaceDescriptor('Appliance.Control.Alarm', {
     namespace: 'Appliance.Control.Alarm',
     payloadKey: 'alarm',
@@ -202,6 +195,7 @@ registerNamespaceDescriptor('Appliance.Control.Alarm', {
 });
 
 module.exports = createAlarmAbility;
+module.exports.updateAlarmEvents = updateAlarmEvents;
 module.exports.getCapabilities = getAlarmCapabilities;
 module.exports.ability = {
     key: 'alarm',

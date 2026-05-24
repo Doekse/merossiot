@@ -1,5 +1,7 @@
 'use strict';
 
+const { WaterLeakCodec } = require('../enums');
+
 /**
  * Hub water leak sensor channel state (MS405, MS400, etc.).
  *
@@ -53,6 +55,16 @@ class WaterLeakState {
         return changed;
     }
 
+    /**
+     * @returns {'dry'|'leaking'|null}
+     */
+    get leakState() {
+        if (this._isLeaking === null || this._isLeaking === undefined) {
+            return null;
+        }
+        return WaterLeakCodec.fromWire(this._isLeaking ? 1 : 0);
+    }
+
     /** @returns {boolean|null} Current leak detection */
     get isLeaking() {
         return this._isLeaking;
@@ -82,6 +94,7 @@ class WaterLeakState {
      */
     toSnapshot() {
         return {
+            leakState: this.leakState,
             isLeaking: this._isLeaking,
             latestSampleTime: this._latestSampleTime,
             latestDetectedTs: this._latestDetectedTs

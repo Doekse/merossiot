@@ -1,6 +1,13 @@
 'use strict';
 
 const ThermostatState = require('../states/thermostat-state');
+const {
+    ThermostatModeCodec,
+    ThermostatModeBModeCodec,
+    ThermostatModeBStateCodec,
+    ThermostatModeBWorkingCodec,
+    ThermostatModeBOnOffCodec
+} = require('../enums');
 const { getCachedOrFetch } = require('../utilities/cache');
 const { normalizeChannel } = require('../utilities/options');
 const { MerossDeviceError } = require('../exception');
@@ -68,6 +75,42 @@ function createThermostatAbility(device) {
     }
 
     /**
+     * Encodes a string ModeB field through its codec or passes numeric wire values through.
+     *
+     * @param {Object} data
+     * @param {string} field
+     * @param {{ toWire: (s: string) => number|undefined }} codec
+     * @param {string} label
+     * @returns {void}
+     * @throws {MerossDeviceError}
+     */
+    function encodeModeBField(data, field, codec, label) {
+        const value = data[field];
+        if (value === undefined || value === null) {
+            return;
+        }
+        if (typeof value === 'string') {
+            const wire = codec.toWire(value);
+            if (wire === undefined) {
+                throw new MerossDeviceError(
+                    `Invalid thermostat ModeB ${field}.`,
+                    'VALIDATION_ERROR',
+                    { field, [field]: value, deviceUuid: device.uuid }
+                );
+            }
+            data[field] = wire;
+            return;
+        }
+        if (typeof value !== 'number') {
+            throw new MerossDeviceError(
+                `Invalid thermostat ModeB ${field}. Expected ${label} string or wire number.`,
+                'VALIDATION_ERROR',
+                { field, [field]: value, deviceUuid: device.uuid }
+            );
+        }
+    }
+
+    /**
      * Throws early when ModeB is not advertised, avoiding a cryptic protocol-level failure.
      *
      * @param {number} channel
@@ -85,9 +128,13 @@ function createThermostatAbility(device) {
         }
 
         const data = { ...options, channel };
-        if (typeof data.state !== 'number') {
-            data.state = 1;
+        if (data.state === undefined || data.state === null) {
+            data.state = ThermostatModeBStateCodec.toWire('working');
         }
+        encodeModeBField(data, 'state', ThermostatModeBStateCodec, 'working, standby, or off');
+        encodeModeBField(data, 'mode', ThermostatModeBModeCodec, 'manual, schedule, or timer');
+        encodeModeBField(data, 'working', ThermostatModeBWorkingCodec, 'heating or cooling');
+        encodeModeBField(data, 'onoff', ThermostatModeBOnOffCodec, 'open or closed');
 
         const { payload } = await device.publishMessage('SET', 'Appliance.Control.Thermostat.ModeB', { 'modeB': [data] });
         return payload;
@@ -141,8 +188,28 @@ function createThermostatAbility(device) {
 
         data.channel = channel;
 
-        if (data.mode !== undefined && data.mode !== null && typeof data.mode !== 'number') {
-            data.mode = 0;
+        if (data.mode !== undefined && data.mode !== null) {
+            if (typeof data.mode === 'string') {
+                const wire = ThermostatModeCodec.toWire(data.mode);
+                if (wire === undefined) {
+                    throw new MerossDeviceError(
+                        'Invalid thermostat mode. Expected heat, cool, economy, auto, or manual.',
+                        'VALIDATION_ERROR',
+                        { field: 'mode', mode: data.mode, deviceUuid: device.uuid }
+                    );
+                }
+                data.mode = wire;
+            } else if (typeof data.mode !== 'number') {
+                throw new MerossDeviceError(
+                    'Invalid thermostat mode. Expected heat, cool, economy, auto, or manual.',
+                    'VALIDATION_ERROR',
+                    { field: 'mode', mode: data.mode, deviceUuid: device.uuid }
+                );
+            }
+        }
+
+        if (typeof data.onoff === 'boolean') {
+            data.onoff = data.onoff ? 1 : 0;
         }
 
         convertTemperatureFields(data, channel);
@@ -160,14 +227,17 @@ function createThermostatAbility(device) {
          *
          * @param {Object} options - Thermostat options
          * @param {number} [options.channel=0] - Channel to control (default: 0)
-         * @param {number} [options.mode] - Thermostat mode (from ThermostatMode enum or numeric value)
-         * @param {number} [options.onoff] - On/off state (0=off, 1=on)
+         * @param {'heat'|'cool'|'economy'|'auto'|'manual'} [options.mode] - Thermostat mode
+         * @param {boolean|number} [options.onoff] - On/off state
          * @param {number} [options.heatTemperature] - Heat temperature in Celsius
          * @param {number} [options.coolTemperature] - Cool temperature in Celsius
          * @param {number} [options.ecoTemperature] - Eco temperature in Celsius
          * @param {number} [options.manualTemperature] - Manual temperature in Celsius
          * @param {boolean} [options.partialUpdate=false] - If true, fetches current state and merges
-         * @param {number} [options.state] - Mode B state (for ModeB namespace)
+         * @param {'working'|'standby'|'off'} [options.state] - Mode B operational state
+         * @param {'manual'|'schedule'|'timer'} [options.mode] - Mode B control mode (ModeB namespace)
+         * @param {'heating'|'cooling'} [options.working] - Mode B heat/cool activity
+         * @param {'open'|'closed'} [options.onoff] - Mode B valve position
          * @param {boolean} [options.windowOpened] - Window opened status
          * @returns {Promise<Object>} Response from the device
          * @throws {MerossDeviceError} If mode value is invalid, temperature is out of range, or transport fails (DEVICE_UNCONNECTED, COMMAND_TIMEOUT, COMMAND_FAILED)
@@ -671,8 +741,9 @@ registerNamespaceDescriptor('Appliance.Control.Thermostat.ModeB', {
     StateClass: ThermostatState,
     eventType: 'thermostat',
     snapshot: (s) => ({
-        mode: s.mode,
+        mode: s.modeBMode ?? s.mode,
         state: s.state,
+        workingMode: s.workingMode,
         targetTemp: s.targetTemperatureCelsius,
         currentTemp: s.currentTemperatureCelsius
     })

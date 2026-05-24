@@ -13,9 +13,9 @@ const {
     getDeviceName,
     getPrimaryChannel,
     assertFeatureOrSkip,
-    OnlineStatus
+    REQUIRE_ONLINE
 } = require('./test-helper');
-const { ThermostatMode } = require('meross-iot');
+
 
 const metadata = {
     name: 'thermostat',
@@ -32,7 +32,7 @@ async function runTests(context) {
     // If no devices provided, discover them
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Thermostat.Mode', OnlineStatus.ONLINE);
+        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.Thermostat.Mode', REQUIRE_ONLINE);
     }
     
     // Wait for devices to be connected
@@ -178,11 +178,11 @@ async function runTests(context) {
             // Get available modes (using enum values)
             const currentMode = state.mode;
             const modes = [
-                ThermostatMode.HEAT,
-                ThermostatMode.COOL,
-                ThermostatMode.ECONOMY,
-                ThermostatMode.AUTO,
-                ThermostatMode.MANUAL
+                'heat',
+                'cool',
+                'economy',
+                'auto',
+                'manual'
             ].filter(m => m !== currentMode);
             
             if (modes.length === 0) {
@@ -285,7 +285,7 @@ async function runTests(context) {
                 // Set heat mode
                 await testDevice.thermostat.set({
                     channel,
-                    mode: ThermostatMode.HEAT
+                    mode: 'heat'
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
@@ -293,12 +293,12 @@ async function runTests(context) {
                 // Refresh state to get updated mode
                 const newState = await testDevice.thermostat.get({ channel });
                 
-                if (!newState || newState.mode !== ThermostatMode.HEAT) {
+                if (!newState || newState.mode !== 'heat') {
                     results.push({
                         name: 'should set heat temperature',
                         passed: false,
                         skipped: false,
-                        error: `Mode mismatch. Expected ${ThermostatMode.HEAT}, got ${newState?.mode}`,
+                        error: `Mode mismatch. Expected ${'heat'}, got ${newState?.mode}`,
                         device: deviceName
                     });
                 } else {
@@ -363,19 +363,19 @@ async function runTests(context) {
                 // Set eco mode
                 await testDevice.thermostat.set({
                     channel,
-                    mode: ThermostatMode.ECONOMY
+                    mode: 'economy'
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 const newState = await testDevice.thermostat.get({ channel });
                 
-                if (!newState || newState.mode !== ThermostatMode.ECONOMY) {
+                if (!newState || newState.mode !== 'economy') {
                     results.push({
                         name: 'should set eco temperature',
                         passed: false,
                         skipped: false,
-                        error: `Mode mismatch. Expected ${ThermostatMode.ECONOMY}, got ${newState?.mode}`,
+                        error: `Mode mismatch. Expected ${'economy'}, got ${newState?.mode}`,
                         device: deviceName
                     });
                 } else {
@@ -438,19 +438,19 @@ async function runTests(context) {
             } else {
                 await testDevice.thermostat.set({
                     channel,
-                    mode: ThermostatMode.COOL
+                    mode: 'cool'
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 const newState = await testDevice.thermostat.get({ channel });
                 
-                if (!newState || newState.mode !== ThermostatMode.COOL) {
+                if (!newState || newState.mode !== 'cool') {
                     results.push({
                         name: 'should set cool temperature',
                         passed: false,
                         skipped: false,
-                        error: `Mode mismatch. Expected ${ThermostatMode.COOL}, got ${newState?.mode}`,
+                        error: `Mode mismatch. Expected ${'cool'}, got ${newState?.mode}`,
                         device: deviceName
                     });
                 } else {
@@ -513,19 +513,19 @@ async function runTests(context) {
             } else {
                 await testDevice.thermostat.set({
                     channel,
-                    mode: ThermostatMode.MANUAL
+                    mode: 'manual'
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 const newState = await testDevice.thermostat.get({ channel });
                 
-                if (!newState || newState.mode !== ThermostatMode.MANUAL) {
+                if (!newState || newState.mode !== 'manual') {
                     results.push({
                         name: 'should set manual temperature',
                         passed: false,
                         skipped: false,
-                        error: `Mode mismatch. Expected ${ThermostatMode.MANUAL}, got ${newState?.mode}`,
+                        error: `Mode mismatch. Expected ${'manual'}, got ${newState?.mode}`,
                         device: deviceName
                     });
                 } else {

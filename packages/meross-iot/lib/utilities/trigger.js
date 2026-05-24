@@ -1,6 +1,6 @@
 'use strict';
 
-const TriggerType = require('../enums').TriggerType;
+const { TriggerTypeCodec } = require('../enums');
 const { normalizeWeekBitmask, generateTimerId } = require('./timer');
 const { MerossDeviceError } = require('../exception');
 
@@ -234,7 +234,7 @@ function secondsToDuration(seconds) {
  * @param {string} [options.alias] - Trigger name/alias
  * @param {string|number} [options.duration=600] - Duration as seconds (number), "30m", "1h", or "HH:MM:SS" format. Default: 600 (10 minutes)
  * @param {Array<string|number>|number} [options.days] - Days of week (array of names/numbers) or week bitmask. Default: all days
- * @param {number} [options.type=TriggerType.SINGLE_POINT_WEEKLY_CYCLE] - Trigger type
+ * @param {TriggerType} [options.type='single-point-weekly'] - Trigger type string
  * @param {number} [options.channel=0] - Channel number
  * @param {boolean} [options.enabled=true] - Whether trigger is enabled
  * @param {boolean} [options.repeat=true] - Whether to set repeat bit (for days array input)
@@ -253,7 +253,7 @@ function createTrigger(options = {}) {
         alias = 'My Trigger',
         duration = 600, // Default: 10 minutes
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-        type = TriggerType.SINGLE_POINT_WEEKLY_CYCLE,
+        type = 'single-point-weekly',
         channel = 0,
         enabled = true,
         repeat = true,
@@ -262,11 +262,12 @@ function createTrigger(options = {}) {
 
     const durationSeconds = durationToSeconds(duration);
     const week = normalizeWeekBitmask(days, repeat);
+    const typeWire = typeof type === 'string' ? (TriggerTypeCodec.toWire(type) ?? 1) : type;
 
     const triggerx = {
         id: id || generateTimerId(),
         channel,
-        type,
+        type: typeWire,
         enable: enabled ? 1 : 0,
         alias,
         createTime: Math.floor(Date.now() / 1000),

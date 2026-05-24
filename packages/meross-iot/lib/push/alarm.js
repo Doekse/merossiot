@@ -1,6 +1,7 @@
 'use strict';
 
 const GenericPushNotification = require('./generic');
+const { decodeAlarmEventField } = require('../utilities/normalize-payload');
 
 /**
  * Push notification for device alarm events.
@@ -15,7 +16,7 @@ const GenericPushNotification = require('./generic');
  * device.on('pushNotificationReceived', (notification) => {
  *     if (notification instanceof AlarmPushNotification) {
  *         console.log('Alarm triggered on channel:', notification.channel);
- *         console.log('Alarm value:', notification.value);
+ *         console.log('Alarm action:', notification.action);
  *         console.log('Timestamp:', notification.timestamp);
  *         if (notification.subdeviceId) {
  *             console.log('From subdevice:', notification.subdeviceId);
@@ -30,22 +31,13 @@ class AlarmPushNotification extends GenericPushNotification {
      * @param {string} originatingDeviceUuid - UUID of the device that sent the notification
      * @param {Object} rawData - Raw notification data from the device
      * @param {Object|Array} [rawData.alarm] - Alarm event data (single object or array)
-     * @param {number} [rawData.alarm.channel] - Channel number where alarm occurred
-     * @param {Object} [rawData.alarm.event] - Alarm event details
-     * @param {Object} [rawData.alarm.event.interConn] - Interconnection data
-     * @param {*} [rawData.alarm.event.interConn.value] - Alarm value
-     * @param {number} [rawData.alarm.event.interConn.timestamp] - Alarm timestamp
-     * @param {Object|Array} [rawData.alarm.event.interConn.source] - Source device data
-     * @param {string|number} [rawData.alarm.event.interConn.source.subId] - Subdevice ID if from hub sensor
      */
     constructor(originatingDeviceUuid, rawData) {
         super('Appliance.Control.Alarm', originatingDeviceUuid, rawData);
 
-        // Devices may send single objects or arrays; normalize to array for consistent processing
         const alarmRaw = rawData?.alarm;
         const alarm = GenericPushNotification.normalizeToArray(alarmRaw);
 
-        // Update rawData so routing logic receives normalized structure
         if (rawData && alarmRaw !== alarm) {
             rawData.alarm = alarm;
         }
@@ -54,11 +46,20 @@ class AlarmPushNotification extends GenericPushNotification {
             const alarmEvent = alarm[0];
             this._channel = alarmEvent?.channel;
 
-            const interConn = alarmEvent?.event?.interConn;
-            if (interConn) {
-                this._value = interConn.value;
-                this._timestamp = interConn.timestamp;
+            const event = alarmEvent?.event;
+            const interConn = event?.interConn;
+            const security = event?.security;
+            const maSecurity = event?.maSecurity;
+            const primary = interConn || security || maSecurity;
 
+            if (primary) {
+                const decoded = decodeAlarmEventField(primary);
+                this._action = decoded.action;
+                this._scope = decoded.scope;
+                this._timestamp = primary.timestamp ?? decoded.timestamp;
+            }
+
+            if (interConn) {
                 const { source } = interConn;
                 const sourceArray = GenericPushNotification.normalizeToArray(source);
                 if (sourceArray && sourceArray.length > 0) {
@@ -69,12 +70,21 @@ class AlarmPushNotification extends GenericPushNotification {
     }
 
     /**
-     * Gets the alarm value.
+     * Gets the decoded alarm action.
      *
-     * @returns {*} Alarm value or undefined if not available
+     * @returns {'execute'|'normal'|undefined}
      */
-    get value() {
-        return this._value;
+    get action() {
+        return this._action;
+    }
+
+    /**
+     * Gets the decoded interconnection scope when present.
+     *
+     * @returns {'local'|'all-except-source'|'all-including-source'|undefined}
+     */
+    get scope() {
+        return this._scope;
     }
 
     /**
@@ -98,8 +108,6 @@ class AlarmPushNotification extends GenericPushNotification {
     /**
      * Gets the subdevice ID if alarm originated from a hub subdevice.
      *
-     * Only present when the alarm comes from a hub sensor subdevice, not standalone devices.
-     *
      * @returns {string|number|undefined} Subdevice ID or undefined if not from a subdevice
      */
     get subdeviceId() {
@@ -108,4 +116,3 @@ class AlarmPushNotification extends GenericPushNotification {
 }
 
 module.exports = AlarmPushNotification;
-

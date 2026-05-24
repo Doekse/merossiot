@@ -37,8 +37,7 @@ const { onEachDevice, runWhenConnected } = require('./on-each-device.js');
             console.log(`  ${subdevices.length} subdevice(s):`);
 
             for (const sub of subdevices) {
-                const online = sub.onlineStatus === Meross.OnlineStatus.ONLINE;
-                console.log(`    - ${sub.name || sub.subdeviceId}  online=${online}`);
+                console.log(`    - ${sub.name || sub.subdeviceId}  online=${sub.isOnline}`);
             }
 
             const first = subdevices.find((s) => s.toggle);

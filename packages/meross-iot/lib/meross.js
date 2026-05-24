@@ -66,7 +66,7 @@ class Meross extends EventEmitter {
      * @param {Object} options - Configuration options
      * @param {MerossApiClient} options.httpClient - HTTP client instance (required)
      * @param {Function} [options.logger] - Optional logger function for debug output
-     * @param {number} [options.transportMode=TransportMode.MQTT_ONLY] - Transport mode for device communication
+     * @param {'mqtt'|'lan-http-first'|'lan-http-first-only-get'} [options.transportMode='mqtt'] - Transport mode for device communication
      * @param {number} [options.timeout=10000] - Request timeout in milliseconds
      * @param {boolean} [options.autoRetryOnBadDomain=true] - Automatically retry on domain redirect errors
      * @param {number} [options.maxErrors=1] - Maximum errors allowed per device before skipping LAN HTTP
@@ -200,15 +200,6 @@ class Meross extends EventEmitter {
     }
 
     /**
-     * Preserves the legacy `httpClient` accessor while auth owns the underlying client.
-     *
-     * @returns {MerossApiClient|null} Active HTTP client instance
-     */
-    get httpClient() {
-        return this.auth.client;
-    }
-
-    /**
      * Request timeout surfaced at runtime for CLI and application tuning.
      *
      * @returns {number} Timeout in milliseconds
@@ -333,21 +324,6 @@ class Meross extends EventEmitter {
      */
     getTokenData() {
         return this.auth.getTokenData();
-    }
-
-    /**
-     * Authenticates with Meross cloud and discovers devices.
-     *
-     * Alias for devices.initialize() for backward compatibility. The httpClient
-     * should already be authenticated when passed to the constructor to avoid
-     * authentication errors during device discovery.
-     *
-     * @returns {Promise<number>} Promise that resolves with the number of devices discovered
-     * @throws {MerossApiError} If API request fails
-     * @throws {MerossAuthError} If authentication token has expired
-     */
-    async login() {
-        return await this.devices.initialize();
     }
 
     /**

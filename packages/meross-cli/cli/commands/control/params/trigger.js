@@ -2,7 +2,6 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { TriggerType } = require('meross-iot');
 const { resolveControlChannel } = require('../../../utils/device');
 
 /**
@@ -84,10 +83,10 @@ async function collectSetTriggerXParams(methodMetadata, device) {
         name: 'type',
         message: 'Trigger Type',
         choices: [
-            { name: 'Single Point Weekly Cycle (repeats every week)', value: TriggerType.SINGLE_POINT_WEEKLY_CYCLE },
-            { name: 'Single Point Single Shot (one time only)', value: TriggerType.SINGLE_POINT_SINGLE_SHOT },
-            { name: 'Continuous Weekly Cycle (active continuously, repeats weekly)', value: TriggerType.CONTINUOUS_WEEKLY_CYCLE },
-            { name: 'Continuous Single Shot (active continuously, one time only)', value: TriggerType.CONTINUOUS_SINGLE_SHOT }
+            { name: 'Single Point Weekly Cycle (repeats every week)', value: 'single-point-weekly' },
+            { name: 'Single Point Single Shot (one time only)', value: 'single-point-single-shot' },
+            { name: 'Continuous Weekly Cycle (active continuously, repeats weekly)', value: 'continuous-weekly' },
+            { name: 'Continuous Single Shot (active continuously, one time only)', value: 'continuous-single-shot' }
         ],
         default: 0
     }]);

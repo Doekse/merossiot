@@ -1,11 +1,9 @@
 'use strict';
 
+const { RollerShutterStatusCodec, RollerShutterStoppedByCodec, RollerShutterCalibrationStatusCodec } = require('../enums');
+
 /**
  * Represents the state of a roller shutter device channel.
- *
- * Encapsulates state information for roller shutter devices, including position
- * and movement status. State instances are managed by device controllers and
- * updated automatically when device responses or push notifications are received.
  *
  * @class
  * @example
@@ -17,24 +15,13 @@
  */
 class RollerShutterState {
     /**
-     * Creates a new RollerShutterState instance.
-     *
-     * @param {Object} [state=null] - Initial state object
-     * @param {number} [state.state] - Movement status (from RollerShutterStatus enum: IDLE=0, OPENING=1, CLOSING=2, UNKNOWN=-1)
-     * @param {number} [state.position] - Position value (0-100, where 0=closed, 100=open)
-     * @param {number} [state.channel] - Channel number
+     * @param {Object} [state=null] - Initial state object (wire-format numbers)
      */
     constructor(state = null) {
         this._state = state || {};
     }
 
     /**
-     * Updates the state with new data.
-     *
-     * Merges new state data into the existing state using Object.assign to preserve
-     * properties not included in the update. Called automatically by device controllers
-     * when state updates are received from device responses or push notifications.
-     *
      * @param {Object} state - New state data to merge
      */
     update(state) {
@@ -44,21 +31,18 @@ class RollerShutterState {
     }
 
     /**
-     * Gets the movement status.
+     * Movement status.
      *
-     * @returns {number|undefined} Status value (0=idle, 1=opening, 2=closing, -1=unknown) or undefined if not available
-     * @see {@link module:lib/enums.RollerShutterStatus} for status constants
+     * @returns {'idle'|'opening'|'closing'|'unknown'|undefined}
      */
     get state() {
         const { state } = this._state;
         if (state === undefined || state === null) {return undefined;}
-        return state;
+        return RollerShutterStatusCodec.fromWire(state);
     }
 
     /**
-     * Gets the current position.
-     *
-     * @returns {number|undefined} Position value (0-100, where 0=fully closed, 100=fully open) or undefined if not available
+     * @returns {number|undefined} Position value (0-100) or undefined if not available
      */
     get position() {
         const { position } = this._state;
@@ -67,8 +51,28 @@ class RollerShutterState {
     }
 
     /**
-     * Gets the channel number.
+     * Reason the shutter stopped moving (present when {@link state} is idle).
      *
+     * @returns {'completed'|'manual'|'overheated'|'hall-stop'|'reed-stop'|'hall-failure'|'reed-failure'|'ntc-failure'|'hall-recoil'|'reed-recoil'|undefined}
+     */
+    get stoppedBy() {
+        const { stoppedBy } = this._state;
+        if (stoppedBy === undefined || stoppedBy === null) {return undefined;}
+        return RollerShutterStoppedByCodec.fromWire(stoppedBy);
+    }
+
+    /**
+     * Calibration status from {@link Appliance.RollerShutter.Adjust}.
+     *
+     * @returns {'success'|'timeout'|'stall'|'value-too-large'|'value-too-small'|'hall-failure'|'reed-failure'|'not-calibrated'|undefined}
+     */
+    get calibrationStatus() {
+        const { status } = this._state;
+        if (status === undefined || status === null) {return undefined;}
+        return RollerShutterCalibrationStatusCodec.fromWire(status);
+    }
+
+    /**
      * @returns {number|undefined} Channel number or undefined if not available
      */
     get channel() {
@@ -79,4 +83,3 @@ class RollerShutterState {
 }
 
 module.exports = RollerShutterState;
-

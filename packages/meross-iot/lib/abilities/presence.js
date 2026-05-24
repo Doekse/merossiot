@@ -52,15 +52,13 @@ function createPresenceSensorAbility(device) {
         getPresence(options = {}) {
             const channel = normalizeChannel(options);
             const state = device._presenceSensorStateByChannel.get(channel);
-            if (!state || state.presenceValue === undefined) {
+            if (!state || state.presence === undefined) {
                 return null;
             }
             return {
-                value: state.presenceValue,
+                presence: state.presence,
                 isPresent: state.isPresent,
-                state: state.presenceState,
                 distance: state.distanceMeters,
-                distanceRaw: state.distanceRaw,
                 timestamp: state.presenceTimestamp,
                 times: state.presenceTimes
             };
@@ -110,11 +108,9 @@ function createPresenceSensorAbility(device) {
             const state = device._presenceSensorStateByChannel.get(channel);
             return {
                 presence: state ? {
-                    value: state.presenceValue,
+                    presence: state.presence,
                     isPresent: state.isPresent,
-                    state: state.presenceState,
                     distance: state.distanceMeters,
-                    distanceRaw: state.distanceRaw,
                     timestamp: state.presenceTimestamp,
                     times: state.presenceTimes
                 } : null,
@@ -241,7 +237,8 @@ function buildPresenceUpdate(channel, entry) {
 function presenceSnapshot(state) {
     return {
         isPresent: state.isPresent,
-        distance: state.distanceRaw,
+        presence: state.presence,
+        distance: state.distanceMeters,
         light: state.lightLux
     };
 }

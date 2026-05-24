@@ -16,16 +16,6 @@ const EXPECTED_NAMED_EXPORTS = [
     'MerossDeviceError',
     'MerossApiError',
     'MerossNetworkError',
-    'TransportMode',
-    'ThermostatMode',
-    'LightMode',
-    'DiffuserLightMode',
-    'DiffuserSprayMode',
-    'SprayMode',
-    'DNDMode',
-    'OnlineStatus',
-    'TimerType',
-    'TriggerType',
     'MerossDevice',
     'MerossHubDevice',
     'MerossSubDevice'
@@ -62,13 +52,6 @@ describe('meross-iot module surface', () => {
         assert.strictEqual(typeof meross.MerossDeviceError, 'function');
         assert.strictEqual(typeof meross.MerossApiError, 'function');
         assert.strictEqual(typeof meross.MerossNetworkError, 'function');
-    });
-
-    it('exports enums used by the public API', () => {
-        assert.strictEqual(typeof meross.TransportMode, 'object');
-        assert.strictEqual(typeof meross.ThermostatMode, 'object');
-        assert.strictEqual(typeof meross.LightMode, 'object');
-        assert.strictEqual(typeof meross.OnlineStatus, 'object');
     });
 
     it('exports device class constructors', () => {

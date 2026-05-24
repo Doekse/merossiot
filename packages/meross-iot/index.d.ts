@@ -3,68 +3,274 @@ declare module 'meross-iot' {
 
     type Logger = (message: string, ...args: any[]) => void;
 
-    export enum TransportMode {
-        MQTT_ONLY = 0,
-        LAN_HTTP_FIRST = 1,
-        LAN_HTTP_FIRST_ONLY_GET = 2
-    }
+    export type TransportMode =
+        | 'mqtt'
+        | 'lan-http-first'
+        | 'lan-http-first-only-get';
 
-    export const OnlineStatus: {
-        NOT_ONLINE: 0;
-        ONLINE: 1;
-        OFFLINE: 2;
-        UNKNOWN: -1;
-        UPGRADING: 3;
-    };
-
-    export enum ThermostatMode {
-        HEAT = 0,
-        COOL = 1,
-        ECONOMY = 2,
-        AUTO = 3,
-        MANUAL = 4
-    }
-
-    export enum LightMode {
-        MODE_RGB = 1,
-        MODE_TEMPERATURE = 2,
-        MODE_LUMINANCE = 4
-    }
-
-    export enum DiffuserLightMode {
-        ROTATING_COLORS = 0,
-        FIXED_RGB = 1,
-        FIXED_LUMINANCE = 2
-    }
-
-    export enum DiffuserSprayMode {
-        LIGHT = 0,
-        STRONG = 1,
-        OFF = 2
-    }
-
-    export enum SprayMode {
-        OFF = 0,
-        CONTINUOUS = 1,
-        INTERMITTENT = 2
-    }
-
-    export const DNDMode: {
-        DND_DISABLED: 0;
-        DND_ENABLED: 1;
-    };
-
-    type SmokeAlarmType =
-        | 'smoke'
-        | 'temperature'
-        | 'battery'
-        | 'normal'
-        | 'interconnection'
+    export type Connectivity =
+        | 'online'
+        | 'offline'
+        | 'not-online'
+        | 'upgrading'
         | 'unknown';
 
-    type SmokeAlarmCondition = 'safe' | 'alarming' | 'silenced' | 'fault' | 'unknown';
+    export type ThermostatMode =
+        | 'heat'
+        | 'cool'
+        | 'economy'
+        | 'auto'
+        | 'manual';
 
-    type SmokeAlarmChannel = 'smoke' | 'temperature' | 'battery';
+    export type ThermostatActivity =
+        | 'idle'
+        | 'heating';
+
+    export type ThermostatModeBMode =
+        | 'manual'
+        | 'schedule'
+        | 'timer';
+
+    export type ThermostatModeBState =
+        | 'working'
+        | 'standby'
+        | 'off';
+
+    export type ThermostatModeBWorking =
+        | 'heating'
+        | 'cooling';
+
+    export type ThermostatModeBOnOff =
+        | 'open'
+        | 'closed';
+
+    export type ThermostatModeWarning =
+        | 'valid'
+        | 'failed';
+
+    export type ThermostatSensorStatus =
+        | 'valid'
+        | 'invalid';
+
+    export type Mts100Mode =
+        | 'custom'
+        | 'comfort'
+        | 'economy'
+        | 'schedule';
+
+    export type Mts100V3Mode =
+        | 'custom'
+        | 'heat'
+        | 'cool'
+        | 'auto'
+        | 'economy';
+
+    export type DiffuserLightMode =
+        | 'rotating-colors'
+        | 'fixed-rgb'
+        | 'fixed-luminance';
+
+    export type DiffuserSprayMode =
+        | 'light'
+        | 'strong'
+        | 'off';
+
+    export type SprayMode =
+        | 'off'
+        | 'continuous'
+        | 'intermittent';
+
+    export type RollerShutterStatus =
+        | 'idle'
+        | 'opening'
+        | 'closing'
+        | 'unknown';
+
+    export type RollerShutterStoppedBy =
+        | 'completed'
+        | 'manual'
+        | 'overheated'
+        | 'hall-stop'
+        | 'reed-stop'
+        | 'hall-failure'
+        | 'reed-failure'
+        | 'ntc-failure'
+        | 'hall-recoil'
+        | 'reed-recoil';
+
+    export type RollerShutterCalibrationStatus =
+        | 'success'
+        | 'timeout'
+        | 'stall'
+        | 'value-too-large'
+        | 'value-too-small'
+        | 'hall-failure'
+        | 'reed-failure'
+        | 'not-calibrated';
+
+    export type LightEffect =
+        | 'none'
+        | 'red-orange'
+        | 'candle'
+        | 'single-color-rhythm'
+        | 'multi-color-breathing'
+        | 'night-light-white'
+        | 'yellow-night-light'
+        | 'favorite'
+        | 'full-light';
+
+    export type PresenceState =
+        | 'present'
+        | 'absent'
+        | 'unknown';
+
+    export type TimerType =
+        | 'single-point-weekly'
+        | 'single-point-single-shot'
+        | 'continuous-weekly'
+        | 'continuous-single-shot'
+        | 'auto-off'
+        | 'countdown'
+        | 'door-off'
+        | 'door-notify';
+
+    export type GarageDoorTimerType =
+        | 'door-off'
+        | 'door-notify';
+
+    export type TriggerType =
+        | 'single-point-weekly'
+        | 'single-point-single-shot'
+        | 'continuous-weekly'
+        | 'continuous-single-shot';
+
+    export type SmokeAlarmCondition =
+        | 'safe'
+        | 'alarming'
+        | 'silenced'
+        | 'fault'
+        | 'unknown';
+
+    export type SmokeAlarmChannel =
+        | 'smoke'
+        | 'temperature'
+        | 'battery';
+
+    export type DndMode =
+        | 'off'
+        | 'on';
+
+    export type ContactState =
+        | 'closed'
+        | 'open';
+
+    export type WaterLeakState =
+        | 'dry'
+        | 'leaking';
+
+    export type GarageDoorOpen =
+        | 'closed'
+        | 'open';
+
+    export type GarageDoorExecute =
+        | 'not-executed'
+        | 'executed';
+
+    export type PhysicalLockState =
+        | 'unlocked'
+        | 'locked';
+
+    export type TempUnit =
+        | 'celsius'
+        | 'fahrenheit';
+
+    export type SmokeInterConn =
+        | 'inactive'
+        | 'active';
+
+    export type SmokeTestType =
+        | 'manual'
+        | 'automatic';
+
+    export type UpgradeStatus =
+        | 'start-download'
+        | 'success'
+        | 'failed'
+        | 'signing-failed';
+
+    export type UpgradeTransferStatus =
+        | 'pending-transfer'
+        | 'transferring'
+        | 'success'
+        | 'failed';
+
+    export type OverTempValue =
+        | 'over-temp'
+        | 'normal';
+
+    export type OverTempType =
+        | 'early-warning'
+        | 'shutoff-relay';
+
+    export type AlarmAction =
+        | 'execute'
+        | 'normal';
+
+    export type AlarmScope =
+        | 'local'
+        | 'all-except-source'
+        | 'all-including-source';
+
+    export type NetType =
+        | 'wifi'
+        | 'ethernet';
+
+    export type IotStatus =
+        | 'connecting'
+        | 'normal'
+        | 'abnormal';
+
+    interface AlarmEventField {
+        action: AlarmAction;
+        scope?: AlarmScope;
+        time?: number;
+        timestamp?: number;
+    }
+
+    interface AlarmEvent {
+        channel?: number;
+        subId?: string;
+        event?: {
+            interConn?: AlarmEventField;
+            security?: AlarmEventField;
+            maSecurity?: AlarmEventField;
+        };
+    }
+
+    interface RuntimeInfo {
+        signal?: number;
+        netType?: NetType;
+        iotStatus?: IotStatus;
+        ssid?: string;
+    }
+
+    interface UpgradeSubdevTransfer {
+        devid?: string;
+        status?: UpgradeTransferStatus;
+    }
+
+    interface UpgradeInfo {
+        status?: UpgradeStatus;
+        percent?: number;
+        subdev?: UpgradeSubdevTransfer[];
+    }
+
+    interface OverTempEvent {
+        value?: OverTempValue;
+        type?: OverTempType;
+        timestamp?: number;
+        enable?: number;
+    }
 
     interface SmokeAlarmInterconnect {
         linkActive: boolean;
@@ -77,22 +283,6 @@ declare module 'meross-iot' {
         channel: SmokeAlarmChannel | null;
         interconnect: SmokeAlarmInterconnect | null;
         lastStatusUpdate: number | null;
-    }
-
-    export enum TimerType {
-        SINGLE_POINT_WEEKLY_CYCLE = 1,
-        SINGLE_POINT_SINGLE_SHOT = 2,
-        CONTINUOUS_WEEKLY_CYCLE = 3,
-        CONTINUOUS_SINGLE_SHOT = 4,
-        AUTO_OFF = 1,
-        COUNTDOWN = 2
-    }
-
-    export enum TriggerType {
-        SINGLE_POINT_WEEKLY_CYCLE = 1,
-        SINGLE_POINT_SINGLE_SHOT = 2,
-        CONTINUOUS_WEEKLY_CYCLE = 3,
-        CONTINUOUS_SINGLE_SHOT = 4
     }
 
     export class MerossError extends Error {
@@ -120,7 +310,7 @@ declare module 'meross-iot' {
 
     interface DeviceDefinition {
         uuid: string;
-        onlineStatus: number;
+        connectivity: Connectivity;
         devName: string;
         deviceType: string;
         domain: string;
@@ -145,12 +335,32 @@ declare module 'meross-iot' {
         getAll(): Map<number, boolean>;
     }
 
+    interface TimerCreateOptions {
+        alias?: string;
+        time?: string | Date | number;
+        days?: Array<string | number> | number;
+        on?: boolean;
+        type?: TimerType;
+        channel?: number;
+        enabled?: boolean;
+        repeat?: boolean;
+        id?: string;
+    }
+
+    interface TriggerCreateOptions {
+        alias?: string;
+        type?: TriggerType;
+        channel?: number;
+        enabled?: boolean;
+        [key: string]: any;
+    }
+
     interface TimerFeature {
         get(options?: { channel?: number; timerId?: string }): Promise<any>;
         getAll(): Promise<any[]>;
         count(): Promise<number>;
         invalidateCache(options?: { channel?: number }): void;
-        set(options?: any): Promise<any>;
+        set(options?: TimerCreateOptions & Record<string, any>): Promise<any>;
         delete(options: { timerId: string; channel?: number }): Promise<any>;
         findTimerByAlias(options: { alias: string; channel?: number }): Promise<any>;
         deleteTimerByAlias(options: { alias: string; channel?: number }): Promise<any>;
@@ -160,7 +370,7 @@ declare module 'meross-iot' {
         timeToMinutes(time: string | Date | number): number;
         minutesToTime(minutes: number): string;
         daysToWeekMask(days: Array<string | number>, repeat?: boolean): number;
-        createTimer(options?: Record<string, any>): Record<string, any>;
+        createTimer(options?: TimerCreateOptions): Record<string, any>;
     }
 
     interface TriggerFeature {
@@ -168,7 +378,7 @@ declare module 'meross-iot' {
         getAll(): Promise<any[]>;
         count(): Promise<number>;
         invalidateCache(options?: { channel?: number }): void;
-        set(options?: any): Promise<any>;
+        set(options?: TriggerCreateOptions & Record<string, any>): Promise<any>;
         delete(options: { triggerId: string; channel?: number }): Promise<any>;
         findTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>;
         deleteTriggerByAlias(options: { alias: string; channel?: number }): Promise<any>;
@@ -177,11 +387,19 @@ declare module 'meross-iot' {
         deleteAllTriggers(options?: { channel?: number }): Promise<any[]>;
         durationToSeconds(duration: string | number): number;
         secondsToDuration(seconds: number): string;
-        createTrigger(options?: Record<string, any>): Record<string, any>;
+        createTrigger(options?: TriggerCreateOptions): Record<string, any>;
     }
 
     interface LightFeature {
-        set(options?: { channel?: number; on?: boolean; rgb?: number[] | number | { r: number; g: number; b: number }; luminance?: number; temperature?: number; gradual?: boolean | number }): Promise<any>;
+        set(options?: {
+            channel?: number;
+            on?: boolean;
+            rgb?: number[] | number | { r: number; g: number; b: number };
+            luminance?: number;
+            temperature?: number;
+            effect?: LightEffect;
+            gradual?: boolean | number;
+        }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         isOn(options?: { channel?: number }): boolean | undefined;
         getRgbColor(options?: { channel?: number }): number[] | undefined;
@@ -190,10 +408,21 @@ declare module 'meross-iot' {
         supportsRgb(options?: { channel?: number }): boolean;
         supportsLuminance(options?: { channel?: number }): boolean;
         supportsTemperature(options?: { channel?: number }): boolean;
+        supportsEffect(options?: { channel?: number }): boolean;
+    }
+
+    interface ThermostatSetOptions {
+        channel?: number;
+        onoff?: boolean | number | ThermostatModeBOnOff;
+        mode?: ThermostatMode | ThermostatModeBMode;
+        state?: ThermostatModeBState;
+        working?: ThermostatModeBWorking;
+        windowOpened?: boolean;
+        [key: string]: any;
     }
 
     interface ThermostatFeature {
-        set(options?: Record<string, any>): Promise<any>;
+        set(options?: ThermostatSetOptions): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
         getSchedule(options?: { channel?: number }): Promise<any>;
         getTimer(options?: { channel?: number }): Promise<any>;
@@ -233,13 +462,27 @@ declare module 'meross-iot' {
     }
 
     interface SprayFeature {
-        set(options: { channel?: number; mode: number }): Promise<any>;
+        set(options: { channel?: number; mode: SprayMode }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
-        getMode(options?: { channel?: number }): number | null;
+        getMode(options?: { channel?: number }): SprayMode | undefined;
+    }
+
+    interface DiffuserLightSetOptions {
+        channel?: number;
+        onoff?: boolean | number;
+        mode?: DiffuserLightMode;
+        luminance?: number;
+        rgb?: number;
+    }
+
+    interface DiffuserSetOptions {
+        light?: DiffuserLightSetOptions;
+        mode?: DiffuserSprayMode;
+        channel?: number;
     }
 
     interface DiffuserFeature {
-        set(options?: Record<string, any>): Promise<any>;
+        set(options?: DiffuserSetOptions): Promise<any>;
         get(options?: { channel?: number; type?: 'light' | 'spray' }): Promise<any>;
         getLight(options?: { channel?: number }): Promise<any>;
         getSpray(options?: { channel?: number }): Promise<any>;
@@ -262,13 +505,19 @@ declare module 'meross-iot' {
     }
 
     interface AlarmFeature {
+        set(options?: {
+            channel?: number;
+            on?: boolean;
+            action?: AlarmAction;
+            duration?: number;
+        }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
-        getLastEvents(): any[];
+        getLastEvents(): AlarmEvent[];
     }
 
     interface RuntimeFeature {
-        get(): Promise<any>;
-        getCached(): any;
+        get(): Promise<RuntimeInfo>;
+        getCached(): RuntimeInfo | null;
     }
 
     interface ScreenFeature {
@@ -277,22 +526,41 @@ declare module 'meross-iot' {
     }
 
     interface DNDFeature {
-        set(options?: { mode?: number }): Promise<any>;
-        get(options?: Record<string, any>): Promise<any>;
+        set(options?: {
+            enabled?: boolean;
+            mode?: DndMode;
+        }): Promise<void>;
+        get(options?: Record<string, any>): Promise<boolean>;
+        getMode(): DndMode | null;
     }
 
     interface ChildLockFeature {
-        set(options?: { channel?: number; lock?: number | boolean }): Promise<any>;
-        get(options?: { channel?: number }): Promise<any>;
+        set(options?: {
+            channel?: number;
+            lock?: number | boolean;
+            onoff?: number;
+            lockState?: PhysicalLockState;
+            locked?: boolean;
+            lockData?: object | object[];
+            subId?: string;
+        }): Promise<any>;
+        get(options?: { channel?: number; subId?: string }): Promise<any>;
     }
 
     interface ConfigFeature {
-        get(options?: Record<string, any>): Promise<any>;
-        set(options?: Record<string, any>): Promise<any>;
+        get(options?: Record<string, any>): Promise<{ overTemp?: OverTempEvent }>;
+        set(options?: {
+            enable?: boolean;
+            type?: OverTempType | number;
+        }): Promise<any>;
     }
 
     interface TempUnitFeature {
-        set(options?: { channel?: number; unit?: number }): Promise<any>;
+        set(options?: {
+            channel?: number;
+            tempUnit?: TempUnit | number;
+            tempUnitData?: object | object[];
+        }): Promise<any>;
         get(options?: { channel?: number }): Promise<any>;
     }
 
@@ -307,17 +575,17 @@ declare module 'meross-iot' {
         mute(options?: { muteSmoke?: boolean }): Promise<any>;
         test(): Promise<any>;
         getStatus(): number | null;
-        /** @deprecated Prefer `getCondition` and `getChannel` */
-        getType(): SmokeAlarmType;
         getCondition(): SmokeAlarmCondition;
         getChannel(): SmokeAlarmChannel | null;
         getInterconnect(): SmokeAlarmInterconnect | null;
-        isActive(): boolean;
-        isMuted(): boolean;
-        isError(): boolean;
         getInterConn(): number | null;
+        getInterConnStatus(): SmokeInterConn | null;
         getLastStatusUpdate(): number | null;
-        getTestEvents(): Array<{ type: number; timestamp: number }>;
+        getTestEvents(): Array<{
+            type: SmokeTestType;
+            typeWire: number;
+            timestamp: number;
+        }>;
     }
 
     interface TempHumFeature {
@@ -332,28 +600,20 @@ declare module 'meross-iot' {
 
     interface SensorAlertFeature {
         get(options?: { sensorIds?: string | string[] }): Promise<any>;
-        set(options?: {
-            alertData?: object | object[];
-            temperature?: Array<Array<number>>;
-            humidity?: Array<Array<number>>;
-        }): Promise<any>;
+        set(options?: { alertData?: object | object[]; temperature?: Array<Array<number>>; humidity?: Array<Array<number>> }): Promise<any>;
         getAlert(): Record<string, any>;
     }
 
     interface SensorAdjustFeature {
         get(options?: { sensorIds?: string | string[] }): Promise<any>;
-        set(options?: {
-            adjustData?: object | object[];
-            temperature?: number;
-            humidity?: number;
-            delta?: boolean;
-        }): Promise<any>;
+        set(options?: { adjustData?: object | object[]; temperature?: number; humidity?: number; delta?: boolean }): Promise<any>;
         getAdjust(): Record<string, any>;
     }
 
     interface WaterLeakFeature {
         get(options?: { sensorIds?: string | string[] }): Promise<any>;
         isLeaking(): boolean | null;
+        getLeakState(): WaterLeakState | null;
         getLatestSampleTime(): number | null;
         getLatestDetectedWaterLeakTs(): number | null;
         getLastEvents(): Array<{ leaking: boolean; timestamp: number }>;
@@ -362,19 +622,14 @@ declare module 'meross-iot' {
     interface DoorWindowFeature {
         get(options?: { sensorIds?: string | string[] }): Promise<any>;
         isOpen(): boolean | null;
+        getContactState(): ContactState | null;
         getLatestLmTime(): number | null;
         getSamples(): Array<{ status: number; timestamp: number }>;
     }
 
     interface Mts100Feature {
         get(options?: { ids?: string[]; complete?: boolean }): Promise<any>;
-        setSuperCtl(options: {
-            enable?: number;
-            level?: number;
-            alert?: number;
-            subId?: string;
-            superCtlData?: object;
-        }): Promise<any>;
+        setSuperCtl(options: { enable?: number; level?: number; alert?: number; subId?: string; superCtlData?: object }): Promise<any>;
         setScheduleB(options: {
             subId?: string;
             scheduleData?: object;
@@ -386,19 +641,15 @@ declare module 'meross-iot' {
             sat?: Array<Array<number>>;
             sun?: Array<Array<number>>;
         }): Promise<any>;
-        setConfig(options: {
-            subId?: string;
-            configData?: object;
-            pid?: object;
-        }): Promise<any>;
+        setConfig(options: { subId?: string; configData?: object; pid?: object }): Promise<any>;
         setToggle(options: { on: boolean }): Promise<void>;
         toggle(): Promise<void>;
-        setMode(options: { mode: number; subId?: string }): Promise<any>;
+        setMode(options: { mode: Mts100Mode | Mts100V3Mode; subId?: string }): Promise<any>;
         setTargetTemperature(options: { temperature: number; subId?: string; temp?: object }): Promise<any>;
         setPresetTemperature(options: { preset: string; temperature: number }): Promise<void>;
         setAdjust(options: { temperature: number; subId?: string; adjustData?: object }): Promise<any>;
         isOn(): boolean;
-        getMode(): number | undefined;
+        getMode(): Mts100Mode | Mts100V3Mode | undefined;
         getTargetTemperature(): number | null;
         getLastSampledTemperature(): number | null;
         getMinSupportedTemperature(): number | null;
@@ -440,7 +691,8 @@ declare module 'meross-iot' {
         readonly uuid: string;
         readonly name: string;
         readonly deviceType: string;
-        readonly onlineStatus: number;
+        readonly connectivity: Connectivity;
+        readonly isOnline: boolean;
         readonly deviceConnected: boolean;
         readonly capabilities: DeviceCapabilities | null;
         getChannelIds(): number[];
@@ -488,7 +740,9 @@ declare module 'meross-iot' {
         discover(options?: { deviceTypes?: string[]; onlineOnly?: boolean; excludeHubs?: boolean }): Promise<DeviceDefinition[]>;
         discoverSubdevices(options?: { hubUuids?: string[]; subdeviceType?: string; onlineOnly?: boolean }): Promise<SubdeviceInfo[]>;
         initialize(options?: { uuids?: string[] }): Promise<number>;
-        initializeDevice(identifier: string | { hubUuid: string; id: string }): Promise<MerossDevice | MerossHubDevice | MerossSubDevice | null>;
+        initializeDevice(
+            identifier: string | { hubUuid: string; id: string },
+        ): Promise<MerossDevice | MerossHubDevice | MerossSubDevice | null>;
         remove(identifier: string | { hubUuid: string; id: string }): Promise<boolean>;
     }
 
@@ -513,7 +767,7 @@ declare module 'meross-iot' {
 
     /** Public transport preferences on {@link Meross}. */
     interface ManagerTransport {
-        defaultMode: number;
+        defaultMode: TransportMode;
         readonly errorBudgetMaxErrors: number;
         readonly errorBudgetTimeWindow: number;
         getBudget(deviceUuid: string): number;
@@ -550,9 +804,6 @@ declare module 'meross-iot' {
     }
 
     export class Meross extends EventEmitter {
-        /** Same enum as the named {@link TransportMode} export (attached for `Meross.TransportMode` usage). */
-        static TransportMode: typeof TransportMode;
-
         static authenticate(options: {
             email?: string;
             password?: string;
@@ -598,7 +849,6 @@ declare module 'meross-iot' {
         logger: Logger | null;
 
         connect(): Promise<number>;
-        login(): Promise<number>;
         logout(): Promise<any>;
         disconnectAll(force?: boolean): void;
         getTokenData(): TokenData | null;

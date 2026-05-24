@@ -3,12 +3,13 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const ora = require('ora');
-const { MerossHubDevice, MerossSubDevice, TransportMode } = require('meross-iot');
+const { MerossHubDevice, MerossSubDevice } = require('meross-iot');
+const { TRANSPORT_MQTT } = require('../helpers/client');
 const testRunner = require('../tests/test-runner');
 const { clearScreen, renderLogoAtTop, renderSimpleHeader, clearMenuArea, CONTENT_START_LINE, SIMPLE_CONTENT_START_LINE, createRL, question, promptForPassword } = require('../utils/terminal');
 const { formatDevice } = require('../utils/display');
 const { listDevices, showStats, dumpRegistry, listMqttConnections, getDeviceStatus, showDeviceInfo, controlDeviceMenu, runTestCommand, snifferMenu } = require('../commands');
-const { addUser, getUser, listUsers, removeUser } = require('../config/users');
+const { addUser, getUser, listUsers } = require('../config/users');
 const { createMerossInstance, disconnectMeross } = require('../helpers/meross');
 const { showSettingsMenu } = require('./settings');
 
@@ -25,9 +26,9 @@ function _renderMainMenuHeader(currentUser, manager) {
 }
 
 async function _promptForCredentials(rl) {
-    const email = await question(rl, 'Email: ');
+    const email = await question( 'Email: ');
     const password = await promptForPassword(rl, 'Password: ');
-    const mfaCode = await question(rl, 'MFA Code (optional, press Enter to skip): ');
+    const mfaCode = await question( 'MFA Code (optional, press Enter to skip): ');
 
     return {
         email: email.trim(),
@@ -50,7 +51,7 @@ async function _handleStoredUserLogin(loginChoice) {
             mfaCode: userData.mfaCode || undefined
         },
         {
-            transportMode: TransportMode.MQTT_ONLY,
+            transportMode: TRANSPORT_MQTT,
             timeout: 10000,
             enableStats: false,
             verbose: false
@@ -61,13 +62,13 @@ async function _handleStoredUserLogin(loginChoice) {
 }
 
 async function _handleAddNewUser(rl) {
-    const name = await question(rl, 'User name: ');
+    const name = await question( 'User name: ');
     if (!name || !name.trim()) {
         console.error('\nError: User name cannot be empty.');
         return { success: false };
     }
 
-    const email = await question(rl, 'Email: ');
+    const email = await question( 'Email: ');
     if (!email || !email.trim()) {
         console.error('\nError: Email cannot be empty.');
         return { success: false };
@@ -79,7 +80,7 @@ async function _handleAddNewUser(rl) {
         return { success: false };
     }
 
-    const mfaCode = await question(rl, 'MFA Code (optional, press Enter to skip): ');
+    const mfaCode = await question( 'MFA Code (optional, press Enter to skip): ');
 
     const result = addUser(name.trim(), email.trim(), password, mfaCode.trim() || null);
     if (!result.success) {
@@ -100,7 +101,7 @@ async function _handleAddNewUser(rl) {
             mfaCode: userData.mfaCode || undefined
         },
         {
-            transportMode: TransportMode.MQTT_ONLY,
+            transportMode: TRANSPORT_MQTT,
             timeout: 10000,
             enableStats: false,
             verbose: false
@@ -119,7 +120,7 @@ async function _handleManualLogin(rl) {
             mfaCode: credentials.mfaCode || undefined
         },
         {
-            transportMode: TransportMode.MQTT_ONLY,
+            transportMode: TRANSPORT_MQTT,
             timeout: 10000,
             enableStats: false,
             verbose: false
@@ -139,7 +140,7 @@ async function _handleNoStoredUsersLogin(rl) {
             mfaCode: credentials.mfaCode || undefined
         },
         {
-            transportMode: TransportMode.MQTT_ONLY,
+            transportMode: TRANSPORT_MQTT,
             timeout: 10000,
             enableStats: false,
             verbose: false
@@ -433,21 +434,21 @@ async function _selectSubdevice(manager, uuid) {
 
 async function _handleListCommand(manager, rl) {
     await listDevices(manager);
-    await question(rl, '\nPress Enter to return to menu...');
+    await question( '\nPress Enter to return to menu...');
 }
 
 async function _handleInfoCommand(manager, rl) {
     const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         console.log('\nNo devices found.');
-        await question(rl, '\nPress Enter to return to menu...');
+        await question( '\nPress Enter to return to menu...');
         return;
     }
 
     const uuid = await _selectDevice(manager);
     if (uuid) {
         await showDeviceInfo(manager, uuid);
-        await question(rl, '\nPress Enter to return to menu...');
+        await question( '\nPress Enter to return to menu...');
     }
 }
 
@@ -455,7 +456,7 @@ async function _handleStatusCommand(manager, rl) {
     const devices = manager.devices.list().filter(d => !(d instanceof MerossSubDevice));
     if (devices.length === 0) {
         console.log('\nNo devices found.');
-        await question(rl, '\nPress Enter to return to menu...');
+        await question( '\nPress Enter to return to menu...');
         return;
     }
 
@@ -466,7 +467,7 @@ async function _handleStatusCommand(manager, rl) {
 
     const subdeviceId = await _selectSubdevice(manager, uuid);
     await getDeviceStatus(manager, uuid, subdeviceId);
-    await question(rl, '\nPress Enter to return to menu...');
+    await question( '\nPress Enter to return to menu...');
 }
 
 async function _handleControlCommand(manager, rl, currentUser) {
@@ -494,7 +495,7 @@ async function _handleStatsCommand(manager, rl) {
         manager.statistics.disable();
         console.log('\nStatistics tracking disabled');
     }
-    await question(rl, '\nPress Enter to return to menu...');
+    await question( '\nPress Enter to return to menu...');
 }
 
 async function _handleMqttConnectionsCommand(manager, rl) {
@@ -503,7 +504,7 @@ async function _handleMqttConnectionsCommand(manager, rl) {
         verbose: currentVerboseState,
         json: false
     });
-    await question(rl, '\nPress Enter to return to menu...');
+    await question( '\nPress Enter to return to menu...');
 }
 
 async function _handleDumpCommand(manager, rl) {
@@ -515,7 +516,7 @@ async function _handleDumpCommand(manager, rl) {
     }]);
 
     await dumpRegistry(manager, filename || 'device-registry.json');
-    await question(rl, '\nPress Enter to return to menu...');
+    await question( '\nPress Enter to return to menu...');
 }
 
 async function _handleTestCommand(manager, rl) {
@@ -536,7 +537,7 @@ async function _handleTestCommand(manager, rl) {
     }]);
 
     await runTestCommand(manager, testType, true, rl);
-    await question(rl, '\nPress Enter to return to menu...');
+    await question( '\nPress Enter to return to menu...');
 }
 
 async function _handleSnifferCommand(manager, rl, currentUser = null) {
@@ -586,7 +587,7 @@ function _buildSettingsCallbacks(
 }
 
 async function _handleSettingsCommand(manager, rl, currentUserRef, currentCredentials) {
-    const transportModeRef = { current: manager.transport.defaultMode || TransportMode.MQTT_ONLY };
+    const transportModeRef = { current: manager.transport.defaultMode || TRANSPORT_MQTT };
     const timeoutRef = { current: 10000 };
     const enableStatsRef = { current: manager.statistics.isEnabled() };
     const verboseRef = { current: !!manager.logger };
@@ -797,7 +798,7 @@ async function menuMode() {
         } catch (error) {
             const { handleError } = require('../utils/error-handler');
             handleError(error, { verbose: process.env.MEROSS_VERBOSE === 'true' });
-            await question(rl, '\nPress Enter to return to menu...');
+            await question( '\nPress Enter to return to menu...');
         }
     }
 

@@ -3,6 +3,8 @@
 const GenericPushNotification = require('./generic');
 const OnlinePushNotification = require('./online');
 const AlarmPushNotification = require('./alarm');
+const UpgradePushNotification = require('./upgrade');
+const OverTempPushNotification = require('./over-temp');
 const BindPushNotification = require('./bind');
 const UnbindPushNotification = require('./unbind');
 const WaterLeakPushNotification = require('./water-leak');
@@ -29,6 +31,8 @@ const { extractHubItems } = require('../abilities/hub');
 const PUSH_NOTIFICATION_BINDING = {
     'Appliance.System.Online': OnlinePushNotification,
     'Appliance.Control.Alarm': AlarmPushNotification,
+    'Appliance.Control.Upgrade': UpgradePushNotification,
+    'Appliance.Control.OverTemp': OverTempPushNotification,
     'Appliance.Control.Bind': BindPushNotification,
     'Appliance.Control.Unbind': UnbindPushNotification,
     'Appliance.Control.ToggleX': ToggleXPushNotification,

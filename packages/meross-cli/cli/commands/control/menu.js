@@ -3,23 +3,13 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const ora = require('ora');
-const { MerossSubDevice, TransportMode } = require('meross-iot');
+const { MerossSubDevice } = require('meross-iot');
+const { TRANSPORT_LAN_HTTP_FIRST, TRANSPORT_LAN_HTTP_FIRST_ONLY_GET } = require('../../helpers/client');
 const { formatDevice } = require('../../utils/display');
-const { clearScreen, renderSimpleHeader, clearMenuArea, SIMPLE_CONTENT_START_LINE } = require('../../utils/terminal');
+const { clearScreen, renderSimpleHeader, clearMenuArea, SIMPLE_CONTENT_START_LINE, question } = require('../../utils/terminal');
 const { detectControlMethods } = require('../../control-registry');
 const { collectControlParameters } = require('./params');
 const { executeControlCommand } = require('./execute');
-
-// Helper function for backward compatibility
-async function question(rl, query) {
-    // For backward compatibility, use inquirer for better UX
-    const result = await inquirer.prompt([{
-        type: 'input',
-        name: 'value',
-        message: query.replace(/:\s*$/, '')
-    }]);
-    return result.value;
-}
 
 /**
  * Interactive device control menu.
@@ -128,7 +118,7 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
         const method = availableMethods.find(m => m.methodName === methodName);
         if (!method) {
             console.log(chalk.red('\nMethod not found.'));
-            await question(rl, '\nPress Enter to continue...');
+            await question('\nPress Enter to continue...');
             continue;
         }
 
@@ -142,8 +132,8 @@ async function controlDeviceMenu(manager, rl, currentUser = null) {
             }
 
             const transport = manager.transport;
-            const usesLanHttp = transport.defaultMode === TransportMode.LAN_HTTP_FIRST ||
-                transport.defaultMode === TransportMode.LAN_HTTP_FIRST_ONLY_GET;
+            const usesLanHttp = transport.defaultMode === TRANSPORT_LAN_HTTP_FIRST ||
+                transport.defaultMode === TRANSPORT_LAN_HTTP_FIRST_ONLY_GET;
             if (usesLanHttp && transport.isOutOfBudget(uuid)) {
                 console.log(chalk.yellow(
                     `\n⚠ Device is out of transport error budget (${transport.getBudget(uuid)} remaining). `

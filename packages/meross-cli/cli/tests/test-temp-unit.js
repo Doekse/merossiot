@@ -9,7 +9,7 @@ const {
     waitForDeviceConnection,
     getDeviceName,
     getPrimaryChannel,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
 
@@ -36,7 +36,7 @@ async function runTests(context) {
 
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.TempUnit', OnlineStatus.ONLINE);
+        testDevices = await findDevicesByAbility(manager, 'Appliance.Control.TempUnit', REQUIRE_ONLINE);
     }
 
     for (const device of testDevices) {

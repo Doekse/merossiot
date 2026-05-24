@@ -19,7 +19,7 @@ const { getCredentials, shutdown } = require('./shared.js');
         console.log(`\nConnected — ${devices.length} device(s) in registry:\n`);
 
         for (const device of devices) {
-            const online = device.onlineStatus === Meross.OnlineStatus.ONLINE;
+            const online = device.isOnline;
             console.log(`  ${device.name || 'Unknown'}`);
             console.log(`    UUID:   ${device.uuid}`);
             console.log(`    Type:   ${device.deviceType}`);

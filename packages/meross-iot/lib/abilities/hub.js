@@ -1,7 +1,6 @@
 'use strict';
 
 const { registerNamespaceDescriptor, emitStateChangeFromSnapshot, mutateChannelState } = require('../dispatcher');
-const { OnlineStatus } = require('../enums');
 const HubBatteryState = require('../states/hub-battery-state');
 const { getMessageTimestamp, shouldApplyUpdate } = require('../utilities/state-ordering');
 
@@ -121,7 +120,7 @@ async function routeItemsToSubdevices(device, header, namespace, items) {
         return;
     }
     for (const item of items) {
-        if (!item || item.id == null) {
+        if (!item || item.id === null || item.id === undefined) {
             continue;
         }
         const subdevice = device.getSubdevice(item.id);
@@ -142,7 +141,7 @@ function buildHubGetPayload(payloadKey, ids) {
     const payload = { [payloadKey]: [] };
     if (Array.isArray(ids)) {
         ids.forEach(id => payload[payloadKey].push({ id }));
-    } else if (ids != null) {
+    } else if (ids !== null && ids !== undefined) {
         payload[payloadKey].push({ id: ids });
     }
     return payload;
@@ -159,7 +158,7 @@ function buildHubGetPayload(payloadKey, ids) {
 function extractGetResponseItems(response, routeKey, responseKeys) {
     const keys = responseKeys || [routeKey];
     for (const key of keys) {
-        if (response && response[key] != null) {
+        if (response && response[key] !== null && response[key] !== undefined) {
             const items = response[key];
             return Array.isArray(items) ? items : [items];
         }
@@ -332,8 +331,8 @@ function createHubAbility(device) {
                     sensorIds.push(sub.subdeviceId);
                 }
             }
-        } else if (device.subDeviceList && Array.isArray(device.subDeviceList) && device.subDeviceList.length > 0) {
-            for (const sub of device.subDeviceList) {
+        } else if (device._initialSubdeviceInfos?.length > 0) {
+            for (const sub of device._initialSubdeviceInfos) {
                 const subType = sub.subDeviceType || sub.type;
                 const subId = sub.subDeviceId || sub.id;
 
@@ -712,21 +711,6 @@ const hubOnlineDescriptor = {
     emitValue: (oldVal, newVal) => (oldVal !== newVal ? newVal : undefined)
 };
 
-/**
- * Maps numeric hub online status codes to {@link OnlineStatus} values.
- *
- * @param {number} statusValue
- * @returns {number}
- */
-function mapOnlineStatus(statusValue) {
-    const statusMap = {
-        0: OnlineStatus.NOT_ONLINE,
-        1: OnlineStatus.ONLINE,
-        2: OnlineStatus.OFFLINE,
-        3: OnlineStatus.UPGRADING
-    };
-    return statusMap[statusValue] ?? OnlineStatus.UNKNOWN;
-}
 
 /**
  * Applies hub online payloads with the shared `'online'` ordering gate.
@@ -759,8 +743,8 @@ function applySubdeviceOnline(device, data, messageTs, source, { touchLastActive
         return;
     }
 
-    const oldOnline = device.onlineStatus;
-    device._onlineStatus = mapOnlineStatus(statusValue);
+    const oldOnline = device.connectivity;
+    device._connectivityWire = statusValue;
     if (touchLastActiveTime) {
         device._lastActiveTime = lastActiveTime;
     }
@@ -771,7 +755,7 @@ function applySubdeviceOnline(device, data, messageTs, source, { touchLastActive
         source,
         0,
         oldOnline,
-        device.onlineStatus
+        device.connectivity
     );
 }
 
@@ -792,7 +776,7 @@ function applySubdeviceBattery(device, data, source) {
 registerNamespaceDescriptor('Appliance.Hub.Battery', {
     ...hubBatteryDescriptor,
     customApply: (device, payload, source) => {
-        if (device.subdeviceId == null) {
+        if (device.subdeviceId === null || device.subdeviceId === undefined) {
             return;
         }
         applySubdeviceBattery(device, payload, source);
@@ -803,7 +787,7 @@ registerNamespaceDescriptor('Appliance.Hub.Mts100.Battery', {
     ...hubBatteryDescriptor,
     namespace: 'Appliance.Hub.Mts100.Battery',
     customApply: (device, payload, source) => {
-        if (device.subdeviceId == null) {
+        if (device.subdeviceId === null || device.subdeviceId === undefined) {
             return;
         }
         applySubdeviceBattery(device, payload, source);
@@ -813,7 +797,7 @@ registerNamespaceDescriptor('Appliance.Hub.Mts100.Battery', {
 registerNamespaceDescriptor('Appliance.Hub.Online', {
     ...hubOnlineDescriptor,
     customApply: (device, payload, source, header) => {
-        if (device.subdeviceId == null) {
+        if (device.subdeviceId === null || device.subdeviceId === undefined) {
             return;
         }
         applySubdeviceOnline(device, payload, getMessageTimestamp(header), source, {

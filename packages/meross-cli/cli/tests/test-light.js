@@ -5,7 +5,7 @@
  * Tests RGB color, brightness, and temperature control for light devices
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, REQUIRE_ONLINE } = require('./test-helper');
 
 const metadata = {
     name: 'light',
@@ -22,7 +22,7 @@ async function runTests(context) {
     // If no devices provided, discover them
     let lightDevices = devices || [];
     if (lightDevices.length === 0) {
-        lightDevices = await findDevicesByAbility(manager, 'Appliance.Control.Light', OnlineStatus.ONLINE);
+        lightDevices = await findDevicesByAbility(manager, 'Appliance.Control.Light', REQUIRE_ONLINE);
     }
     
     // Wait for devices to be connected and update their states
@@ -36,16 +36,11 @@ async function runTests(context) {
     }
     
     // Find RGB-capable devices
-    const { LightMode } = require('meross-iot');
     const rgbCapable = lightDevices.filter(d => {
-        if (!d.light || !d.abilities || !d.abilities['Appliance.Control.Light']) {
+        if (!d.light) {
             return false;
         }
-        const lightAbility = d.abilities['Appliance.Control.Light'];
-        if (!lightAbility || !lightAbility.capacity) {
-            return false;
-        }
-        return (lightAbility.capacity & LightMode.MODE_RGB) === LightMode.MODE_RGB;
+        return d.light.supportsRgb({ channel: getPrimaryChannel(d) });
     });
     
     // Use RGB-capable device if available, otherwise use first light device

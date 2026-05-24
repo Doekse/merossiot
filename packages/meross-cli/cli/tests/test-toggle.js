@@ -5,7 +5,7 @@
  * Tests on/off control for switches and smart plugs
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, REQUIRE_ONLINE } = require('./test-helper');
 
 /**
  * Test metadata
@@ -23,8 +23,8 @@ const metadata = {
  * @returns {Promise<Array>} Array of toggle devices
  */
 async function findAllToggleDevices(manager) {
-    const toggleXDevices = await findDevicesByAbility(manager, 'Appliance.Control.ToggleX', OnlineStatus.ONLINE);
-    const toggleDevices = await findDevicesByAbility(manager, 'Appliance.Control.Toggle', OnlineStatus.ONLINE);
+    const toggleXDevices = await findDevicesByAbility(manager, 'Appliance.Control.ToggleX', REQUIRE_ONLINE);
+    const toggleDevices = await findDevicesByAbility(manager, 'Appliance.Control.Toggle', REQUIRE_ONLINE);
     
     // Combine and deduplicate
     const allToggleDevices = [...toggleXDevices];

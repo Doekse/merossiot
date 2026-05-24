@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createTempUnitAbility = require('../lib/abilities/temp-unit');
+const { TempUnitCodec } = require('../lib/enums');
 const { createPublishRecorder } = require('./helpers/mock-ability-device');
 
 describe('temp unit ability (mocked device)', () => {
@@ -30,5 +31,14 @@ describe('temp unit ability (mocked device)', () => {
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.TempUnit');
         assert.strictEqual(calls[0].payload.tempUnit[0].tempUnit, 1);
+    });
+
+    it('set accepts semantic tempUnit string', async () => {
+        const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
+        const tu = createTempUnitAbility({ publishMessage });
+
+        await tu.set({ channel: 0, tempUnit: 'fahrenheit' });
+
+        assert.strictEqual(calls[0].payload.tempUnit[0].tempUnit, TempUnitCodec.toWire('fahrenheit'));
     });
 });

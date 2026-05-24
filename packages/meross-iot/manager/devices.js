@@ -106,12 +106,12 @@ class ManagerDevices extends Manager {
             return [];
         }
 
-        const { OnlineStatus } = require('../lib/enums');
+        const { ConnectivityCodec } = require('../lib/enums');
 
         let filteredDevices = deviceList;
 
         if (options.onlineOnly !== false) {
-            filteredDevices = filteredDevices.filter(dev => dev.onlineStatus === OnlineStatus.ONLINE);
+            filteredDevices = filteredDevices.filter(dev => ConnectivityCodec.isOnline(dev.onlineStatus));
         }
 
         if (options.deviceTypes && Array.isArray(options.deviceTypes) && options.deviceTypes.length > 0) {
@@ -185,12 +185,12 @@ class ManagerDevices extends Manager {
      * @private
      */
     _filterHubDevices(deviceList, options) {
-        const { OnlineStatus } = require('../lib/enums');
+        const { ConnectivityCodec } = require('../lib/enums');
 
         let hubDevices = deviceList.filter(dev => this._isHubDeviceType(dev));
 
         if (options.onlineOnly !== false) {
-            hubDevices = hubDevices.filter(dev => dev.onlineStatus === OnlineStatus.ONLINE);
+            hubDevices = hubDevices.filter(dev => ConnectivityCodec.isOnline(dev.onlineStatus));
         }
 
         if (options.hubUuids && Array.isArray(options.hubUuids) && options.hubUuids.length > 0) {
@@ -295,9 +295,9 @@ class ManagerDevices extends Manager {
             return 0;
         }
 
-        const { OnlineStatus } = require('../lib/enums');
+        const { ConnectivityCodec } = require('../lib/enums');
 
-        let devicesToInitialize = deviceList.filter(dev => dev.onlineStatus === OnlineStatus.ONLINE);
+        let devicesToInitialize = deviceList.filter(dev => ConnectivityCodec.isOnline(dev.onlineStatus));
 
         if (options && options.uuids && Array.isArray(options.uuids) && options.uuids.length > 0) {
             const uuidSet = new Set(options.uuids);
@@ -405,8 +405,8 @@ class ManagerDevices extends Manager {
             throw new MerossDeviceError(`Device with UUID ${deviceUuid} not found`, 'NOT_FOUND', { resourceType: 'device', resourceId: deviceUuid });
         }
 
-        const { OnlineStatus } = require('../lib/enums');
-        if (deviceInfo.onlineStatus !== OnlineStatus.ONLINE) {
+        const { ConnectivityCodec } = require('../lib/enums');
+        if (!ConnectivityCodec.isOnline(deviceInfo.onlineStatus)) {
             if (this.meross.options.logger) {
                 this.meross.options.logger(`Skipping offline device ${deviceUuid}`);
             }
@@ -961,9 +961,9 @@ class ManagerDevices extends Manager {
 
         const { MerossHubDevice } = require('../lib/device/hubdevice');
         if (device instanceof MerossHubDevice && typeof device.getSubdevices === 'function') {
-            const subDeviceList = device.subDeviceList || [];
-            if (subDeviceList && Array.isArray(subDeviceList) && subDeviceList.length > 0) {
-                await this._enrollHubSubdevices(device, subDeviceList);
+            const initialSubdeviceInfos = device._initialSubdeviceInfos || [];
+            if (initialSubdeviceInfos.length > 0) {
+                await this._enrollHubSubdevices(device, initialSubdeviceInfos);
             }
         }
     }

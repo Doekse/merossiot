@@ -202,7 +202,7 @@ describe('emitStateChangeFromSnapshot', () => {
 describe('MerossDevice#getState', () => {
     it('deduplicates shared state maps and skips non-collectable descriptors', () => {
         const device = Object.create(MerossDevice.prototype);
-        device.onlineStatus = true;
+        device._connectivityWire = 1;
         device.lastFullUpdateTimestamp = 12345;
         device.abilities = {
             'Appliance.Control.Thermostat.Mode': {},
@@ -225,7 +225,7 @@ describe('MerossDevice#getState', () => {
 
         const state = device.getState();
 
-        assert.strictEqual(state.online, true);
+        assert.strictEqual(state.online, 'online');
         assert.strictEqual(state.timestamp, 12345);
         assert.deepStrictEqual(state.thermostat, {
             0: { mode: 1, targetTemp: 21, currentTemp: 19 }

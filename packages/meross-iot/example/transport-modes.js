@@ -17,9 +17,9 @@ const { getCredentials, bindShutdown } = require('./shared.js');
 
         bindShutdown(meross);
 
-        // meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST;
-        // meross.transport.defaultMode = Meross.TransportMode.LAN_HTTP_FIRST_ONLY_GET;
-        meross.transport.defaultMode = Meross.TransportMode.MQTT_ONLY;
+        // meross.transport.defaultMode = 'lan-http-first';
+        // meross.transport.defaultMode = 'lan-http-first-only-get';
+        meross.transport.defaultMode = 'mqtt';
 
         console.log(`Transport mode: ${meross.transport.defaultMode}`);
         console.log(`Devices: ${meross.devices.list().length}`);

@@ -2,11 +2,60 @@
 
 const DiffuserLightState = require('../states/diffuser-light-state');
 const DiffuserSprayState = require('../states/diffuser-spray-state');
+const { DiffuserLightModeCodec, DiffuserSprayModeCodec } = require('../enums');
 const { getCachedOrFetch } = require('../utilities/cache');
 const { buildStateChanges } = require('../utilities/state-changes');
 const { normalizeChannel } = require('../utilities/options');
 const { MerossDeviceError } = require('../exception');
 const { registerNamespaceDescriptor } = require('../dispatcher');
+
+/**
+ * @param {Object} light
+ * @param {string} deviceUuid
+ * @returns {Object}
+ */
+function normalizeDiffuserLightPayload(light, deviceUuid) {
+    const normalized = { ...light };
+    if (normalized.mode !== undefined && normalized.mode !== null) {
+        if (typeof normalized.mode !== 'string') {
+            throw new MerossDeviceError(
+                'Invalid diffuser light mode. Expected rotating-colors, fixed-rgb, or fixed-luminance.',
+                'VALIDATION_ERROR',
+                { field: 'light.mode', mode: normalized.mode, deviceUuid }
+            );
+        }
+        const wire = DiffuserLightModeCodec.toWire(normalized.mode);
+        if (wire === undefined) {
+            throw new MerossDeviceError(
+                'Invalid diffuser light mode. Expected rotating-colors, fixed-rgb, or fixed-luminance.',
+                'VALIDATION_ERROR',
+                { field: 'light.mode', mode: normalized.mode, deviceUuid }
+            );
+        }
+        normalized.mode = wire;
+    }
+    if (typeof normalized.onoff === 'boolean') {
+        normalized.onoff = normalized.onoff ? 1 : 0;
+    }
+    return normalized;
+}
+
+/**
+ * @param {string} mode
+ * @param {string} deviceUuid
+ * @returns {number}
+ */
+function normalizeDiffuserSprayMode(mode, deviceUuid) {
+    const wire = DiffuserSprayModeCodec.toWire(mode);
+    if (wire === undefined) {
+        throw new MerossDeviceError(
+            'Invalid diffuser spray mode. Expected light, strong, or off.',
+            'VALIDATION_ERROR',
+            { field: 'mode', mode, deviceUuid }
+        );
+    }
+    return wire;
+}
 
 /**
  * Creates a diffuser feature object for a device.
@@ -24,11 +73,11 @@ function createDiffuserAbility(device) {
          * @param {Object} options - Diffuser options
          * @param {Object} [options.light] - Light configuration object
          * @param {number} [options.light.channel] - Channel to control (default: 0)
-         * @param {number} [options.light.onoff] - Turn light on (1) or off (0)
-         * @param {number} [options.light.mode] - Light mode (use DiffuserLightMode enum)
+         * @param {boolean|number} [options.light.onoff] - Turn light on or off
+         * @param {'rotating-colors'|'fixed-rgb'|'fixed-luminance'} [options.light.mode] - Light mode
          * @param {number} [options.light.luminance] - Brightness value
          * @param {number} [options.light.rgb] - RGB color value
-         * @param {number} [options.mode] - Spray mode value (for spray control)
+         * @param {'light'|'strong'|'off'} [options.mode] - Spray mode (for spray control)
          * @param {number} [options.channel=0] - Channel to control (default: 0, for spray)
          * @returns {Promise<Object>} Response from the device
          * @throws {MerossDeviceError} If device is not connected (code DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
@@ -36,7 +85,7 @@ function createDiffuserAbility(device) {
         async set(options = {}) {
             // Handle light
             if (options.light !== undefined) {
-                const light = { ...options.light };
+                const light = normalizeDiffuserLightPayload(options.light, device.uuid);
                 light.uuid = device.uuid;
                 const payload = { 'light': [light] };
                 const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Light', payload);
@@ -46,7 +95,8 @@ function createDiffuserAbility(device) {
             // Handle spray
             if (options.mode !== undefined) {
                 const channel = normalizeChannel(options);
-                const payload = { 'spray': [{ channel, 'mode': options.mode || 0, 'uuid': device.uuid }] };
+                const modeWire = normalizeDiffuserSprayMode(options.mode, device.uuid);
+                const payload = { 'spray': [{ channel, 'mode': modeWire, 'uuid': device.uuid }] };
                 const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.Control.Diffuser.Spray', payload);
                 return responsePayload;
             }

@@ -1,7 +1,9 @@
 'use strict';
 
 const LightState = require('../states/light-state');
-const { LightMode } = require('../enums');
+/** Capacity bitmask flags; values correspond to bit positions in the device's `capacity` field. */
+const LIGHT_MODE = { RGB: 1, TEMPERATURE: 2, LUMINANCE: 4, EFFECT: 8 };
+const { LightEffectCodec } = require('../enums');
 const { getCachedOrFetch } = require('../utilities/cache');
 const { rgbToInt } = require('../utilities/conversion');
 const { normalizeChannel } = require('../utilities/options');
@@ -17,9 +19,15 @@ const { registerNamespaceDescriptor } = require('../dispatcher');
  * @type {Array<{option: string, payloadKey: string, mode: number, transform?: Function}>}
  */
 const LIGHT_ATTRIBUTES = [
-    { option: 'rgb',         payloadKey: 'rgb',         mode: LightMode.MODE_RGB,         transform: rgbToInt },
-    { option: 'luminance',   payloadKey: 'luminance',   mode: LightMode.MODE_LUMINANCE },
-    { option: 'temperature', payloadKey: 'temperature', mode: LightMode.MODE_TEMPERATURE }
+    { option: 'rgb',         payloadKey: 'rgb',         mode: LIGHT_MODE.RGB,         transform: rgbToInt },
+    { option: 'luminance',   payloadKey: 'luminance',   mode: LIGHT_MODE.LUMINANCE },
+    { option: 'temperature', payloadKey: 'temperature', mode: LIGHT_MODE.TEMPERATURE },
+    {
+        option: 'effect',
+        payloadKey: 'effect',
+        mode: LIGHT_MODE.EFFECT,
+        transform: (value) => (typeof value === 'string' ? LightEffectCodec.toWire(value) : value)
+    }
 ];
 
 /**
@@ -111,7 +119,7 @@ function createLightAbility(device) {
     /**
      * Checks if the device supports a specific light mode for the given channel.
      *
-     * @param {number} mode - Light mode to check (from LightMode enum)
+     * @param {number} mode - Capacity bitmask flag (LIGHT_MODE.RGB, .LUMINANCE, or .TEMPERATURE)
      * @param {number} [channel=0] - Channel to check (default: 0)
      * @returns {boolean} True if the mode is supported
      * @private
@@ -136,6 +144,7 @@ function createLightAbility(device) {
          * @param {Array<number>|number|Object} [options.rgb] - RGB color [r, g, b], integer, or {r,g,b} object
          * @param {number} [options.luminance] - Brightness value (0-100)
          * @param {number} [options.temperature] - Temperature value (0-100)
+         * @param {string} [options.effect] - Light effect preset (requires effect capacity bit)
          * @param {boolean|number} [options.gradual] - Enable gradual transition (default: true for RGB, false otherwise)
          * @returns {Promise<Object|null>} Response from the device or null if no changes needed
          * @throws {MerossDeviceError} If device is not connected (DEVICE_UNCONNECTED) or command times out (COMMAND_TIMEOUT)
@@ -263,7 +272,7 @@ function createLightAbility(device) {
          * @returns {boolean} True if RGB is supported
          */
         supportsRgb(options = {}) {
-            return supportsLightMode(LightMode.MODE_RGB, normalizeChannel(options));
+            return supportsLightMode(LIGHT_MODE.RGB, normalizeChannel(options));
         },
 
         /**
@@ -274,7 +283,7 @@ function createLightAbility(device) {
          * @returns {boolean} True if luminance is supported
          */
         supportsLuminance(options = {}) {
-            return supportsLightMode(LightMode.MODE_LUMINANCE, normalizeChannel(options));
+            return supportsLightMode(LIGHT_MODE.LUMINANCE, normalizeChannel(options));
         },
 
         /**
@@ -285,7 +294,18 @@ function createLightAbility(device) {
          * @returns {boolean} True if temperature is supported
          */
         supportsTemperature(options = {}) {
-            return supportsLightMode(LightMode.MODE_TEMPERATURE, normalizeChannel(options));
+            return supportsLightMode(LIGHT_MODE.TEMPERATURE, normalizeChannel(options));
+        },
+
+        /**
+         * Checks if the light supports effect presets for the specified channel.
+         *
+         * @param {Object} [options={}] - Options
+         * @param {number} [options.channel=0] - Channel to check (default: 0)
+         * @returns {boolean} True if effects are supported
+         */
+        supportsEffect(options = {}) {
+            return supportsLightMode(LIGHT_MODE.EFFECT, normalizeChannel(options));
         }
     };
 }
@@ -306,7 +326,8 @@ function getLightCapabilities(device, channelIds) {
         channels: channelIds,
         rgb: lightFeature.supportsRgb ? lightFeature.supportsRgb({ channel: 0 }) : false,
         luminance: lightFeature.supportsLuminance ? lightFeature.supportsLuminance({ channel: 0 }) : false,
-        temperature: lightFeature.supportsTemperature ? lightFeature.supportsTemperature({ channel: 0 }) : false
+        temperature: lightFeature.supportsTemperature ? lightFeature.supportsTemperature({ channel: 0 }) : false,
+        effect: lightFeature.supportsEffect ? lightFeature.supportsEffect({ channel: 0 }) : false
     };
 }
 
@@ -320,7 +341,8 @@ registerNamespaceDescriptor('Appliance.Control.Light', {
         isOn: s.isOn,
         brightness: s.luminance,
         rgb: s.rgbTuple,
-        temperature: s.temperature
+        temperature: s.temperature,
+        effect: s.effect
     }),
     emitValue: (o, n) => buildStateChanges(o, n, ['rgb'])
 });

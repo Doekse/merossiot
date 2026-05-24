@@ -4,8 +4,8 @@
  * Diffuser device live tests (diffuser feature: light + spray).
  */
 
-const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, OnlineStatus } = require('./test-helper');
-const { DiffuserLightMode, DiffuserSprayMode } = require('meross-iot');
+const { findDevicesByAbility, waitForDeviceConnection, getDeviceName, getPrimaryChannel, assertFeatureOrSkip, REQUIRE_ONLINE } = require('./test-helper');
+
 
 const metadata = {
     name: 'diffuser',
@@ -34,8 +34,8 @@ async function runTests(context) {
             d.abilities && d.abilities['Appliance.Control.Diffuser.Spray']
         );
     } else {
-        lightDevices = await findDevicesByAbility(manager, 'Appliance.Control.Diffuser.Light', OnlineStatus.ONLINE);
-        sprayDevices = await findDevicesByAbility(manager, 'Appliance.Control.Diffuser.Spray', OnlineStatus.ONLINE);
+        lightDevices = await findDevicesByAbility(manager, 'Appliance.Control.Diffuser.Light', REQUIRE_ONLINE);
+        sprayDevices = await findDevicesByAbility(manager, 'Appliance.Control.Diffuser.Spray', REQUIRE_ONLINE);
     }
 
     for (const device of lightDevices) {
@@ -79,7 +79,7 @@ async function runTests(context) {
                 await light.diffuser.set({
                     light: {
                         channel,
-                        mode: DiffuserLightMode.FIXED_RGB
+                        mode: 'fixed-rgb'
                     }
                 });
 
@@ -91,7 +91,7 @@ async function runTests(context) {
                 await light.diffuser.set({
                     light: {
                         channel,
-                        mode: DiffuserLightMode.FIXED_RGB,
+                        mode: 'fixed-rgb',
                         rgb: rgbInt,
                         onoff: 1
                     }
@@ -163,7 +163,7 @@ async function runTests(context) {
                 await light.diffuser.set({
                     light: {
                         channel,
-                        mode: DiffuserLightMode.FIXED_RGB
+                        mode: 'fixed-rgb'
                     }
                 });
 
@@ -309,55 +309,55 @@ async function runTests(context) {
                 await light.diffuser.set({
                     light: {
                         channel,
-                        mode: DiffuserLightMode.FIXED_LUMINANCE,
+                        mode: 'fixed-luminance',
                         onoff: 1
                     }
                 });
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 let state = await light.diffuser.get({ type: 'light', channel });
-                if (!state || state.mode !== DiffuserLightMode.FIXED_LUMINANCE) {
+                if (!state || state.mode !== 'fixed-luminance') {
                     results.push({
                         name: 'should change diffuser light mode',
                         passed: false,
                         skipped: false,
-                        error: `Failed to set FIXED_LUMINANCE. Expected ${DiffuserLightMode.FIXED_LUMINANCE}, got ${state && state.mode}`,
+                        error: `Failed to set FIXED_LUMINANCE. Expected ${'fixed-luminance'}, got ${state && state.mode}`,
                         device: deviceName
                     });
                 } else {
                     await light.diffuser.set({
                         light: {
                             channel,
-                            mode: DiffuserLightMode.ROTATING_COLORS
+                            mode: 'rotating-colors'
                         }
                     });
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
                     state = await light.diffuser.get({ type: 'light', channel });
-                    if (!state || state.mode !== DiffuserLightMode.ROTATING_COLORS) {
+                    if (!state || state.mode !== 'rotating-colors') {
                         results.push({
                             name: 'should change diffuser light mode',
                             passed: false,
                             skipped: false,
-                            error: `Failed to set ROTATING_COLORS. Expected ${DiffuserLightMode.ROTATING_COLORS}, got ${state && state.mode}`,
+                            error: `Failed to set ROTATING_COLORS. Expected ${'rotating-colors'}, got ${state && state.mode}`,
                             device: deviceName
                         });
                     } else {
                         await light.diffuser.set({
                             light: {
                                 channel,
-                                mode: DiffuserLightMode.FIXED_RGB
+                                mode: 'fixed-rgb'
                             }
                         });
                         await new Promise(resolve => setTimeout(resolve, 1000));
 
                         state = await light.diffuser.get({ type: 'light', channel });
-                        if (!state || state.mode !== DiffuserLightMode.FIXED_RGB) {
+                        if (!state || state.mode !== 'fixed-rgb') {
                             results.push({
                                 name: 'should change diffuser light mode',
                                 passed: false,
                                 skipped: false,
-                                error: `Failed to set FIXED_RGB. Expected ${DiffuserLightMode.FIXED_RGB}, got ${state && state.mode}`,
+                                error: `Failed to set FIXED_RGB. Expected ${'fixed-rgb'}, got ${state && state.mode}`,
                                 device: deviceName
                             });
                         } else {
@@ -477,42 +477,42 @@ async function runTests(context) {
             } else {
                 await spray.diffuser.get({ type: 'spray', channel });
 
-                await spray.diffuser.set({ channel, mode: DiffuserSprayMode.LIGHT });
+                await spray.diffuser.set({ channel, mode: 'light' });
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 let state = await spray.diffuser.get({ type: 'spray', channel });
-                if (!state || state.mode !== DiffuserSprayMode.LIGHT) {
+                if (!state || state.mode !== 'light') {
                     results.push({
                         name: 'should change diffuser spray mode',
                         passed: false,
                         skipped: false,
-                        error: `Failed to set LIGHT. Expected ${DiffuserSprayMode.LIGHT}, got ${state && state.mode}`,
+                        error: `Failed to set LIGHT. Expected ${'light'}, got ${state && state.mode}`,
                         device: deviceName
                     });
                 } else {
-                    await spray.diffuser.set({ channel, mode: DiffuserSprayMode.STRONG });
+                    await spray.diffuser.set({ channel, mode: 'strong' });
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
                     state = await spray.diffuser.get({ type: 'spray', channel });
-                    if (!state || state.mode !== DiffuserSprayMode.STRONG) {
+                    if (!state || state.mode !== 'strong') {
                         results.push({
                             name: 'should change diffuser spray mode',
                             passed: false,
                             skipped: false,
-                            error: `Failed to set STRONG. Expected ${DiffuserSprayMode.STRONG}, got ${state && state.mode}`,
+                            error: `Failed to set STRONG. Expected ${'strong'}, got ${state && state.mode}`,
                             device: deviceName
                         });
                     } else {
-                        await spray.diffuser.set({ channel, mode: DiffuserSprayMode.OFF });
+                        await spray.diffuser.set({ channel, mode: 'off' });
                         await new Promise(resolve => setTimeout(resolve, 1000));
 
                         state = await spray.diffuser.get({ type: 'spray', channel });
-                        if (!state || state.mode !== DiffuserSprayMode.OFF) {
+                        if (!state || state.mode !== 'off') {
                             results.push({
                                 name: 'should change diffuser spray mode',
                                 passed: false,
                                 skipped: false,
-                                error: `Failed to set OFF. Expected ${DiffuserSprayMode.OFF}, got ${state && state.mode}`,
+                                error: `Failed to set OFF. Expected ${'off'}, got ${state && state.mode}`,
                                 device: deviceName
                             });
                         } else {

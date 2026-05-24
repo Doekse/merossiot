@@ -22,7 +22,7 @@ const { getCredentials, shutdown } = require('./shared.js');
             return;
         }
 
-        if (!device.deviceConnected) {
+        if (!device.isOnline) {
             console.log('Waiting for device connection…');
             await new Promise((resolve) => device.once('connected', resolve));
         }
@@ -71,7 +71,7 @@ const { getCredentials, shutdown } = require('./shared.js');
                 alias: 'Movie Night',
                 on: true,
                 channel: 0,
-                type: Meross.TimerType.SINGLE_POINT_SINGLE_SHOT
+                type: 'single-point-single-shot'
             });
             console.log('One-shot timer set.');
         } catch (err) {

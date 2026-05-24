@@ -1,7 +1,7 @@
 'use strict';
 
 const EventEmitter = require('events');
-const { OnlineStatus } = require('../enums');
+const { ConnectivityCodec } = require('../enums');
 const { parsePushNotification } = require('../push');
 const DeviceRegistry = require('./registry');
 const ChannelInfo = require('./channel');
@@ -157,7 +157,8 @@ class MerossDevice extends EventEmitter {
      * @param {string} [devOrUuid.devName] - Device name
      * @param {string} [devOrUuid.fmwareVersion] - Firmware version
      * @param {string} [devOrUuid.hdwareVersion] - Hardware version
-     * @param {number} [devOrUuid.onlineStatus] - Initial online status (from OnlineStatus enum)
+     * @param {number} [devOrUuid.onlineStatus] - Initial online status wire code from HTTP API
+     * @param {string} [devOrUuid.connectivity] - Initial connectivity (`'online'`, `'offline'`, etc.)
      * @param {string} [devOrUuid.deviceType] - Device type
      * @param {string} [devOrUuid.domain] - MQTT domain
      * @param {string} [domain] - MQTT domain (for subdevices, passed separately)
@@ -193,7 +194,7 @@ class MerossDevice extends EventEmitter {
      * @param {number|null} port - MQTT port
      */
     _initializeCoreProperties(dev, domain, port) {
-        // Subdevices override uuid, name, and onlineStatus as getter-only properties
+        // Subdevices override uuid, name, and connectivity as getter-only properties
         // to compute values from parent hub, so we must check before assignment
         if (!MerossDevice._isGetterOnly(this, 'uuid')) {
             this.uuid = dev.uuid;
@@ -214,8 +215,8 @@ class MerossDevice extends EventEmitter {
         this.userId = null;
         this.domain = domain || dev.domain;
 
-        if (!MerossDevice._isGetterOnly(this, 'onlineStatus')) {
-            this.onlineStatus = dev.onlineStatus !== undefined ? dev.onlineStatus : OnlineStatus.UNKNOWN;
+        if (!MerossDevice._isGetterOnly(this, 'connectivity')) {
+            this._connectivityWire = MerossDevice._normalizeConnectivityWire(dev);
         }
 
         this.abilities = null;
@@ -317,7 +318,7 @@ class MerossDevice extends EventEmitter {
      * Initializes HTTP device info and channels from raw API data.
      *
      * Uses ApiDeviceInfo.fromDict() to normalize data types (bindTime from Unix timestamp
-     * to Date, onlineStatus validation) before copying properties directly to the device
+     * to Date, connectivity normalization) before copying properties directly to the device
      * instance. The ApiDeviceInfo instance is not stored to avoid redundancy.
      *
      * @private
@@ -374,11 +375,39 @@ class MerossDevice extends EventEmitter {
 
 
     /**
-     * Checks if the device is currently online
-     * @returns {boolean} True if device status is ONLINE, false otherwise
+     * Connectivity label exposed to consumers (wire codes stay in `_connectivityWire`).
+     *
+     * @returns {'online'|'offline'|'not-online'|'upgrading'|'unknown'}
+     */
+    get connectivity() {
+        return ConnectivityCodec.fromWire(this._connectivityWire);
+    }
+
+    /**
+     * Whether the device accepts commands.
+     *
+     * @returns {boolean}
      */
     get isOnline() {
-        return this.onlineStatus === OnlineStatus.ONLINE;
+        return ConnectivityCodec.isOnline(this._connectivityWire);
+    }
+
+    /**
+     * Normalizes HTTP API or consumer input to a Meross wire connectivity code.
+     *
+     * @private
+     * @param {Object} dev - Device info with optional `connectivity` string or `onlineStatus` wire code
+     * @returns {number}
+     */
+    static _normalizeConnectivityWire(dev) {
+        if (dev.connectivity !== undefined && typeof dev.connectivity === 'string') {
+            const wire = ConnectivityCodec.toWire(dev.connectivity);
+            return wire !== undefined ? wire : -1;
+        }
+        if (dev.onlineStatus !== undefined && typeof dev.onlineStatus === 'number') {
+            return dev.onlineStatus;
+        }
+        return -1;
     }
 
     /**
@@ -549,7 +578,7 @@ class MerossDevice extends EventEmitter {
      */
     getState() {
         const state = {
-            online: this.onlineStatus,
+            online: this.connectivity,
             timestamp: this.lastFullUpdateTimestamp || Date.now()
         };
 
@@ -629,8 +658,8 @@ class MerossDevice extends EventEmitter {
     /**
      * Collects consumption values from the dedicated cache.
      *
-     * Consumption also bypasses descriptor routing today, so this helper preserves
-     * compatibility with existing consumers while descriptor-backed features migrate.
+     * Consumption also bypasses descriptor routing today, so this helper keeps its
+     * existing externally visible shape until that cache is refactored.
      *
      * @private
      * @param {Object} state - State object to populate
@@ -801,7 +830,7 @@ class MerossDevice extends EventEmitter {
      * @returns {Promise<void>}
      */
     async _pollElectricityMetrics() {
-        if (!this._metricsPollingConfig || this.onlineStatus !== OnlineStatus.ONLINE) {
+        if (!this._metricsPollingConfig || !this.isOnline) {
             return;
         }
 
@@ -847,7 +876,7 @@ class MerossDevice extends EventEmitter {
      * @returns {Promise<void>}
      */
     async _pollConsumptionMetrics() {
-        if (!this._metricsPollingConfig || this.onlineStatus !== OnlineStatus.ONLINE) {
+        if (!this._metricsPollingConfig || !this.isOnline) {
             return;
         }
 
@@ -888,7 +917,7 @@ class MerossDevice extends EventEmitter {
      * @returns {Promise<void>}
      */
     async _pollRuntimeMetrics() {
-        if (!this._metricsPollingConfig || this.onlineStatus !== OnlineStatus.ONLINE) {
+        if (!this._metricsPollingConfig || !this.isOnline) {
             return;
         }
 
@@ -1379,18 +1408,21 @@ class MerossDevice extends EventEmitter {
      * Emits unified state events for state handling by subscription managers.
      *
      * @private
-     * @param {number} status - Online status from OnlineStatus enum
+     * @param {number} wireStatus - Online status wire code from MQTT/HTTP payloads
      */
-    _updateOnlineStatus(status) {
-        const oldStatus = this.onlineStatus;
-        if (oldStatus !== status) {
-            this.onlineStatus = status;
-            this.emit('stateChange', {
-                type: 'online',
-                value: status,
-                source: 'push',
-                timestamp: Date.now()
-            });
+    _updateOnlineStatus(wireStatus) {
+        const oldConnectivity = this.connectivity;
+        if (this._connectivityWire !== wireStatus) {
+            this._connectivityWire = wireStatus;
+            const connectivity = this.connectivity;
+            if (oldConnectivity !== connectivity) {
+                this.emit('stateChange', {
+                    type: 'online',
+                    value: connectivity,
+                    source: 'push',
+                    timestamp: Date.now()
+                });
+            }
         }
     }
 
@@ -1476,7 +1508,7 @@ class MerossDevice extends EventEmitter {
         this.channels = MerossDevice._parseChannels(deviceInfo.channels);
         this._buildCapabilities();
 
-        // Subdevices override name and onlineStatus as getter-only properties that
+        // Subdevices override name and connectivity as getter-only properties that
         // compute values from parent hub, so we must check before assignment
         if (!MerossDevice._isGetterOnly(this, 'name')) {
             this.name = deviceInfo.devName || this.uuid || 'unknown';
@@ -1487,8 +1519,8 @@ class MerossDevice extends EventEmitter {
         this.hardwareVersion = deviceInfo.hdwareVersion || 'unknown';
         this.domain = deviceInfo.domain || this.domain;
 
-        if (!MerossDevice._isGetterOnly(this, 'onlineStatus')) {
-            this.onlineStatus = deviceInfo.onlineStatus !== undefined ? deviceInfo.onlineStatus : OnlineStatus.UNKNOWN;
+        if (!MerossDevice._isGetterOnly(this, 'connectivity')) {
+            this._connectivityWire = MerossDevice._normalizeConnectivityWire(deviceInfo);
         }
 
         // Extended HTTP device info properties; bindTime already normalized to Date by ApiDeviceInfo

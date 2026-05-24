@@ -12,7 +12,7 @@ const {
     findDevicesByAbility,
     waitForDeviceConnection,
     getDeviceName,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
 
@@ -51,8 +51,8 @@ async function runTests(context) {
     if (devices && devices.length > 0) {
         testHub = devices[0];
     } else {
-        const byAll = await findDevicesByAbility(manager, 'Appliance.Hub.Sensor.All', OnlineStatus.ONLINE);
-        const byHum = await findDevicesByAbility(manager, 'Appliance.Hub.Sensor.TempHum', OnlineStatus.ONLINE);
+        const byAll = await findDevicesByAbility(manager, 'Appliance.Hub.Sensor.All', REQUIRE_ONLINE);
+        const byHum = await findDevicesByAbility(manager, 'Appliance.Hub.Sensor.TempHum', REQUIRE_ONLINE);
         const merged = [...byAll];
         for (const d of byHum) {
             if (!merged.find(x => x.uuid === d.uuid)) {

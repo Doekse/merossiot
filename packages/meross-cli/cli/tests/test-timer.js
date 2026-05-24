@@ -9,10 +9,10 @@ const {
     waitForDeviceConnection,
     getDeviceName,
     getPrimaryChannel,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
-const { TimerType } = require('meross-iot');
+
 
 const metadata = {
     name: 'timer',
@@ -56,8 +56,8 @@ async function runTests(context) {
 
     let testDevices = devices || [];
     if (testDevices.length === 0) {
-        const control = await findDevicesByAbility(manager, 'Appliance.Control.TimerX', OnlineStatus.ONLINE);
-        const digest = await findDevicesByAbility(manager, 'Appliance.Digest.TimerX', OnlineStatus.ONLINE);
+        const control = await findDevicesByAbility(manager, 'Appliance.Control.TimerX', REQUIRE_ONLINE);
+        const digest = await findDevicesByAbility(manager, 'Appliance.Digest.TimerX', REQUIRE_ONLINE);
         testDevices = mergeDevicesByUuid(control, digest);
     }
 
@@ -101,7 +101,7 @@ async function runTests(context) {
             time: '12:00',
             days: ['weekday'],
             on: true,
-            type: TimerType.SINGLE_POINT_WEEKLY_CYCLE,
+            type: 'single-point-weekly',
             channel,
             enabled: true
         });

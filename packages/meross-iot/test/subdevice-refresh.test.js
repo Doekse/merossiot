@@ -13,7 +13,6 @@ const { MerossSubDevice } = require('../lib/device/subdevice');
 const createTempHumAbility = require('../lib/abilities/hub-temp-hum');
 const createSensorAlertAbility = require('../lib/abilities/hub-alert');
 const createSensorAdjustAbility = require('../lib/abilities/hub-adjust');
-const { OnlineStatus } = require('../lib/enums');
 
 /**
  * @param {string} subdeviceId
@@ -25,7 +24,7 @@ function createTempHumSubdevice(subdeviceId, type = 'ms100') {
     EventEmitter.call(subdev);
     subdev._subdeviceId = subdeviceId;
     subdev._type = type;
-    subdev._onlineStatus = OnlineStatus.UNKNOWN;
+    subdev._connectivityWire = -1;
     subdev._temperatureStateByChannel = new Map();
     subdev._humidityStateByChannel = new Map();
     subdev._luxStateByChannel = new Map();
@@ -45,7 +44,13 @@ function createTempHumSubdevice(subdeviceId, type = 'ms100') {
     let hubRefreshCalls = 0;
     subdev._hub = {
         uuid: 'hub-uuid',
-        onlineStatus: OnlineStatus.ONLINE,
+        _connectivityWire: 1,
+        get isOnline() {
+            return true;
+        },
+        get connectivity() {
+            return 'online';
+        },
         refreshState: async () => {
             hubRefreshCalls += 1;
         },
@@ -91,7 +96,13 @@ describe('MerossSubDevice.refreshState', () => {
         const sensorB = createTempHumSubdevice('sub-b');
         sensorA._hub = sensorB._hub = {
             uuid: 'hub-uuid',
-            onlineStatus: OnlineStatus.ONLINE,
+            _connectivityWire: 1,
+            get isOnline() {
+                return true;
+            },
+            get connectivity() {
+                return 'online';
+            },
             refreshState: async () => {
                 throw new Error('hub refreshState should not run');
             }

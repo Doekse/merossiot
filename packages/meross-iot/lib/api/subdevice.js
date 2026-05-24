@@ -46,8 +46,6 @@ class ApiSubdeviceInfo {
             throw new MerossDeviceError('Subdevice info dictionary is required', 'VALIDATION_ERROR', { field: 'jsonDict' });
         }
 
-        // Map camelCase properties to their possible API key variants, including generic
-        // fallback keys that the API sometimes uses instead of fully-qualified names.
         const propertyMappings = {
             subDeviceId: ['subDeviceId', 'id'],
             trueId: ['trueId'],
@@ -57,8 +55,6 @@ class ApiSubdeviceInfo {
             subDeviceIconId: ['subDeviceIconId']
         };
 
-        // Check each property mapping in priority order, preferring camelCase over generic keys
-        // to maintain consistent property names regardless of API response format.
         const normalized = {};
         for (const [camelKey, alternatives] of Object.entries(propertyMappings)) {
             for (const key of alternatives) {
@@ -69,8 +65,6 @@ class ApiSubdeviceInfo {
             }
         }
 
-        // Object.create() prevents accidental instantiation via 'new' constructor,
-        // enforcing the static factory pattern for consistent instance creation.
         const instance = Object.create(ApiSubdeviceInfo.prototype);
         instance.subDeviceId = normalized.subDeviceId || null;
         instance.trueId = normalized.trueId || null;

@@ -1,6 +1,7 @@
 'use strict';
 
 const { MerossDeviceError } = require('../exception');
+const { normalizeRuntime } = require('../utilities/normalize-payload');
 
 /**
  * Creates a runtime feature object for a device.
@@ -26,15 +27,14 @@ function createRuntimeAbility(device) {
         /**
          * Gets the latest runtime information from the device.
          *
-         * @returns {Promise<Object>} Runtime information object
+         * @returns {Promise<Object>} Runtime information with decoded `netType` and `iotStatus`
          */
         async get() {
             initializeRuntimeInfo();
             const { payload: result } = await device.publishMessage('GET', 'Appliance.System.Runtime', {});
-            const data = result && result.runtime ? result.runtime : {};
+            const data = result && result.runtime ? normalizeRuntime(result.runtime) : {};
             device._runtimeInfo = data;
 
-            // Update signalStrength property from runtime data (production firmware)
             if (data.signal !== undefined) {
                 device.signalStrength = data.signal;
             }

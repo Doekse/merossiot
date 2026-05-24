@@ -1,6 +1,7 @@
 'use strict';
 
-const { OnlineStatus } = require('meross-iot');
+/** Pass as the online filter to {@link findDevicesByAbility} / {@link findDevicesByType}. */
+const REQUIRE_ONLINE = true;
 
 /**
  * Test Helper Utilities
@@ -96,12 +97,19 @@ function waitForDevices(manager, timeout = 5000) {
 }
 
 /**
- * Gets device online status
+ * Whether the device is considered online for live tests.
+ *
  * @param {Object} device - Device instance
- * @returns {number|null} OnlineStatus value or null if not available
+ * @returns {boolean|null} True when online, false when offline, null if unknown
  */
 function getDeviceOnlineStatus(device) {
-    return device.onlineStatus !== undefined ? device.onlineStatus : null;
+    if (typeof device.isOnline === 'boolean') {
+        return device.isOnline;
+    }
+    if (device.connectivity !== undefined) {
+        return device.connectivity === 'online';
+    }
+    return null;
 }
 
 /**
@@ -118,7 +126,7 @@ function deviceHasAbility(device, namespace) {
  * Finds devices by ability namespace
  * @param {Object} manager - Meross instance
  * @param {string} namespace - Ability namespace (e.g., 'Appliance.Control.ToggleX')
- * @param {number|null} onlineStatus - OnlineStatus filter (optional, null = any status)
+ * @param {boolean|null} onlineStatus - When true, only devices that are online (optional, null = any status)
  * @param {Array<Object>} deviceFilter - Optional pre-filtered device list (for CLI device selection)
  * @returns {Promise<Array>} Array of devices with the specified ability
  */
@@ -165,7 +173,7 @@ async function findDevicesByAbility(manager, namespace, onlineStatus = null, dev
  * Finds devices by device type
  * @param {Object} manager - Meross instance
  * @param {string} deviceType - Device type (e.g., 'mss310', 'msg100')
- * @param {number|null} onlineStatus - OnlineStatus filter (optional, null = any status)
+ * @param {boolean|null} onlineStatus - When true, only devices that are online (optional, null = any status)
  * @param {Array<Object>} deviceFilter - Optional pre-filtered device list (for CLI device selection)
  * @returns {Promise<Array>} Array of devices with the specified type
  */
@@ -354,6 +362,5 @@ module.exports = {
     hasFeature,
     assertFeatureOrSkip,
 
-    // Enums
-    OnlineStatus
+    REQUIRE_ONLINE
 };

@@ -1,5 +1,8 @@
 'use strict';
 
+const { registerNamespaceDescriptor } = require('../dispatcher');
+const { normalizeUpgradeInfo, normalizeOverTemp } = require('../utilities/normalize-payload');
+
 /**
  * Creates a control feature object for a device.
  *
@@ -15,9 +18,6 @@ function createControlAbility(device) {
          *
          * @param {Object} options - Control options
          * @param {Array<Object>} options.commands - Array of command objects
-         * @param {string} options.commands[].namespace - Namespace for the command
-         * @param {string} options.commands[].method - Method for the command
-         * @param {Object} options.commands[].payload - Payload for the command
          * @returns {Promise<Object>} Response containing results for each command
          */
         async setMultiple(options) {
@@ -56,10 +56,89 @@ function createControlAbility(device) {
             const { upgradeData } = options;
             const payload = { upgrade: upgradeData };
             const { payload: out } = await device.publishMessage('SET', 'Appliance.Control.Upgrade', payload);
+            if (out?.upgradeInfo) {
+                device._upgradeInfo = normalizeUpgradeInfo(out.upgradeInfo);
+            }
             return out;
+        },
+
+        /**
+         * Gets the last cached upgrade progress from PUSH/GETACK traffic.
+         *
+         * @returns {Object|null}
+         */
+        getLastUpgrade() {
+            return device._upgradeInfo ?? null;
+        },
+
+        /**
+         * Gets the last cached over-temperature event from PUSH traffic.
+         *
+         * @returns {Object|null}
+         */
+        getLastOverTemp() {
+            return device._lastOverTempEvent ?? null;
         }
     };
 }
+
+/**
+ * @param {Object} device
+ * @param {Object} info
+ * @param {string} source
+ */
+function applyUpgradeInfo(device, info, source) {
+    if (!info) {
+        return;
+    }
+    device._upgradeInfo = normalizeUpgradeInfo(info);
+    device.emit('stateChange', {
+        type: 'upgrade',
+        channel: 0,
+        value: device._upgradeInfo,
+        source,
+        timestamp: Date.now()
+    });
+}
+
+/**
+ * @param {Object} device
+ * @param {Object} overTemp
+ * @param {string} source
+ */
+function applyOverTempEvent(device, overTemp, source) {
+    if (!overTemp) {
+        return;
+    }
+    device._lastOverTempEvent = normalizeOverTemp(overTemp);
+    device.emit('stateChange', {
+        type: 'overTemp',
+        channel: 0,
+        value: device._lastOverTempEvent,
+        source,
+        timestamp: Date.now()
+    });
+}
+
+registerNamespaceDescriptor('Appliance.Control.Upgrade', {
+    namespace: 'Appliance.Control.Upgrade',
+    gateKey: 'upgrade',
+    customApply: (device, payload, source) => {
+        if (payload?.upgradeInfo) {
+            applyUpgradeInfo(device, payload.upgradeInfo, source);
+        }
+    }
+});
+
+registerNamespaceDescriptor('Appliance.Control.OverTemp', {
+    namespace: 'Appliance.Control.OverTemp',
+    gateKey: 'overTemp',
+    customApply: (device, payload, source) => {
+        if (payload?.overTemp) {
+            applyOverTempEvent(device, payload.overTemp, source);
+        }
+    }
+});
 
 /**
  * Gets control capability information for a device.
@@ -85,7 +164,7 @@ module.exports = createControlAbility;
 module.exports.getCapabilities = getControlCapabilities;
 module.exports.ability = {
     key: 'control',
-    namespaces: ['Appliance.Control.Multiple', 'Appliance.Control.Upgrade'],
+    namespaces: ['Appliance.Control.Multiple', 'Appliance.Control.Upgrade', 'Appliance.Control.OverTemp'],
     caches: [],
     create: createControlAbility,
     getCapabilities: getControlCapabilities

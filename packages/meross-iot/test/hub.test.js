@@ -37,7 +37,7 @@ describe('hub ability (mocked device)', () => {
         const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
         const mts100 = createMts100Ability({ publishMessage });
 
-        await mts100.setMode({ subId: 'v1', mode: 3 });
+        await mts100.setMode({ subId: 'v1', mode: 'auto' });
 
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Hub.Mts100.Mode');

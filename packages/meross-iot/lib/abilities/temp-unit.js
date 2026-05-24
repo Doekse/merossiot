@@ -1,5 +1,7 @@
 'use strict';
 
+const { TempUnitCodec } = require('../enums');
+const { MerossDeviceError } = require('../exception');
 const { normalizeChannel } = require('../utilities/options');
 
 /**
@@ -36,7 +38,7 @@ function createTempUnitAbility(device) {
          * @param {Object} options - Temperature unit options
          * @param {Object|Array<Object>} [options.tempUnitData] - Temperature unit data object or array (if provided, used directly)
          * @param {number} [options.channel] - Channel to configure
-         * @param {number} [options.tempUnit] - Temperature unit (1 = Celsius, 2 = Fahrenheit)
+         * @param {number|'celsius'|'fahrenheit'} [options.tempUnit] - Wire code or semantic unit
          * @returns {Promise<Object>} Response from the device
          */
         async set(options = {}) {
@@ -45,9 +47,20 @@ function createTempUnitAbility(device) {
                 tempUnitData = Array.isArray(options.tempUnitData) ? options.tempUnitData : [options.tempUnitData];
             } else {
                 const channel = normalizeChannel(options);
+                let tempUnitWire = options.tempUnit;
+                if (typeof tempUnitWire === 'string') {
+                    tempUnitWire = TempUnitCodec.toWire(tempUnitWire);
+                    if (tempUnitWire === undefined) {
+                        throw new MerossDeviceError(
+                            'Invalid temperature unit. Expected "celsius" or "fahrenheit".',
+                            'VALIDATION_ERROR',
+                            { field: 'tempUnit', tempUnit: options.tempUnit }
+                        );
+                    }
+                }
                 tempUnitData = [{
                     channel,
-                    tempUnit: options.tempUnit
+                    tempUnit: tempUnitWire
                 }];
             }
             const payload = { tempUnit: tempUnitData };
@@ -60,11 +73,11 @@ function createTempUnitAbility(device) {
 /**
  * Gets temp unit capability information for a device.
  *
- * @param {Object} device - The device instance
+ * @param {Object} _device - The device instance (unused; consistent with `getCapabilities` signature)
  * @param {Array<number>} _channelIds - Array of channel IDs (unused; consistent with `getCapabilities` signature)
  * @returns {Object|null} Temp unit capability object or null if not supported
  */
-function getTempUnitCapabilities(device, _channelIds) {
+function getTempUnitCapabilities(_device, _channelIds) {
     return {
         supported: true
     };

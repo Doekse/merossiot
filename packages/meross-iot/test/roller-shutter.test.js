@@ -85,4 +85,29 @@ describe('roller shutter ability (mocked device)', () => {
         assert.strictEqual(events[0].type, 'rollerShutter');
         assert.strictEqual(events[0].source, 'push');
     });
+
+    it('push-shaped adjust payload decodes calibrationStatus', () => {
+        const emitter = createDeviceEmitter();
+        const device = {
+            emit: emitter.emit.bind(emitter),
+            _rollerShutterStateByChannel: new Map()
+        };
+
+        for (const d of getNamespaceDescriptors('Appliance.RollerShutter.Adjust')) {
+            dispatch(device, d, { adjust: [{ channel: 0, status: 0 }] }, 'push', null, undefined);
+        }
+
+        assert.strictEqual(device._rollerShutterStateByChannel.get(0).calibrationStatus, 'success');
+    });
+
+    it('push-shaped state payload decodes stoppedBy', () => {
+        const device = {
+            emit: () => {},
+            _rollerShutterStateByChannel: new Map()
+        };
+
+        routeRollerShutterState(device, { state: [{ channel: 0, state: 0, stoppedBy: 1 }] });
+
+        assert.strictEqual(device._rollerShutterStateByChannel.get(0).stoppedBy, 'manual');
+    });
 });

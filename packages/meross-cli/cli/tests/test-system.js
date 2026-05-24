@@ -10,7 +10,7 @@ const {
     findDevicesByAbility,
     waitForDeviceConnection,
     getDeviceName,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     deviceHasAbility
 } = require('./test-helper');
 
@@ -31,11 +31,11 @@ async function runTests(context) {
     let testDevices = devices || [];
     if (testDevices.length === 0) {
         // Find devices with system abilities (most devices support this)
-        const systemDevices = await findDevicesByAbility(manager, 'Appliance.System.All', OnlineStatus.ONLINE);
+        const systemDevices = await findDevicesByAbility(manager, 'Appliance.System.All', REQUIRE_ONLINE);
         
         // Also try System.Ability if no devices found
         if (systemDevices.length === 0) {
-            const abilityDevices = await findDevicesByAbility(manager, 'Appliance.System.Ability', OnlineStatus.ONLINE);
+            const abilityDevices = await findDevicesByAbility(manager, 'Appliance.System.Ability', REQUIRE_ONLINE);
             testDevices = abilityDevices;
         } else {
             testDevices = systemDevices;
@@ -45,7 +45,7 @@ async function runTests(context) {
         if (testDevices.length === 0) {
             const allDevices = manager.devices.list();
             const onlineDevices = allDevices.filter(device => {
-                return device.onlineStatus === OnlineStatus.ONLINE;
+                return device.onlineStatus === REQUIRE_ONLINE;
             });
             testDevices = onlineDevices.slice(0, 1);
         }

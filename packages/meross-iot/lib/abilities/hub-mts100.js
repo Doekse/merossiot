@@ -5,6 +5,7 @@ const { getCachedOrFetch } = require('../utilities/cache');
 const { getMessageTimestamp } = require('../utilities/state-ordering');
 const { applySubdeviceOnline, publishHubGet } = require('./hub');
 const HubThermostatState = require('../states/hub-thermostat-state');
+const { Mts100ModeCodec, Mts100V3ModeCodec } = require('../enums');
 const { MerossDeviceError } = require('../exception');
 const { subdeviceIs } = require('./hub');
 
@@ -178,6 +179,27 @@ registerNamespaceDescriptor('Appliance.Hub.Mts100.Config', {
 
 /** @type {ReadonlyArray<string>} */
 const SUPPORTED_PRESETS = ['custom', 'comfort', 'economy', 'away'];
+
+/** Device types that use the v3 hub mode wire map (heat/cool/auto/economy). */
+const MTS100_V3_TYPES = new Set(['mts100v3', 'mts150', 'mts150p']);
+
+/**
+ * Resolves the hub MTS100 mode codec for a valve model.
+ *
+ * @param {object} device - Hub or valve subdevice
+ * @param {string} [subId] - Target valve id when `device` is the hub
+ * @returns {{ toWire: (s: string) => number|undefined, fromWire: (n: number) => string }}
+ */
+function getMts100ModeCodec(device, subId) {
+    let deviceType = '';
+    if (device.subdeviceId) {
+        deviceType = (device._type || device.type || device.deviceType || '').toLowerCase();
+    } else if (subId && typeof device.getSubdevice === 'function') {
+        const sub = device.getSubdevice(subId);
+        deviceType = (sub?._type || sub?.type || sub?.deviceType || '').toLowerCase();
+    }
+    return MTS100_V3_TYPES.has(deviceType) ? Mts100V3ModeCodec : Mts100ModeCodec;
+}
 
 /** @type {ReadonlyArray<{ namespace: string, payloadKey: string, requestKey?: string, responseKeys?: string[], transport?: null, label: string }>} */
 const MTS100_GET_POLLS = [
@@ -424,17 +446,26 @@ function createMts100Ability(device) {
          * Sets thermostat mode.
          *
          * @param {Object} options - Mode options
-         * @param {number} options.mode - Mode value from {@link ThermostatMode} enum
+         * @param {string} options.mode - Hub valve mode (legacy: custom/comfort/economy/schedule; v3: custom/heat/cool/auto/economy)
          * @param {string} [options.subId] - Hub only: MTS100 subdevice ID
          * @returns {Promise<Object>}
          */
         async setMode(options) {
             const subId = device.subdeviceId || options.subId;
             const { mode } = options;
-            const payload = { mode: [{ id: subId, state: mode }] };
+            const codec = getMts100ModeCodec(device, subId);
+            const modeWire = codec.toWire(mode);
+            if (modeWire === undefined) {
+                throw new MerossDeviceError(
+                    'Invalid MTS100 mode for this valve type.',
+                    'VALIDATION_ERROR',
+                    { field: 'mode', mode, deviceUuid: device.uuid }
+                );
+            }
+            const payload = { mode: [{ id: subId, state: modeWire }] };
             const { payload: out } = await device.publishMessage('SET', 'Appliance.Hub.Mts100.Mode', payload);
             if (device.subdeviceId) {
-                ensureThermostatState(device).updateModeState(mode);
+                ensureThermostatState(device).updateModeState(modeWire);
             }
             return out;
         },
@@ -535,10 +566,14 @@ function createMts100Ability(device) {
         /**
          * Current thermostat mode from cached state.
          *
-         * @returns {number|undefined}
+         * @returns {string|undefined} Decoded mode for this valve model
          */
         getMode() {
-            return getThermostatState(device)?.mode;
+            const raw = getThermostatState(device)?.mode;
+            if (raw === undefined || raw === null) {
+                return undefined;
+            }
+            return getMts100ModeCodec(device).fromWire(raw);
         },
 
         /**
@@ -680,6 +715,7 @@ function getCapabilities(device, channelIds) {
 
 module.exports = createMts100Ability;
 module.exports.getCapabilities = getCapabilities;
+module.exports.getMts100ModeCodec = getMts100ModeCodec;
 module.exports.pollMts100All = pollMts100All;
 module.exports.pollMts100Auxiliary = pollMts100Auxiliary;
 module.exports.ability = {

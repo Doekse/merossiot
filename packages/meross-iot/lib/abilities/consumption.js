@@ -150,7 +150,7 @@ function createConsumptionAbility(device) {
         },
 
         /**
-         * Tries each consumption method in order as fallback.
+         * Tries each consumption namespace when ability metadata is missing.
          *
          * @param {number} channel - Channel number
          * @returns {Promise<Array<{date: Date, totalConsumptionKwh: number}>|null>} Consumption data or null

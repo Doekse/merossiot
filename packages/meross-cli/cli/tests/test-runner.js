@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { MerossSubDevice, OnlineStatus } = require('meross-iot');
+const { MerossSubDevice } = require('meross-iot');
 const testRegistry = require('./test-registry');
 
 /**
@@ -344,7 +344,7 @@ async function findDevicesForTestType(testType, manager) {
             continue;
         }
         
-        if (device.onlineStatus !== OnlineStatus.ONLINE) {
+        if (!device.isOnline) {
             continue;
         }
         
@@ -378,7 +378,7 @@ async function findDevicesForTestType(testType, manager) {
             const subdeviceType = device.type;
             const matchesType = device.deviceType === 'msg100' || subdeviceType === 'msg100';
             
-            if (matchesType && device.onlineStatus === OnlineStatus.ONLINE) {
+            if (matchesType && device.isOnline) {
                 seenUuids.add(uuid);
                 matchingDevices.push(device);
             }

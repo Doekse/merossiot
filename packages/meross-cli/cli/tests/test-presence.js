@@ -11,7 +11,7 @@ const {
     waitForDeviceConnection,
     getDeviceName,
     getPrimaryChannel,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
 
@@ -38,7 +38,7 @@ async function runTests(context) {
 
     let presenceDevices = devices || [];
     if (presenceDevices.length === 0) {
-        presenceDevices = await findDevicesByAbility(manager, 'Appliance.Control.Sensor.LatestX', OnlineStatus.ONLINE);
+        presenceDevices = await findDevicesByAbility(manager, 'Appliance.Control.Sensor.LatestX', REQUIRE_ONLINE);
     }
 
     presenceDevices = presenceDevices.filter((device) => !(device instanceof MerossHubDevice));

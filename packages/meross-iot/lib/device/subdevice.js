@@ -1,7 +1,7 @@
 'use strict';
 
 const { MerossDevice } = require('./device');
-const { OnlineStatus } = require('../enums');
+const { ConnectivityCodec } = require('../enums');
 const DeviceRegistry = require('./registry');
 const { MerossDeviceError } = require('../exception');
 const { dispatch, getNamespaceDescriptors } = require('../dispatcher');
@@ -69,7 +69,7 @@ class MerossSubDevice extends MerossDevice {
         // Subdevices share hub's network configuration since they communicate through the hub
         this.lanIp = hub.lanIp;
 
-        this._onlineStatus = OnlineStatus.UNKNOWN;
+        this._connectivityWire = -1;
         this._batteryStateByChannel = new Map();
     }
 
@@ -148,18 +148,24 @@ class MerossSubDevice extends MerossDevice {
     }
 
     /**
-     * Gets the online status of the subdevice.
+     * Connectivity of the subdevice, derived from the hub when the hub is not online.
      *
-     * If the hub is offline, the subdevice is also considered offline since subdevices
-     * cannot communicate without the hub.
-     *
-     * @returns {number} Online status from OnlineStatus enum
+     * @returns {'online'|'offline'|'not-online'|'upgrading'|'unknown'}
      */
-    get onlineStatus() {
-        if (this._hub.onlineStatus !== OnlineStatus.ONLINE) {
-            return this._hub.onlineStatus;
+    get connectivity() {
+        if (!this._hub.isOnline) {
+            return this._hub.connectivity;
         }
-        return this._onlineStatus;
+        return ConnectivityCodec.fromWire(this._connectivityWire);
+    }
+
+    /**
+     * Whether this subdevice is reachable for commands (hub and subdevice both online).
+     *
+     * @returns {boolean}
+     */
+    get isOnline() {
+        return this.connectivity === 'online';
     }
 
     /**
@@ -210,7 +216,7 @@ class MerossSubDevice extends MerossDevice {
      */
     getState() {
         const state = {
-            online: this.onlineStatus,
+            online: this.connectivity,
             timestamp: this.lastFullUpdateTimestamp || Date.now(),
             subdeviceId: this.subdeviceId,
             hubUuid: this.uuid

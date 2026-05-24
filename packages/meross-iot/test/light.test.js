@@ -10,7 +10,6 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
 const createLightAbility = require('../lib/abilities/light');
-const { LightMode } = require('../lib/enums');
 const { createDeviceEmitter, createPublishRecorder, createDispatchStateShim } = require('./helpers/mock-ability-device');
 
 const pushLightState = createDispatchStateShim('Appliance.Control.Light', 'light');
@@ -21,7 +20,7 @@ describe('light ability (mocked device)', () => {
         const emitter = createDeviceEmitter();
         const device = {
             abilities: {
-                'Appliance.Control.Light': { capacity: LightMode.MODE_RGB }
+                'Appliance.Control.Light': { capacity: 1 }
             },
             _lightStateByChannel: new Map(),
             emit: emitter.emit.bind(emitter),
@@ -37,8 +36,29 @@ describe('light ability (mocked device)', () => {
         const { light: lp } = calls[0].payload;
         assert.strictEqual(lp.channel, 0);
         assert.strictEqual(lp.gradual, 1);
-        assert.strictEqual((lp.capacity & LightMode.MODE_RGB) === LightMode.MODE_RGB, true);
+        assert.strictEqual((lp.capacity & 1) === 1, true);
         assert.strictEqual(lp.rgb, 0xff0000);
+    });
+
+    it('set sends effect when capacity includes MODE_EFFECT', async () => {
+        const { calls, publishMessage } = createPublishRecorder();
+        const emitter = createDeviceEmitter();
+        const device = {
+            abilities: {
+                'Appliance.Control.Light': { capacity: 8 }
+            },
+            _lightStateByChannel: new Map(),
+            emit: emitter.emit.bind(emitter),
+            publishMessage
+        };
+        const light = createLightAbility(device);
+
+        await light.set({ channel: 0, effect: 'candle' });
+
+        assert.strictEqual(calls.length, 1);
+        const { light: lp } = calls[0].payload;
+        assert.strictEqual(lp.effect, 2);
+        assert.strictEqual((lp.capacity & 8) === 8, true);
     });
 
     it('set sends temperature when capacity includes MODE_TEMPERATURE', async () => {
@@ -46,7 +66,7 @@ describe('light ability (mocked device)', () => {
         const emitter = createDeviceEmitter();
         const device = {
             abilities: {
-                'Appliance.Control.Light': { capacity: LightMode.MODE_TEMPERATURE }
+                'Appliance.Control.Light': { capacity: 2 }
             },
             _lightStateByChannel: new Map(),
             emit: emitter.emit.bind(emitter),
@@ -59,7 +79,7 @@ describe('light ability (mocked device)', () => {
         assert.strictEqual(calls.length, 1);
         const { light: lp } = calls[0].payload;
         assert.strictEqual(lp.temperature, 50);
-        assert.strictEqual((lp.capacity & LightMode.MODE_TEMPERATURE) === LightMode.MODE_TEMPERATURE, true);
+        assert.strictEqual((lp.capacity & 2) === 2, true);
         assert.strictEqual(lp.gradual, 0);
     });
 
@@ -68,7 +88,7 @@ describe('light ability (mocked device)', () => {
         const emitter = createDeviceEmitter();
         const device = {
             abilities: {
-                'Appliance.Control.Light': { capacity: LightMode.MODE_LUMINANCE }
+                'Appliance.Control.Light': { capacity: 4 }
             },
             _lightStateByChannel: new Map(),
             emit: emitter.emit.bind(emitter),
@@ -81,7 +101,7 @@ describe('light ability (mocked device)', () => {
         assert.strictEqual(calls.length, 1);
         const { light: lp } = calls[0].payload;
         assert.strictEqual(lp.luminance, 75);
-        assert.strictEqual((lp.capacity & LightMode.MODE_LUMINANCE) === LightMode.MODE_LUMINANCE, true);
+        assert.strictEqual((lp.capacity & 4) === 4, true);
         assert.strictEqual(lp.gradual, 0);
     });
 
@@ -94,9 +114,10 @@ describe('light ability (mocked device)', () => {
             emit: emitter.emit.bind(emitter)
         };
 
-        pushLightState(device, { channel: 0, onoff: 1, rgb: 0xff0000 }, 'push');
+        pushLightState(device, { channel: 0, onoff: 1, rgb: 0xff0000, effect: 1 }, 'push');
 
         assert.strictEqual(device._lightStateByChannel.get(0).isOn, true);
+        assert.strictEqual(device._lightStateByChannel.get(0).effect, 'red-orange');
         assert.strictEqual(events.length, 1);
         assert.strictEqual(events[0].type, 'light');
         assert.strictEqual(events[0].source, 'push');

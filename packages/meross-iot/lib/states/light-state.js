@@ -1,6 +1,7 @@
 'use strict';
 
 const { intToRgb } = require('../utilities/conversion');
+const { LightEffectCodec } = require('../enums');
 
 /**
  * Represents the light state of a device channel.
@@ -112,6 +113,17 @@ class LightState {
         const { temperature } = this._state;
         if (temperature === undefined || temperature === null) {return undefined;}
         return temperature;
+    }
+
+    /**
+     * Active lighting effect preset.
+     *
+     * @returns {'none'|'red-orange'|'candle'|'single-color-rhythm'|'multi-color-breathing'|'night-light-white'|'yellow-night-light'|'favorite'|'full-light'|undefined}
+     */
+    get effect() {
+        const { effect } = this._state;
+        if (effect === undefined || effect === null) {return undefined;}
+        return LightEffectCodec.fromWire(effect);
     }
 
     /**

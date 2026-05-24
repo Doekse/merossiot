@@ -10,7 +10,6 @@ const { describe, it } = require('node:test');
 const createSmokeAlarmAbility = require('../lib/abilities/hub-smoke');
 const { MerossSubDevice } = require('../lib/device/subdevice');
 const SmokeAlarmState = require('../lib/states/smoke-alarm-state');
-const { SmokeAlarmStatus } = require('../lib/enums');
 const { createPublishRecorder } = require('./helpers/mock-ability-device');
 
 /**
@@ -45,7 +44,7 @@ describe('smoke alarm ability (mocked device)', () => {
 
         const { calls, publishMessage } = createPublishRecorder({
             responseFor: () => ({
-                smokeAlarm: [{ id: 'sub-1', status: SmokeAlarmStatus.NORMAL, timestamp: 100 }]
+                smokeAlarm: [{ id: 'sub-1', status: 23, timestamp: 100 }]
             })
         });
         detector.publishMessage = publishMessage;
@@ -63,7 +62,7 @@ describe('smoke alarm ability (mocked device)', () => {
         assert.strictEqual(handleCalls[0].namespace, 'Appliance.Hub.Sensor.Smoke');
     });
 
-    it('set() sends MUTE_SMOKE_ALARM when muteSmoke is true', async () => {
+    it('set() sends mute-smoke wire code when muteSmoke is true', async () => {
         const detector = createSmokeDetectorStub();
         const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
         detector.publishMessage = publishMessage;
@@ -74,15 +73,12 @@ describe('smoke alarm ability (mocked device)', () => {
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Hub.Sensor.Smoke');
         assert.deepStrictEqual(calls[0].payload, {
-            smokeAlarm: [{
-                id: 'sub-1',
-                status: SmokeAlarmStatus.MUTE_SMOKE_ALARM
-            }]
+            smokeAlarm: [{ id: 'sub-1', status: 27 }]
         });
-        assert.strictEqual(smokeAlarm.getStatus(), SmokeAlarmStatus.MUTE_SMOKE_ALARM);
+        assert.strictEqual(smokeAlarm.getStatus(), 'mute-smoke');
     });
 
-    it('set() sends MUTE_TEMPERATURE_ALARM when muteSmoke is false', async () => {
+    it('set() sends mute-temperature wire code when muteSmoke is false', async () => {
         const detector = createSmokeDetectorStub();
         const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
         detector.publishMessage = publishMessage;
@@ -91,12 +87,9 @@ describe('smoke alarm ability (mocked device)', () => {
         await smokeAlarm.set({ muteSmoke: false });
 
         assert.deepStrictEqual(calls[0].payload, {
-            smokeAlarm: [{
-                id: 'sub-1',
-                status: SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM
-            }]
+            smokeAlarm: [{ id: 'sub-1', status: 26 }]
         });
-        assert.strictEqual(smokeAlarm.getStatus(), SmokeAlarmStatus.MUTE_TEMPERATURE_ALARM);
+        assert.strictEqual(smokeAlarm.getStatus(), 'mute-temperature');
     });
 
     it('getState smokeAlarm slice matches derived toSnapshot only', () => {
@@ -104,7 +97,7 @@ describe('smoke alarm ability (mocked device)', () => {
         const smokeAlarm = createSmokeAlarmAbility(detector);
 
         detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({
-            status: SmokeAlarmStatus.ALARM_SMOKE,
+            status: 25,
             lastStatusUpdate: 500
         }));
 
@@ -114,7 +107,7 @@ describe('smoke alarm ability (mocked device)', () => {
             interconnect: null,
             lastStatusUpdate: 500
         });
-        assert.strictEqual(smokeAlarm.getStatus(), SmokeAlarmStatus.ALARM_SMOKE);
+        assert.strictEqual(smokeAlarm.getStatus(), 'alarm-smoke');
         assert.strictEqual(smokeAlarm.getCondition(), 'alarming');
     });
 
@@ -123,22 +116,20 @@ describe('smoke alarm ability (mocked device)', () => {
         const smokeAlarm = createSmokeAlarmAbility(detector);
 
         detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({
-            status: SmokeAlarmStatus.INTERCONNECTION_STATUS,
+            status: 170,
             interConn: 0
         }));
         assert.strictEqual(smokeAlarm.getCondition(), 'safe');
         assert.deepStrictEqual(smokeAlarm.getInterconnect(), { linkActive: false, raw: 0 });
         assert.strictEqual(smokeAlarm.getChannel(), null);
 
-        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({
-            status: SmokeAlarmStatus.ALARM_SMOKE
-        }));
+        detector._smokeAlarmStateByChannel.set(0, new SmokeAlarmState({ status: 25 }));
         assert.strictEqual(smokeAlarm.getCondition(), 'alarming');
         assert.strictEqual(smokeAlarm.getChannel(), 'smoke');
         assert.strictEqual(smokeAlarm.getInterconnect(), null);
     });
 
-    it('test() sends SET with NORMAL status (self-test)', async () => {
+    it('test() sends SET with normal wire code (self-test)', async () => {
         const detector = createSmokeDetectorStub();
         const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
         detector.publishMessage = publishMessage;
@@ -147,10 +138,7 @@ describe('smoke alarm ability (mocked device)', () => {
         await smokeAlarm.test();
 
         assert.deepStrictEqual(calls[0].payload, {
-            smokeAlarm: [{
-                id: 'sub-1',
-                status: SmokeAlarmStatus.NORMAL
-            }]
+            smokeAlarm: [{ id: 'sub-1', status: 23 }]
         });
     });
 
@@ -164,8 +152,8 @@ describe('smoke alarm ability (mocked device)', () => {
         const { calls, publishMessage } = createPublishRecorder({
             responseFor: () => ({
                 smokeAlarm: [
-                    { id: 'sub-1', status: SmokeAlarmStatus.ALARM_SMOKE, timestamp: 200 },
-                    { id: 'sub-2', status: SmokeAlarmStatus.NORMAL, timestamp: 201 }
+                    { id: 'sub-1', status: 25, timestamp: 200 },
+                    { id: 'sub-2', status: 23, timestamp: 201 }
                 ]
             })
         });
@@ -188,7 +176,7 @@ describe('smoke alarm ability (mocked device)', () => {
         assert.strictEqual(handleCalls[0].namespace, 'Appliance.Hub.Sensor.Smoke');
         assert.deepStrictEqual(handleCalls[0].payload, {
             id: 'sub-1',
-            status: SmokeAlarmStatus.ALARM_SMOKE,
+            status: 25,
             timestamp: 200
         });
     });

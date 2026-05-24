@@ -2,7 +2,6 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { TimerType } = require('meross-iot');
 const { resolveControlChannel } = require('../../../utils/device');
 
 /**
@@ -77,8 +76,8 @@ async function collectSetTimerXParams(methodMetadata, device) {
         name: 'type',
         message: 'Timer Type',
         choices: [
-            { name: 'Single Point Weekly Cycle (repeats every week)', value: TimerType.SINGLE_POINT_WEEKLY_CYCLE },
-            { name: 'Single Point Single Shot (one time only)', value: TimerType.SINGLE_POINT_SINGLE_SHOT }
+            { name: 'Single Point Weekly Cycle (repeats every week)', value: 'single-point-weekly' },
+            { name: 'Single Point Single Shot (one time only)', value: 'single-point-single-shot' }
         ],
         default: 0
     }]);

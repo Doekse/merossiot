@@ -4,6 +4,7 @@ const { registerNamespaceDescriptor, mutateChannelState } = require('../dispatch
 const { getMessageTimestamp } = require('../utilities/state-ordering');
 const { applySubdeviceOnline, publishHubGet } = require('./hub');
 const WaterLeakState = require('../states/water-leak-state');
+const { WaterLeakCodec } = require('../enums');
 const { subdeviceIs } = require('./hub');
 
 /**
@@ -42,7 +43,8 @@ function applyWaterLeakPayload(device, data, source) {
     }
 
     mutateChannelState(device, waterLeakDescriptor, (state) => {
-        state.update(latestWaterLeak === 1, latestSampleTime);
+        const leaking = WaterLeakCodec.fromWire(latestWaterLeak) === 'leaking';
+        state.update(leaking, latestSampleTime);
     }, source);
 }
 
@@ -104,6 +106,15 @@ function createWaterLeakAbility(device) {
          */
         isLeaking() {
             return getWaterLeakState(device)?.isLeaking ?? null;
+        },
+
+        /**
+         * Decoded leak state from cached state.
+         *
+         * @returns {'dry'|'leaking'|null}
+         */
+        getLeakState() {
+            return getWaterLeakState(device)?.leakState ?? null;
         },
 
         /**

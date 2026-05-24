@@ -9,7 +9,7 @@ const {
     findDevicesByAbility,
     waitForDeviceConnection,
     getDeviceName,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip
 } = require('./test-helper');
 
@@ -40,7 +40,7 @@ async function runTests(context) {
         testDevices = await findDevicesByAbility(
             manager,
             'Appliance.System.Runtime',
-            OnlineStatus.ONLINE
+            REQUIRE_ONLINE
         );
     }
 

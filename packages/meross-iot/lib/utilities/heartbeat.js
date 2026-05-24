@@ -1,6 +1,5 @@
 'use strict';
 
-const { OnlineStatus } = require('../enums');
 
 /**
  * Manages device online/offline detection using time-based silence detection.
@@ -69,7 +68,7 @@ class Heartbeat {
      * goes offline again.
      */
     recordResponse() {
-        const wasOffline = this.device.onlineStatus === OnlineStatus.OFFLINE;
+        const wasOffline = this.device.connectivity === 'offline';
         this._lastResponseTime = Date.now();
 
         if (wasOffline) {
@@ -102,11 +101,10 @@ class Heartbeat {
             return;
         }
 
-        const currentStatus = this.device.onlineStatus;
         const shouldBeOffline = this._shouldBeOffline();
 
-        if (shouldBeOffline && currentStatus === OnlineStatus.ONLINE) {
-            this.device._updateOnlineStatus(OnlineStatus.OFFLINE);
+        if (shouldBeOffline && this.device.isOnline) {
+            this.device._updateOnlineStatus(2);
         }
     }
 
@@ -120,7 +118,7 @@ class Heartbeat {
      * @returns {boolean} True if device should be marked offline
      */
     _shouldBeOffline() {
-        if (this._lastResponseTime && this.device.onlineStatus === OnlineStatus.ONLINE) {
+        if (this._lastResponseTime && this.device.isOnline) {
             const timeSinceLastResponse = Date.now() - this._lastResponseTime;
             if (timeSinceLastResponse >= this.heartbeatInterval) {
                 return true;
@@ -144,7 +142,7 @@ class Heartbeat {
             return;
         }
 
-        const delay = this.device.onlineStatus === OnlineStatus.OFFLINE
+        const delay = this.device.connectivity === 'offline'
             ? this._pollingDelay
             : this.heartbeatInterval;
 
@@ -180,7 +178,7 @@ class Heartbeat {
         } catch (error) {
             // Single heartbeat failure doesn't mark device offline; only extended
             // silence triggers offline detection to handle transient network issues
-            if (this.device.onlineStatus === OnlineStatus.OFFLINE) {
+            if (this.device.connectivity === 'offline') {
                 this._pollingDelay = Math.min(
                     this._pollingDelay * 2,
                     this.heartbeatInterval

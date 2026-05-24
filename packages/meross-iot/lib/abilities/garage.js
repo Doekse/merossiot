@@ -1,6 +1,7 @@
 'use strict';
 
 const GarageDoorState = require('../states/garage-door-state');
+const { GarageDoorOpenCodec } = require('../enums');
 const { getCachedOrFetch } = require('../utilities/cache');
 const { normalizeChannel } = require('../utilities/options');
 const { MerossDeviceError } = require('../exception');
@@ -30,7 +31,8 @@ function createGarageAbility(device) {
                 throw new MerossDeviceError('open is required', 'VALIDATION_ERROR', { field: 'open' });
             }
             const channel = normalizeChannel(options);
-            const payload = { 'state': { channel, 'open': options.open ? 1 : 0, 'uuid': device.uuid } };
+            const openWire = GarageDoorOpenCodec.toWire(options.open ? 'open' : 'closed');
+            const payload = { 'state': { channel, open: openWire, uuid: device.uuid } };
             const { payload: responsePayload } = await device.publishMessage('SET', 'Appliance.GarageDoor.State', payload);
             return responsePayload;
         },

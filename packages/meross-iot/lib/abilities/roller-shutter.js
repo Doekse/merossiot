@@ -182,7 +182,16 @@ function getRollerShutterCapabilities(device, channelIds) {
     };
 }
 
-const rollerShutterSnapshot = (s) => ({ state: s.state, position: s.position });
+const rollerShutterSnapshot = (s) => {
+    const snap = { state: s.state, position: s.position };
+    if (s.stoppedBy !== undefined) {
+        snap.stoppedBy = s.stoppedBy;
+    }
+    if (s.calibrationStatus !== undefined) {
+        snap.calibrationStatus = s.calibrationStatus;
+    }
+    return snap;
+};
 
 /**
  * Caches the latest reported position in parallel to {@link _rollerShutterStateByChannel}
@@ -226,6 +235,15 @@ registerNamespaceDescriptor('Appliance.RollerShutter.Config', {
     }
 });
 
+registerNamespaceDescriptor('Appliance.RollerShutter.Adjust', {
+    namespace: 'Appliance.RollerShutter.Adjust',
+    payloadKey: 'adjust',
+    stateMap: '_rollerShutterStateByChannel',
+    StateClass: RollerShutterState,
+    eventType: 'rollerShutter',
+    snapshot: rollerShutterSnapshot
+});
+
 module.exports = createRollerShutterAbility;
 /**
  * Private exports for unit tests. Do not rename or change shape without updating
@@ -234,7 +252,11 @@ module.exports = createRollerShutterAbility;
 module.exports.getCapabilities = getRollerShutterCapabilities;
 module.exports.ability = {
     key: 'rollerShutter',
-    namespaces: ['Appliance.RollerShutter.State', 'Appliance.RollerShutter.Position'],
+    namespaces: [
+        'Appliance.RollerShutter.State',
+        'Appliance.RollerShutter.Position',
+        'Appliance.RollerShutter.Adjust'
+    ],
     caches: [
         '_rollerShutterStateByChannel',
         '_rollerShutterPositionByChannel',

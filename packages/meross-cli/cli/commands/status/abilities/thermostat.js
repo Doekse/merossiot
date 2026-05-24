@@ -1,8 +1,15 @@
 'use strict';
 
 const chalk = require('chalk');
-const { ThermostatMode } = require('meross-iot');
 const { hasAbility } = require('./utils');
+
+const THERMOSTAT_MODE_LABELS = {
+    heat: 'Heat',
+    cool: 'Cool',
+    economy: 'Economy',
+    auto: 'Auto',
+    manual: 'Manual'
+};
 
 const MODE_NAMESPACES = [
     'Appliance.Control.Thermostat.Mode',
@@ -148,14 +155,7 @@ function displayConfig(_device, ctx) {
     const { thermostatState } = ctx;
 
     if (thermostatState.mode !== undefined) {
-        const modeNames = {
-            [ThermostatMode.HEAT]: 'Heat',
-            [ThermostatMode.COOL]: 'Cool',
-            [ThermostatMode.ECONOMY]: 'Economy',
-            [ThermostatMode.AUTO]: 'Auto',
-            [ThermostatMode.MANUAL]: 'Manual'
-        };
-        const modeName = modeNames[thermostatState.mode] || `Mode ${thermostatState.mode}`;
+        const modeName = THERMOSTAT_MODE_LABELS[thermostatState.mode] || `Mode ${thermostatState.mode}`;
         const onoffStatus = thermostatState.isOn ? chalk.green('On') : chalk.red('Off');
         const targetTemp = thermostatState.targetTemperatureCelsius !== undefined
             ? `${thermostatState.targetTemperatureCelsius.toFixed(1)}°C`
@@ -181,8 +181,11 @@ function displayConfig(_device, ctx) {
     }
 
     if (thermostatState.workingMode !== undefined) {
-        const isHeating = thermostatState.workingMode === 1;
-        const stateColor = isHeating ? chalk.green('Heating') : chalk.gray.bold('Idle');
+        const labels = {
+            heating: chalk.green('Heating'),
+            cooling: chalk.cyan('Cooling')
+        };
+        const stateColor = labels[thermostatState.workingMode] ?? chalk.gray.bold(thermostatState.workingMode);
         configInfo.push(['Status', stateColor]);
     }
 

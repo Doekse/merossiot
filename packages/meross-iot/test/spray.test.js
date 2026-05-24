@@ -21,7 +21,7 @@ describe('spray ability (mocked device)', () => {
         };
         const spray = createSprayAbility(device);
 
-        await spray.set({ channel: 0, mode: 2 });
+        await spray.set({ channel: 0, mode: 'intermittent' });
 
         assert.strictEqual(calls[0].method, 'SET');
         assert.strictEqual(calls[0].namespace, 'Appliance.Control.Spray');

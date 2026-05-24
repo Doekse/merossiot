@@ -1,5 +1,7 @@
 'use strict';
 
+const { GarageDoorOpenCodec, GarageDoorExecuteCodec } = require('../enums');
+
 /**
  * Represents the state of a garage door device channel.
  *
@@ -42,17 +44,32 @@ class GarageDoorState {
     }
 
     /**
+     * @returns {'closed'|'open'|undefined}
+     */
+    get openState() {
+        const { open } = this._state;
+        if (open === undefined || open === null) {return undefined;}
+        return GarageDoorOpenCodec.fromWire(open);
+    }
+
+    /**
+     * @returns {'not-executed'|'executed'|undefined}
+     */
+    get executeState() {
+        const { execute } = this._state;
+        if (execute === undefined || execute === null) {return undefined;}
+        return GarageDoorExecuteCodec.fromWire(execute);
+    }
+
+    /**
      * Gets whether the garage door is open.
-     *
-     * Converts the device's numeric open/closed state (0 or 1) to a boolean for easier
-     * conditional logic in application code.
      *
      * @returns {boolean|undefined} True if open, false if closed, undefined if state not available
      */
     get isOpen() {
-        const { open } = this._state;
-        if (open === undefined || open === null) {return undefined;}
-        return open === 1;
+        const state = this.openState;
+        if (state === undefined) {return undefined;}
+        return state === 'open';
     }
 
     /**

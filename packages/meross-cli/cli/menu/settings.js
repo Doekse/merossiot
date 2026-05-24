@@ -2,8 +2,13 @@
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const { MerossSubDevice, TransportMode } = require('meross-iot');
-const { getTransportModeName } = require('../helpers/client');
+const { MerossSubDevice } = require('meross-iot');
+const {
+    getTransportModeName,
+    TRANSPORT_MQTT,
+    TRANSPORT_LAN_HTTP_FIRST,
+    TRANSPORT_LAN_HTTP_FIRST_ONLY_GET
+} = require('../helpers/client');
 const { clearScreen, renderSimpleHeader, clearMenuArea, SIMPLE_CONTENT_START_LINE } = require('../utils/terminal');
 const { showStats } = require('../commands');
 const { getUser, listUsers, addUser, removeUser } = require('../config/users');
@@ -56,7 +61,7 @@ async function showSettingsMenu(rl, currentManager, currentUser, timeout, enable
             : enableStats;
         const currentTransportMode = currentManager
             ? getTransportModeName(currentManager.transport.defaultMode)
-            : getTransportModeName(TransportMode.MQTT_ONLY);
+            : getTransportModeName(TRANSPORT_MQTT);
         const currentVerboseState = currentManager ? !!currentManager.logger : verbose;
 
         process.stdout.write(chalk.bold('=== Settings Menu ===\n\n'));
@@ -143,15 +148,15 @@ async function showTransportModeSettings(rl, currentManager, currentUser, setTra
         choices: [
             {
                 name: 'MQTT Only (default, works remotely)',
-                value: TransportMode.MQTT_ONLY
+                value: TRANSPORT_MQTT
             },
             {
                 name: 'LAN HTTP First (try LAN first, fallback to MQTT)',
-                value: TransportMode.LAN_HTTP_FIRST
+                value: TRANSPORT_LAN_HTTP_FIRST
             },
             {
                 name: 'LAN HTTP First (GET only) (LAN for GET, MQTT for SET)',
-                value: TransportMode.LAN_HTTP_FIRST_ONLY_GET
+                value: TRANSPORT_LAN_HTTP_FIRST_ONLY_GET
             }
         ]
     }]);

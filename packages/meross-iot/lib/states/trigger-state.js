@@ -1,12 +1,9 @@
 'use strict';
 
+const { TriggerTypeCodec } = require('../enums');
+
 /**
  * Represents the state of a trigger configuration.
- *
- * Encapsulates state information for device trigger configurations. Triggers can be
- * used to create automation rules that respond to device events. State instances are
- * managed by device controllers and updated automatically when device responses or
- * push notifications are received.
  *
  * @class
  * @example
@@ -19,29 +16,13 @@
  */
 class TriggerState {
     /**
-     * Creates a new TriggerState instance.
-     *
-     * @param {Object} [state=null] - Initial state object
-     * @param {string|number} [state.id] - Trigger identifier
-     * @param {number} [state.channel] - Channel number
-     * @param {string} [state.alias] - Trigger alias/name
-     * @param {number} [state.enable] - Enabled state (0=disabled, 1=enabled)
-     * @param {number} [state.type] - Trigger type (from TriggerType enum)
-     * @param {number} [state.createTime] - Creation timestamp
-     * @param {Object} [state.rule] - Rule configuration object
-     * @param {number} [state.rule.duration] - Rule duration value
-     * @param {number} [state.rule.week] - Rule weekday mask
+     * @param {Object} [state=null] - Initial state object (wire-format numbers)
      */
     constructor(state = null) {
         this._state = state || {};
     }
 
     /**
-     * Updates the state with new data
-     *
-     * Merges new state data into the existing state. Called automatically by the device
-     * when state updates are received.
-     *
      * @param {Object} state - New state data to merge
      */
     update(state) {
@@ -51,8 +32,6 @@ class TriggerState {
     }
 
     /**
-     * Gets the trigger identifier.
-     *
      * @returns {string|number|undefined} Trigger ID or undefined if not available
      */
     get id() {
@@ -60,8 +39,6 @@ class TriggerState {
     }
 
     /**
-     * Gets the channel number.
-     *
      * @returns {number|undefined} Channel number or undefined if not available
      */
     get channel() {
@@ -71,8 +48,6 @@ class TriggerState {
     }
 
     /**
-     * Gets the trigger alias/name.
-     *
      * @returns {string|undefined} Trigger alias or undefined if not available
      */
     get alias() {
@@ -80,11 +55,6 @@ class TriggerState {
     }
 
     /**
-     * Gets whether the trigger is enabled.
-     *
-     * Converts the device's numeric enabled state (0 or 1) to a boolean for easier
-     * conditional logic in application code.
-     *
      * @returns {boolean|undefined} True if enabled, false if disabled, undefined if state not available
      */
     get enable() {
@@ -94,20 +64,15 @@ class TriggerState {
     }
 
     /**
-     * Gets the trigger type.
-     *
-     * @returns {number|undefined} Trigger type value or undefined if not available
-     * @see {@link module:lib/enums.TriggerType} for type constants
+     * @returns {'single-point-weekly'|'single-point-single-shot'|'continuous-weekly'|'continuous-single-shot'|undefined}
      */
     get type() {
         const { type } = this._state;
         if (type === undefined || type === null) {return undefined;}
-        return type;
+        return TriggerTypeCodec.fromWire(type);
     }
 
     /**
-     * Gets the creation timestamp.
-     *
      * @returns {number|undefined} Creation timestamp or undefined if not available
      */
     get createTime() {
@@ -117,8 +82,6 @@ class TriggerState {
     }
 
     /**
-     * Gets the rule configuration object
-     *
      * @returns {Object|undefined} Rule configuration object or undefined if not available
      */
     get rule() {
@@ -126,8 +89,6 @@ class TriggerState {
     }
 
     /**
-     * Gets the rule duration value.
-     *
      * @returns {number|undefined} Rule duration or undefined if not available
      */
     get ruleDuration() {
@@ -137,11 +98,6 @@ class TriggerState {
     }
 
     /**
-     * Gets the rule weekday mask.
-     *
-     * Bitmask representing which days of the week the trigger rule is active. Use
-     * bitwise operations to check for specific days.
-     *
      * @returns {number|undefined} Weekday mask or undefined if not available
      */
     get ruleWeek() {
@@ -152,4 +108,3 @@ class TriggerState {
 }
 
 module.exports = TriggerState;
-

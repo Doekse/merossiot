@@ -1,7 +1,7 @@
 'use strict';
 
 const { MerossDeviceError } = require('../exception');
-const { DNDMode } = require('../enums');
+const { DndModeCodec } = require('../enums');
 
 /**
  * Creates a do-not-disturb feature object for a device.
@@ -14,59 +14,70 @@ const { DNDMode } = require('../enums');
 function createDNDAbility(device) {
     return {
         /**
-         * Gets the do-not-disturb mode from the device.
+         * Gets whether do-not-disturb is enabled on the device.
          *
          * @param {Object} [options={}] - Get options
-         * @returns {Promise<import('../enums').DNDMode>} DNDMode enum object
+         * @returns {Promise<boolean>} True when DND is enabled (LED off)
          */
         async get(_options = {}) {
             const { payload: result } = await device.publishMessage('GET', 'Appliance.System.DNDMode', {});
-            if (result && result.DNDMode && result.DNDMode.mode !== undefined) {
-                const modeValue = result.DNDMode.mode;
-                const enumKey = Object.keys(DNDMode).find(key => DNDMode[key] === modeValue);
-                device.lastFullUpdateTimestamp = Date.now();
-                return enumKey ? DNDMode[enumKey] : DNDMode.DND_DISABLED;
-            }
             device.lastFullUpdateTimestamp = Date.now();
-            return DNDMode.DND_DISABLED;
-        },
-
-        /**
-         * Gets the raw numeric DND mode value from the device.
-         *
-         * @param {Object} [options={}] - Get options
-         * @returns {Promise<number>} Raw numeric DND mode value (0 = disabled, 1 = enabled)
-         */
-        async getRaw(_options = {}) {
-            const { payload: result } = await device.publishMessage('GET', 'Appliance.System.DNDMode', {});
-            if (result && result.DNDMode && result.DNDMode.mode !== undefined) {
-                return result.DNDMode.mode;
+            if (result?.DNDMode?.mode !== undefined) {
+                device._dndModeWire = result.DNDMode.mode;
+                return DndModeCodec.fromWire(result.DNDMode.mode) === 'on';
             }
-            return DNDMode.DND_DISABLED;
+            return false;
         },
 
         /**
-         * Sets the do-not-disturb mode setting.
+         * Semantic DND mode from the last {@link #get} response or cached wire value.
          *
-         * @param {Object} options - DND mode options
-         * @param {boolean|import('../enums').DNDMode} options.mode - DNDMode enum value or boolean
+         * @returns {'off'|'on'|null}
+         */
+        getMode() {
+            const wire = device._dndModeWire;
+            if (wire === undefined || wire === null) {
+                return null;
+            }
+            return DndModeCodec.fromWire(wire);
+        },
+
+        /**
+         * Sets whether do-not-disturb is enabled.
+         *
+         * @param {Object} options - DND options
+         * @param {boolean} [options.enabled] - True to enable DND (LED off), false to disable
+         * @param {'off'|'on'} [options.mode] - Semantic mode (alternative to `enabled`)
          * @returns {Promise<void>}
          */
         async set(options = {}) {
-            if (options.mode === undefined) {
-                throw new MerossDeviceError('mode is required', 'VALIDATION_ERROR', { field: 'mode', options, deviceUuid: device.uuid });
-            }
-            let modeValue;
-            if (typeof options.mode === 'boolean') {
-                modeValue = options.mode ? DNDMode.DND_ENABLED : DNDMode.DND_DISABLED;
-            } else if (options.mode === DNDMode.DND_ENABLED || options.mode === DNDMode.DND_DISABLED) {
-                modeValue = options.mode;
+            const { enabled, mode } = options;
+            let modeWire;
+            if (mode !== undefined && mode !== null) {
+                modeWire = DndModeCodec.toWire(mode);
+                if (modeWire === undefined) {
+                    throw new MerossDeviceError(
+                        'Invalid DND mode. Expected "off" or "on".',
+                        'VALIDATION_ERROR',
+                        { field: 'mode', mode, deviceUuid: device.uuid }
+                    );
+                }
+            } else if (enabled !== undefined) {
+                if (typeof enabled !== 'boolean') {
+                    throw new MerossDeviceError(
+                        'Invalid DND value. Expected boolean enabled.',
+                        'VALIDATION_ERROR',
+                        { field: 'enabled', enabled, deviceUuid: device.uuid }
+                    );
+                }
+                modeWire = DndModeCodec.toWire(enabled ? 'on' : 'off');
             } else {
-                throw new MerossDeviceError('Invalid DND mode. Expected boolean or DNDMode enum value.', 'VALIDATION_ERROR', { field: 'mode', mode: options.mode, deviceUuid: device.uuid });
+                throw new MerossDeviceError('enabled or mode is required', 'VALIDATION_ERROR', { options, deviceUuid: device.uuid });
             }
 
-            const payload = { 'DNDMode': { 'mode': modeValue } };
+            const payload = { 'DNDMode': { 'mode': modeWire } };
             await device.publishMessage('SET', 'Appliance.System.DNDMode', payload);
+            device._dndModeWire = modeWire;
         }
     };
 }

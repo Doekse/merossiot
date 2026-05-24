@@ -9,7 +9,7 @@ const {
     findDevicesByAbility,
     waitForDeviceConnection,
     getDeviceName,
-    OnlineStatus,
+    REQUIRE_ONLINE,
     assertFeatureOrSkip,
     deviceHasAbility
 } = require('./test-helper');
@@ -38,7 +38,7 @@ async function findControlCandidateDevices(manager, deviceFilter) {
     const seen = new Set();
     const out = [];
     for (const ns of namespaces) {
-        const batch = await findDevicesByAbility(manager, ns, OnlineStatus.ONLINE, deviceFilter);
+        const batch = await findDevicesByAbility(manager, ns, REQUIRE_ONLINE, deviceFilter);
         for (const d of batch) {
             if (!seen.has(d.uuid)) {
                 seen.add(d.uuid);

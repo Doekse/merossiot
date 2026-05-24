@@ -24,6 +24,8 @@
 const GenericPushNotification = require('./generic');
 const OnlinePushNotification = require('./online');
 const AlarmPushNotification = require('./alarm');
+const UpgradePushNotification = require('./upgrade');
+const OverTempPushNotification = require('./over-temp');
 const BindPushNotification = require('./bind');
 const UnbindPushNotification = require('./unbind');
 const WaterLeakPushNotification = require('./water-leak');
@@ -52,6 +54,8 @@ module.exports = {
     GenericPushNotification,
     OnlinePushNotification,
     AlarmPushNotification,
+    UpgradePushNotification,
+    OverTempPushNotification,
     BindPushNotification,
     UnbindPushNotification,
     WaterLeakPushNotification,

@@ -1,7 +1,6 @@
 'use strict';
 
 const GenericPushNotification = require('./generic');
-const { PresenceState } = require('../enums');
 
 /**
  * Push notification for latest sensor readings (including lux/illuminance).
@@ -81,7 +80,7 @@ class SensorLatestXPushNotification extends GenericPushNotification {
 
             if (entry.data.presence && Array.isArray(entry.data.presence) && entry.data.presence.length > 0) {
                 const presenceData = entry.data.presence[0];
-                presenceChange.isPresent = presenceData.value === PresenceState.PRESENCE;
+                presenceChange.isPresent = presenceData.value === 2;
                 presenceChange.distance = presenceData.distance;
                 presenceChange.timestamp = presenceData.timestamp;
                 presenceChange.times = presenceData.times;

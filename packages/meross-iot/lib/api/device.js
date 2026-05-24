@@ -1,6 +1,6 @@
 'use strict';
 
-const { OnlineStatus } = require('../enums');
+const { ConnectivityCodec } = require('../enums');
 const { DEFAULT_MQTT_HOST, DEFAULT_MQTT_PORT } = require('./constants');
 const { extractDomain, extractPort } = require('../utilities/network');
 const { MerossDeviceError } = require('../exception');
@@ -27,7 +27,7 @@ class ApiDeviceInfo {
     /**
      * Creates an ApiDeviceInfo instance from a dictionary object.
      *
-     * Validates and converts onlineStatus to ensure enum consistency, and converts
+     * Converts HTTP `onlineStatus` wire codes to consumer `connectivity` strings, and
      * bindTime from Unix timestamp to Date object for consistent time handling.
      * All other properties are assigned directly from the API response.
      *
@@ -48,7 +48,7 @@ class ApiDeviceInfo {
      * @param {number} [jsonDict.iconType] - Icon type
      * @param {string} [jsonDict.region] - Device region
      * @param {string} [jsonDict.devIconId] - Device icon ID
-     * @param {number} [jsonDict.onlineStatus] - Online status
+     * @param {number} [jsonDict.onlineStatus] - Online status wire code from HTTP API
      * @returns {ApiDeviceInfo} New ApiDeviceInfo instance
      */
     static fromDict(jsonDict) {
@@ -74,17 +74,9 @@ class ApiDeviceInfo {
         instance.region = jsonDict.region;
         instance.devIconId = jsonDict.devIconId;
 
-        // Validate and normalize onlineStatus to ensure it's a valid enum value.
-        // The API may return non-numeric values or omit the field, so we default to UNKNOWN.
-        if (jsonDict.onlineStatus !== undefined && jsonDict.onlineStatus !== null) {
-            if (typeof jsonDict.onlineStatus === 'number') {
-                instance.onlineStatus = jsonDict.onlineStatus;
-            } else {
-                instance.onlineStatus = OnlineStatus.UNKNOWN;
-            }
-        } else {
-            instance.onlineStatus = OnlineStatus.UNKNOWN;
-        }
+        instance.connectivity = typeof jsonDict.onlineStatus === 'number'
+            ? ConnectivityCodec.fromWire(jsonDict.onlineStatus)
+            : 'unknown';
 
         // Convert bindTime to a Date object for consistent time handling.
         // The API returns Unix timestamps in seconds, but we normalize to JavaScript Date
@@ -128,7 +120,7 @@ class ApiDeviceInfo {
             iconType: this.iconType,
             region: this.region,
             devIconId: this.devIconId,
-            onlineStatus: this.onlineStatus
+            connectivity: this.connectivity
         };
     }
 
