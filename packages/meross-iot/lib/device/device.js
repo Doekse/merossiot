@@ -861,9 +861,13 @@ class MerossDevice extends EventEmitter {
             }
         }
 
-        const channels = this.channels || [{ index: 0 }];
-        for (const channel of channels) {
-            await this.electricity.get({ channel: channel.index });
+        if (typeof this.electricity.pollAllChannels === 'function') {
+            await this.electricity.pollAllChannels();
+        } else {
+            const channels = this.channels || [{ index: 0 }];
+            for (const channel of channels) {
+                await this.electricity.get({ channel: channel.index });
+            }
         }
 
         this._metricsLastPollTimes.set('electricity', Date.now());

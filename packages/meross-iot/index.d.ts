@@ -451,13 +451,34 @@ declare module 'meross-iot' {
         setConfig(options?: Record<string, any>): Promise<any>;
     }
 
+    interface PowerInfo {
+        amperage: number;
+        voltage: number;
+        wattage: number;
+        sampleTimestamp: Date;
+        powerFactor?: number;
+        monthlyConsumptionWh?: number;
+    }
+
+    interface HourlyConsumption {
+        timestamp: Date;
+        valueWh: number;
+    }
+
+    interface ConsumptionEntry {
+        date: Date;
+        totalConsumptionKwh: number;
+        hourly?: HourlyConsumption[];
+    }
+
     interface ElectricityFeature {
-        get(options?: { channel?: number }): Promise<any>;
-        getRaw(options?: { channel?: number }): Promise<any>;
+        get(options?: { channel?: number }): Promise<PowerInfo | null>;
+        pollAllChannels(): Promise<void>;
     }
 
     interface ConsumptionFeature {
-        get(options?: { channel?: number }): Promise<any>;
+        get(options?: { channel?: number }): Promise<ConsumptionEntry[] | null>;
+        getHourlyConsumption(options?: { channel?: number }): Promise<HourlyConsumption[]>;
         getConfig(): Promise<any>;
     }
 

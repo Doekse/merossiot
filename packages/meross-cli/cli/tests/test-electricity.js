@@ -4,7 +4,7 @@
  * Electricity / consumption live tests.
  *
  * Exercises two separate optional features on `MerossDevice` (see `meross-iot` `index.d.ts`):
- * - **`device.electricity`** — instant readings (`ElectricityFeature.get`, optional `getRaw`)
+ * - **`device.electricity`** — instant readings (`ElectricityFeature.get`)
  * - **`device.consumption`** — daily energy series (`ConsumptionFeature.get`) and meter settings (`getConfig`)
  *
  * Registry entry **`electricity`** is canonical; **`consumption`** is an alias to this same file
@@ -125,57 +125,6 @@ async function runTests(context) {
     } catch (error) {
         results.push({
             name: 'should get instant electricity metrics',
-            passed: false,
-            skipped: false,
-            error: error.message,
-            device: deviceName
-        });
-    }
-
-    // --- device.electricity: raw payload (optional on some firmware) ---
-    try {
-        if (
-            !assertFeatureOrSkip(
-                results,
-                testDevice,
-                'electricity',
-                deviceName,
-                'should get raw electricity payload'
-            )
-        ) {
-            // skip
-        } else if (typeof testDevice.electricity.getRaw !== 'function') {
-            results.push({
-                name: 'should get raw electricity payload',
-                passed: false,
-                skipped: true,
-                error: 'electricity.getRaw is not exposed on this device',
-                device: deviceName
-            });
-        } else {
-            const raw = await testDevice.electricity.getRaw({ channel });
-            if (raw === undefined || raw === null) {
-                results.push({
-                    name: 'should get raw electricity payload',
-                    passed: false,
-                    skipped: false,
-                    error: 'electricity.getRaw() returned null or undefined',
-                    device: deviceName
-                });
-            } else {
-                results.push({
-                    name: 'should get raw electricity payload',
-                    passed: true,
-                    skipped: false,
-                    error: null,
-                    device: deviceName,
-                    details: { raw }
-                });
-            }
-        }
-    } catch (error) {
-        results.push({
-            name: 'should get raw electricity payload',
             passed: false,
             skipped: false,
             error: error.message,

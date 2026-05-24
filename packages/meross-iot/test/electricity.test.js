@@ -44,14 +44,33 @@ describe('electricity ability (mocked device)', () => {
         assert.strictEqual(info.wattage, 0.5);
     });
 
-    it('getRaw forwards GET Electricity', async () => {
-        const { calls, publishMessage } = createPublishRecorder({ responseFor: () => ({}) });
-        const device = { abilities: {}, publishMessage };
-        const electricity = createElectricityAbility(device);
+    it('GETACK Electricity via dispatcher updates cache with classic voltage scale', async () => {
+        let device;
+        const { publishMessage } = createPublishRecorder({
+            responseFor() {
+                return {
+                    electricity: {
+                        channel: 0,
+                        current: 1000,
+                        voltage: 2300,
+                        power: 500
+                    }
+                };
+            },
+            getDevice: () => device
+        });
+        device = {
+            abilities: { 'Appliance.Control.Electricity': {} },
+            lastFullUpdateTimestamp: Date.now() - 60_000,
+            emit: () => {},
+            publishMessage
+        };
+        createElectricityAbility(device);
 
-        await electricity.getRaw({ channel: 1 });
+        await publishMessage('GET', 'Appliance.Control.Electricity', { channel: 0 });
 
-        assert.strictEqual(calls[0].namespace, 'Appliance.Control.Electricity');
-        assert.deepStrictEqual(calls[0].payload, { channel: 1 });
+        const cached = device._channelCachedSamples.get(0);
+        assert.strictEqual(cached.voltage, 230);
+        assert.strictEqual(cached.wattage, 0.5);
     });
 });

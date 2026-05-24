@@ -17,7 +17,7 @@ const ABILITIES = [
     },
     {
         key: 'electricity',
-        namespaces: ['Appliance.Control.Electricity'],
+        namespaces: ['Appliance.Control.Electricity', 'Appliance.Control.ElectricityX'],
         handlers: require('./electricity')
     },
     {

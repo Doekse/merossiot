@@ -26,6 +26,37 @@ function createConsumptionAbility(device) {
 
     return {
         /**
+         * Gets hourly consumption samples for a channel when the device exposes ConsumptionH.
+         *
+         * @param {Object} [options={}] - Get options
+         * @param {number} [options.channel=0] - Channel to read data from (default: 0)
+         * @returns {Promise<Array<{timestamp: Date, valueWh: number}>>} Hourly consumption points (empty when unavailable)
+         */
+        async getHourlyConsumption(options = {}) {
+            const channel = normalizeChannel(options);
+            const hasConsumptionH = device.abilities?.['Appliance.Control.ConsumptionH'];
+
+            if (hasConsumptionH) {
+                await this._getConsumptionH(channel);
+            } else {
+                await this.get({ channel });
+            }
+
+            const cached = device._channelCachedConsumption?.get(channel);
+            if (!cached || !Array.isArray(cached)) {
+                return [];
+            }
+
+            for (const entry of cached) {
+                if (entry.hourly && entry.hourly.length > 0) {
+                    return entry.hourly;
+                }
+            }
+
+            return [];
+        },
+
+        /**
          * Gets daily power consumption data for a channel.
          *
          * Auto-detects whether to use ConsumptionH, ConsumptionX, or Consumption based on device capabilities.
@@ -33,7 +64,7 @@ function createConsumptionAbility(device) {
          *
          * @param {Object} [options={}] - Get options
          * @param {number} [options.channel=0] - Channel to read data from (default: 0)
-         * @returns {Promise<Array<{date: Date, totalConsumptionKwh: number}>|null>} Historical consumption data or null
+         * @returns {Promise<Array<{date: Date, totalConsumptionKwh: number, hourly?: Array<{timestamp: Date, valueWh: number}>}>|null>} Historical consumption data or null
          */
         async get(options = {}) {
             const channel = normalizeChannel(options);
@@ -94,10 +125,16 @@ function createConsumptionAbility(device) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
+                    const hourly = (channelData.data || []).map((point) => ({
+                        timestamp: new Date(point.timestamp * 1000),
+                        valueWh: parseFloat(point.value)
+                    }));
+
                     const data = [{
                         date: today.toISOString().split('T')[0],
                         value: channelData.total,
-                        time: Math.floor(Date.now() / 1000)
+                        time: Math.floor(Date.now() / 1000),
+                        hourly
                     }];
 
                     updateConsumptionState(device, { channel, consumption: data }, 'response');
@@ -215,10 +252,14 @@ function updateConsumptionState(device, consumptionData, source = 'response') {
             date = new Date(dateStr);
         }
 
-        return {
+        const entry = {
             date,
             totalConsumptionKwh: parseFloat(x.value) / 1000
         };
+        if (Array.isArray(x.hourly) && x.hourly.length > 0) {
+            entry.hourly = x.hourly;
+        }
+        return entry;
     });
 
     const oldData = device._channelCachedConsumption.get(channelIndex);
