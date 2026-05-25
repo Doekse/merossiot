@@ -322,10 +322,11 @@ Examples:
         if (options.subdeviceId) {
             params.subId = options.subdeviceId;
         }
-        if (options.on !== undefined) {
-            params.onoff = true;
-        } else if (options.off !== undefined) {
-            params.onoff = false;
+        if (options.on !== undefined || options.off !== undefined) {
+            const isOn = options.on !== undefined;
+            params.on = isOn;
+            params.open = isOn;
+            params.onoff = isOn ? 1 : 0;
         }
         if (options.rgb) {
             const parts = options.rgb.split(',').map(p => parseInt(p.trim(), 10));
@@ -508,4 +509,3 @@ if (require.main === module) {
 }
 
 module.exports = { main };
-
